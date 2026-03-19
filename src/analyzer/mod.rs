@@ -117,6 +117,7 @@ fn spawn_server() -> Result<ServerProcess, NightingaleError> {
         .env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
         .env("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
         .env("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+        .env("NLTK_DATA", models.join("nltk_data"))
         .arg(&script)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
