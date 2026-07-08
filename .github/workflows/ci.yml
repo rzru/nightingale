@@ -1,0 +1,68 @@
+name: CI
+
+# Compile-and-test check for branches and pull requests. The repo's only other
+# workflow (release.yml) runs on version tags, so nothing verified ordinary
+# pushes/PRs before this. Kept lightweight: it builds the frontend, runs the
+# app-core tests, and checks that the whole workspace compiles.
+on:
+  push:
+    branches-ignore:
+      - 'gh-pages'
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check & test
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # Needed to compile the Tauri client crate on Linux (mirrors release.yml).
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            libasound2-dev
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+
+      # `rust-embed` reads `client/dist/` at compile time (server crate), so the
+      # frontend bundle must exist before any `cargo check`/`build` runs.
+      - name: Build frontend bundle
+        working-directory: client
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      # Runs the app-core unit tests. (This also regenerates the ts-rs bindings
+      # under client/src/types as a side effect; we don't diff them here because
+      # the committed bindings are oxfmt-formatted while ts-rs emits an unformatted
+      # form, so a raw diff would always trip.)
+      - name: Test app-core
+        run: cargo test --locked -p app-core
+
+      # Compiles the whole workspace, including both entry points
+      # (client/src-tauri and client/src-server).
+      - name: Check workspace compiles
+        run: cargo check --workspace --locked
