@@ -37,4 +37,9 @@ export type AppConfig = {
   vocal_detection_threshold_pct: number | null;
   auto_analyze: boolean | null;
   language_overrides: { [key in string]: string } | null;
+  /**
+   * Optional HTTP proxy (e.g. `http://127.0.0.1:7890`), applied at startup
+   * by `apply_proxy_env`.
+   */
+  proxy: string | null;
 };

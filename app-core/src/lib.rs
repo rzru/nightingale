@@ -25,7 +25,7 @@ pub use cache::{
     CacheDir, CachePaths, CacheStats, cache_roots, change_app_data_path, clear_models,
     clear_videos, default_nightingale_dir, nightingale_dir, normalized_target_path, same_path,
 };
-pub use config::{AppConfig, LibrarySource};
+pub use config::{AppConfig, LibrarySource, apply_proxy_env};
 pub use library_db::{init_library, library_db_path};
 pub use library_menu::{LibraryMenuItem, LibraryMenuItems, load_library_menu_items};
 pub use library_model::{LibraryMenuFilters, LoadSongsParams, SongsMeta, SongsStore};

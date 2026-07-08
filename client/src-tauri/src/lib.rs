@@ -78,6 +78,9 @@ fn minimize_window(window: tauri::WebviewWindow) -> Result<(), String> {
 pub fn run() {
     logging::init();
 
+    // Apply the configured proxy before any downloads run.
+    app_core::apply_proxy_env(&app_core::AppConfig::load());
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())

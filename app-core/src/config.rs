@@ -112,6 +112,9 @@ pub struct AppConfig {
     pub vocal_detection_threshold_pct: Option<f64>,
     pub auto_analyze: Option<bool>,
     pub language_overrides: Option<HashMap<String, String>>,
+    /// Optional HTTP proxy (e.g. `http://127.0.0.1:7890`), applied at startup
+    /// by `apply_proxy_env`.
+    pub proxy: Option<String>,
 }
 
 fn default_data_path_option() -> Option<PathBuf> {
@@ -146,6 +149,30 @@ impl Default for AppConfig {
             vocal_detection_threshold_pct: None,
             auto_analyze: None,
             language_overrides: None,
+            proxy: None,
+        }
+    }
+}
+
+/// Set the process proxy env vars from `cfg.proxy` (no-op if unset). `ureq` and
+/// the analyzer subprocess pick them up; existing env vars are left untouched.
+pub fn apply_proxy_env(cfg: &AppConfig) {
+    let Some(proxy) = cfg.proxy.as_deref().map(str::trim).filter(|s| !s.is_empty()) else {
+        return;
+    };
+    for key in [
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
+    ] {
+        if std::env::var_os(key).is_none() {
+            // Safe: called once at startup before other threads read the env.
+            unsafe {
+                std::env::set_var(key, proxy);
+            }
         }
     }
 }

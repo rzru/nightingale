@@ -63,6 +63,9 @@ async fn main() {
         )
         .init();
 
+    // Apply the configured proxy before any downloads run.
+    app_core::apply_proxy_env(&app_core::AppConfig::load());
+
     if let Err(e) = app_core::startup() {
         tracing::error!("startup failed: {e}");
         std::process::exit(1);
