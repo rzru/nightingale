@@ -7,6 +7,7 @@
 | Rust | 1.85+ (workspace uses edition 2024) |
 | Node.js | 20+ |
 | pnpm | latest |
+| Windows ASIO support | LLVM/Clang with `LIBCLANG_PATH`, Visual Studio C++ Build Tools, and the Steinberg ASIO SDK (set `CPAL_ASIO_DIR`) |
 | Linux only | `libwebkit2gtk-4.1-dev`, `libssl-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`, `libxdo-dev`, `libasound2-dev` |
 
 ## Development

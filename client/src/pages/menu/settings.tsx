@@ -60,13 +60,20 @@ export const SettingsPage = () => {
   const isParakeet = asrEngine === "parakeet";
   const analysisNav = getAnalysisNav(isParakeet);
 
-  const micOptions = useMemo(
-    () => [
+  const micOptions = useMemo(() => {
+    const options = [
       { value: DEFAULT_MIC_ID, label: "Default" },
       ...micDevices.map(({ deviceId, label }) => ({ value: deviceId, label })),
-    ],
-    [micDevices],
-  );
+    ];
+    // If a preferred microphone is saved but not currently available (e.g., device disconnected),
+    // add it as an option with a label indicating it's the selected device. This allows users
+    // to see which microphone they had selected even if it's temporarily unavailable.
+    const preferred = config?.preferred_mic;
+    if (preferred && !options.some((option) => option.value === preferred)) {
+      options.push({ value: preferred, label: `Selected microphone: ${preferred}` });
+    }
+    return options;
+  }, [config?.preferred_mic, micDevices]);
   const modelOptions = useMemo(() => MODELS.map((model) => ({ value: model, label: model })), []);
   const micMonitorGainPct = Math.round(micMonitorGain * 100);
   const vocalThresholdDisplayPct = Math.round(vocalThresholdPct * 100);

@@ -31,7 +31,9 @@ pub fn set_monitor_gain(gain: f32) {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct MicrophoneInfo {
+    pub id: String,
     pub name: String,
+    pub host: String,
 }
 
 /// Mono PCM frame streamed from Rust to JS. JS owns all DSP (pitch, reactive
@@ -73,24 +75,63 @@ fn is_virtual(device: &cpal::Device) -> bool {
     matches!(desc.device_type(), DeviceType::Virtual)
 }
 
+/// Returns all available audio host APIs on this platform with human-readable labels.
+/// On Windows: includes both WASAPI and ASIO (when available)
+/// On other platforms: uses the platform's default audio API
+fn audio_hosts() -> Vec<(cpal::HostId, &'static str)> {
+    cpal::available_hosts()
+        .into_iter()
+        .map(|id| {
+            let label = match id {
+                #[cfg(windows)]
+                cpal::HostId::Wasapi => "WASAPI",
+                #[cfg(windows)]
+                cpal::HostId::Asio => "ASIO",
+                #[cfg(not(windows))]
+                _ => id.name(),
+            };
+            (id, label)
+        })
+        .collect()
+}
+
+/// Helper function to create MicrophoneInfo from a device, serializing the device ID
+/// for later lookup. Returns None if the device ID cannot be extracted.
+fn microphone_info(device: &cpal::Device, host: &str) -> Option<MicrophoneInfo> {
+    let id = device.id().ok()?.to_string();
+    Some(MicrophoneInfo {
+        id,
+        name: device_display_name(device),
+        host: host.to_string(),
+    })
+}
+
+/// Discovers all available input microphones across all audio host APIs.
+/// Iterates through available hosts (WASAPI, ASIO, etc.) and collects devices,
+/// filtering out invalid configs and virtual devices. Deduplicates by device ID
+/// to handle cases where the same device appears on multiple hosts.
 #[tauri::command]
 pub fn list_microphones() -> Result<Vec<MicrophoneInfo>, String> {
-    let host = cpal::default_host();
-    let devices = host
-        .input_devices()
-        .map_err(|e| format!("input devices: {e}"))?;
-
     let mut seen: HashSet<String> = HashSet::new();
     let mut out = Vec::new();
 
-    for device in devices {
-        if device.default_input_config().is_err() || is_virtual(&device) {
+    for (host_id, host_name) in audio_hosts() {
+        let Ok(host) = cpal::host_from_id(host_id) else {
             continue;
-        }
-        let name = device_display_name(&device);
-        let key = name.to_lowercase();
-        if seen.insert(key) {
-            out.push(MicrophoneInfo { name });
+        };
+        let devices = host
+            .input_devices()
+            .map_err(|e| format!("{host_name} input devices: {e}"))?;
+        for device in devices {
+            if device.default_input_config().is_err() || is_virtual(&device) {
+                continue;
+            }
+            if let Some(info) = microphone_info(&device, host_name) {
+                // Deduplicate by device ID; only add if we haven't seen this ID before
+                if seen.insert(info.id.clone()) {
+                    out.push(info);
+                }
+            }
         }
     }
 
@@ -182,9 +223,23 @@ fn stop_internal() {
 }
 
 fn find_device(preferred: Option<&str>) -> Result<(cpal::Device, String), String> {
-    let host = cpal::default_host();
-
     if let Some(name) = preferred {
+        // First, try to parse the preference as a serialized device ID from a specific host
+        if let Ok(device_id) = name.parse::<cpal::DeviceId>() {
+            let host = cpal::host_from_id(device_id.0)
+                .map_err(|e| format!("audio host unavailable: {e}"))?;
+            if let Ok(devices) = host.input_devices() {
+                for dev in devices {
+                    if dev.id().ok().as_ref() == Some(&device_id) {
+                        let name = device_display_name(&dev);
+                        return Ok((dev, name));
+                    }
+                }
+            }
+        }
+
+        // Fallback: search the default host by display name (for backwards compatibility)
+        let host = cpal::default_host();
         let devices = host
             .input_devices()
             .map_err(|e| format!("input devices: {e}"))?;
@@ -196,7 +251,8 @@ fn find_device(preferred: Option<&str>) -> Result<(cpal::Device, String), String
         return Err(format!("Microphone '{name}' not found"));
     }
 
-    let device = host
+    // No preference: use the system default input device
+    let device = cpal::default_host()
         .default_input_device()
         .ok_or_else(|| "No default microphone found".to_string())?;
     let name = device_display_name(&device);
@@ -496,7 +552,15 @@ fn run_mic_loop(device: cpal::Device, name: &str, shutdown: Arc<AtomicBool>) {
         warn!("[mic] failed to open '{name}'");
         return;
     };
-    let monitor_stream = cpal::default_host()
+    // Extract the audio host from the input device so we use the same host for monitoring.
+    // This ensures we get proper support for devices on specific hosts (e.g., ASIO input
+    // should use ASIO output). Falls back to default host if extraction fails.
+    let monitor_host = device
+        .id()
+        .ok()
+        .and_then(|id| cpal::host_from_id(id.0).ok())
+        .unwrap_or_else(cpal::default_host);
+    let monitor_stream = monitor_host
         .default_output_device()
         .and_then(|output_device| {
             try_build_output_stream(&output_device, Arc::clone(&audio_shared))
