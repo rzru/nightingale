@@ -15,7 +15,8 @@ import { songKey } from "./shared/song-key";
 import { SongDetailsSidebar } from "./song-details-sidebar";
 import type { SongItemProps } from "./types";
 import { SongGrid } from "./views/song-grid";
-import { SongTable } from "./views/song-table";
+import { SongTable, type SongSortColumn, type SongSortDirection } from "./views/song-table";
+import { getSongStatusInfo } from "./shared/song-status";
 
 export const SongList = () => {
   const { data: queue } = useAnalysisQueue();
@@ -30,9 +31,40 @@ export const SongList = () => {
   // file_hash, and seed from the persisted ref so returning from playback
   // restores the open sidebar and the selected row/card highlight.
   const [selectedKey, setSelectedKey] = useState<string | null>(() => selectedSongKeyRef.current);
+  const [sortColumn, setSortColumn] = useState<SongSortColumn | null>(null);
+  const [sortDirection, setSortDirection] = useState<SongSortDirection>(null);
 
   const view: SongListView = config?.song_list_view === "grid" ? "grid" : "table";
   const songs = useMemo(() => data?.pages.flatMap((page) => page.processed) ?? [], [data]);
+  const sortedSongs = useMemo(() => {
+    if (!sortColumn || !sortDirection) return songs;
+
+    return [...songs].sort((a, b) => {
+      let comparison: number;
+      if (sortColumn === "duration") {
+        comparison = a.duration_secs - b.duration_secs;
+      } else {
+        const aValue =
+          sortColumn === "song"
+            ? a.title
+            : sortColumn === "band"
+              ? a.artist
+              : sortColumn === "album"
+                ? a.album
+                : getSongStatusInfo(a.is_analyzed, queue?.entries[a.file_hash]).label;
+        const bValue =
+          sortColumn === "song"
+            ? b.title
+            : sortColumn === "band"
+              ? b.artist
+              : sortColumn === "album"
+                ? b.album
+                : getSongStatusInfo(b.is_analyzed, queue?.entries[b.file_hash]).label;
+        comparison = aValue.localeCompare(bValue, undefined, { sensitivity: "base" });
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [songs, sortColumn, sortDirection, queue?.entries]);
   const foundSong = songs.find((song) => songKey(song) === selectedKey) ?? null;
   // Keep the details sidebar open even when the selected song temporarily drops
   // out of the loaded pages — e.g. it leaves the analysis queue and re-sorts to
@@ -59,9 +91,9 @@ export const SongList = () => {
     transcript_source,
   ]);
   const previousFilterKeyRef = useRef(filterKey);
-  const songsRef = useRef(songs);
+  const songsRef = useRef(sortedSongs);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  songsRef.current = songs;
+  songsRef.current = sortedSongs;
 
   useEffect(() => {
     if (previousFilterKeyRef.current === filterKey) return;
@@ -113,6 +145,19 @@ export const SongList = () => {
   );
   const showEmptyState = songs.length === 0 && !isLoading;
   const selectSong = (song: (typeof songs)[number]) => setSelectedKey(songKey(song));
+  const handleSortChange = (column: SongSortColumn) => {
+    if (sortColumn !== column) {
+      setSortColumn(column);
+      setSortDirection("asc");
+    } else if (sortDirection === "asc") {
+      setSortDirection("desc");
+    } else if (sortDirection === "desc") {
+      setSortColumn(null);
+      setSortDirection(null);
+    } else {
+      setSortDirection("asc");
+    }
+  };
 
   const getItemProps = (song: (typeof songs)[number], index: number): SongItemProps => ({
     song,
@@ -156,9 +201,15 @@ export const SongList = () => {
             className="themed-scrollbar song-table-shell min-h-0 max-w-full flex-1 overflow-x-hidden overflow-y-auto pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           >
             {view === "table" ? (
-              <SongTable songs={songs} getItemProps={getItemProps} />
+              <SongTable
+                songs={sortedSongs}
+                getItemProps={getItemProps}
+                sortColumn={sortColumn}
+                sortDirection={sortDirection}
+                onSortChange={handleSortChange}
+              />
             ) : (
-              <SongGrid songs={songs} getItemProps={getItemProps} />
+              <SongGrid songs={sortedSongs} getItemProps={getItemProps} />
             )}
             <div ref={sentinelRef} className="h-1" aria-hidden="true" />
           </div>
