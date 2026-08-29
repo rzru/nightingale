@@ -622,11 +622,12 @@ fn detect_gpu() -> GpuInfo {
                 legacy_torch: true,
             };
         }
-        return GpuInfo {
+        info!("[vendor] GPU detection: Apple Silicon (MPS)");
+        GpuInfo {
             device: "mps",
             torch_index: "https://download.pytorch.org/whl/cpu",
             legacy_torch: false,
-        };
+        }
     }
 
     #[cfg(not(target_os = "macos"))]
