@@ -27,6 +27,13 @@ pub(crate) fn trigger_setup(events: Arc<EventBus>, payload: Value) -> CmdResult 
             .map_err(|e| ApiError::bad_request(format!("invalid trigger_setup args: {e}")))?
     };
 
+    // A setup run may already be in flight (e.g. started before a page
+    // refresh). Ignore the extra trigger instead of racing it — the running
+    // setup keeps emitting progress events for the UI.
+    if app_core::is_setup_running() {
+        return Ok(Value::Null);
+    }
+
     let events_clone = events.clone();
     std::thread::spawn(move || {
         let events_for_progress = events_clone.clone();

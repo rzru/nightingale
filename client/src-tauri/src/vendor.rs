@@ -7,6 +7,13 @@ pub(crate) fn trigger_setup(
     data_path: Option<String>,
     cache_paths: Option<CachePaths>,
 ) {
+    // A setup run may already be in flight (e.g. started before a page
+    // refresh). Ignore the extra trigger instead of racing it — the running
+    // setup keeps emitting progress events for the UI.
+    if app_core::is_setup_running() {
+        return;
+    }
+
     std::thread::spawn(move || {
         if let Some(paths) = cache_paths.as_ref() {
             for path in [&paths.songs, &paths.videos, &paths.models, &paths.vendor]

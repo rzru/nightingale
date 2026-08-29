@@ -30,6 +30,7 @@ below.
 
 ### Fixes
 
+- Re-running setup no longer wipes the vendor folder first: already-installed components are detected and reused, and a second setup trigger is ignored while one is already running.
 - Video files now use audio-stream title metadata, preventing subtitle titles from replacing song names.
 - The lyrics editor now allows re-aligning analyzed songs without requiring a lyrics change.
 - Empty transcription results now finish without attempting forced alignment.

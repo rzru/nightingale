@@ -68,10 +68,10 @@ pub use source::{
     },
 };
 pub use vendor::{
-    SetupFolders, SetupProgress, SetupStep, clear_vendor_dir, is_ready, mark_ready,
-    refresh_analyzer_scripts_if_ready, resolve_data_path_input, run_vendor_setup, step_create_venv,
-    step_download_ffmpeg, step_download_uv, step_extract_scripts, step_install_packages,
-    step_install_python,
+    SetupFolders, SetupProgress, SetupStep, clear_vendor_dir, is_ready, is_setup_running,
+    mark_ready, refresh_analyzer_scripts_if_ready, resolve_data_path_input, run_vendor_setup,
+    step_create_venv, step_download_ffmpeg, step_download_uv, step_extract_scripts,
+    step_install_packages, step_install_python,
 };
 
 pub fn startup() -> Result<(), String> {
