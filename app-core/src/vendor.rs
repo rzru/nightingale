@@ -1,6 +1,7 @@
 use std::{
     path::{Path, PathBuf},
     process::Command,
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 use serde::{Deserialize, Serialize};
@@ -54,6 +55,19 @@ pub fn clear_vendor_dir() -> Result<(), String> {
             .map_err(|e| format!("Failed to clear vendor directory: {e}"))?;
     }
     Ok(())
+}
+
+/// Remove staging dirs left behind by interrupted downloads. Each setup step
+/// already skips work that is present on disk, so a re-run only needs these
+/// leftovers gone — wiping the whole vendor folder would discard a fully
+/// installed setup and force every component to be downloaded again.
+fn cleanup_vendor_staging(vendor: &Path) {
+    for name in ["_tmp_ffmpeg", "_tmp_uv"] {
+        let dir = vendor.join(name);
+        if dir.is_dir() {
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+    }
 }
 
 pub(crate) fn ffmpeg_path() -> PathBuf {
@@ -143,7 +157,32 @@ fn migrate_cache_data_to_targets(targets: &CachePaths) -> Result<(), String> {
     Ok(())
 }
 
+static SETUP_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
+
+/// Returns `true` while a vendor setup run is executing in this process.
+pub fn is_setup_running() -> bool {
+    SETUP_IN_PROGRESS.load(Ordering::SeqCst)
+}
+
 pub fn run_vendor_setup(
+    folders: SetupFolders,
+    on_progress: impl FnMut(SetupProgress) + Send,
+    on_data_migrated: impl FnMut(&Path) -> Result<(), String>,
+) -> Result<(), String> {
+    if !try_begin_setup() {
+        return Err("Setup is already running".to_string());
+    }
+
+    let result = run_vendor_setup_inner(folders, on_progress, on_data_migrated);
+    SETUP_IN_PROGRESS.store(false, Ordering::SeqCst);
+    result
+}
+
+fn try_begin_setup() -> bool {
+    !SETUP_IN_PROGRESS.swap(true, Ordering::SeqCst)
+}
+
+fn run_vendor_setup_inner(
     folders: SetupFolders,
     mut on_progress: impl FnMut(SetupProgress) + Send,
     mut on_data_migrated: impl FnMut(&Path) -> Result<(), String>,
@@ -213,9 +252,9 @@ pub fn run_vendor_setup(
         emit(
             SetupStep::ClearVendor,
             14,
-            "Clearing vendor folder...".to_string(),
+            "Cleaning up vendor folder...".to_string(),
         );
-        clear_vendor_dir()?;
+        cleanup_vendor_staging(&vendor_dir());
     }
 
     emit(SetupStep::Ffmpeg, 24, "Downloading ffmpeg...".to_string());
@@ -583,11 +622,12 @@ fn detect_gpu() -> GpuInfo {
                 legacy_torch: true,
             };
         }
-        return GpuInfo {
+        info!("[vendor] GPU detection: Apple Silicon (MPS)");
+        GpuInfo {
             device: "mps",
             torch_index: "https://download.pytorch.org/whl/cpu",
             legacy_torch: false,
-        };
+        }
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -792,4 +832,67 @@ pub fn refresh_analyzer_scripts_if_ready() -> Result<(), String> {
 
 pub fn mark_ready() -> Result<(), String> {
     std::fs::write(ready_marker(), "ok").map_err(|e| format!("Failed to mark ready: {e}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
+
+    use super::*;
+
+    fn unique_temp_dir(name: &str) -> PathBuf {
+        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+        let id = COUNTER.fetch_add(1, AtomicOrdering::SeqCst);
+        std::env::temp_dir().join(format!(
+            "nightingale_{}_{}_{}",
+            name,
+            std::process::id(),
+            id
+        ))
+    }
+
+    #[test]
+    fn cleanup_removes_staging_dirs_and_keeps_installed_files() {
+        let vendor = unique_temp_dir("staging");
+        let ffmpeg_tmp = vendor.join("_tmp_ffmpeg");
+        let uv_tmp = vendor.join("_tmp_uv");
+        std::fs::create_dir_all(&ffmpeg_tmp).expect("create _tmp_ffmpeg");
+        std::fs::create_dir_all(&uv_tmp).expect("create _tmp_uv");
+        let installed = vendor.join("venv");
+        std::fs::create_dir_all(&installed).expect("create venv dir");
+        std::fs::write(vendor.join("ffmpeg"), "binary").expect("write fake ffmpeg");
+
+        cleanup_vendor_staging(&vendor);
+
+        assert!(!ffmpeg_tmp.exists());
+        assert!(!uv_tmp.exists());
+        assert!(installed.is_dir());
+        assert!(vendor.join("ffmpeg").is_file());
+
+        std::fs::remove_dir_all(&vendor).expect("clean up temp vendor dir");
+    }
+
+    #[test]
+    fn cleanup_is_noop_for_missing_dirs() {
+        let vendor = unique_temp_dir("staging_missing");
+        std::fs::create_dir_all(&vendor).expect("create temp vendor dir");
+        cleanup_vendor_staging(&vendor);
+        assert!(vendor.is_dir());
+        std::fs::remove_dir_all(&vendor).expect("clean up temp vendor dir");
+    }
+
+    #[test]
+    fn setup_lock_is_exclusive_until_released() {
+        assert!(!is_setup_running());
+        assert!(try_begin_setup());
+        assert!(is_setup_running());
+        assert!(
+            !try_begin_setup(),
+            "second concurrent setup must be refused"
+        );
+        SETUP_IN_PROGRESS.store(false, AtomicOrdering::SeqCst);
+        assert!(!is_setup_running());
+        assert!(try_begin_setup(), "lock must be reacquirable after release");
+        SETUP_IN_PROGRESS.store(false, AtomicOrdering::SeqCst);
+    }
 }
