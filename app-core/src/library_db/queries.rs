@@ -249,10 +249,14 @@ fn sort_expression(column: SongSortColumn) -> &'static str {
         SongSortColumn::Duration => "CAST(s.duration_secs AS INTEGER)",
         SongSortColumn::Status => {
             "CASE WHEN EXISTS (SELECT 1 FROM analysis_queue aq WHERE aq.file_hash = s.file_hash AND aq.status = 'analyzing') THEN 0 \
-             WHEN EXISTS (SELECT 1 FROM analysis_queue aq WHERE aq.file_hash = s.file_hash AND aq.status = 'failed') THEN 1 \
-             WHEN s.is_analyzed = 0 AND NOT EXISTS (SELECT 1 FROM analysis_queue aq WHERE aq.file_hash = s.file_hash) THEN 2 \
-             WHEN EXISTS (SELECT 1 FROM analysis_queue aq WHERE aq.file_hash = s.file_hash AND aq.status = 'queued') THEN 3 \
-             ELSE 4 END"
+             WHEN EXISTS (SELECT 1 FROM analysis_queue aq WHERE aq.file_hash = s.file_hash AND aq.status = 'failed') THEN 10 \
+             WHEN s.is_analyzed = 0 AND NOT EXISTS (SELECT 1 FROM analysis_queue aq WHERE aq.file_hash = s.file_hash) THEN 20 \
+             WHEN EXISTS (SELECT 1 FROM analysis_queue aq WHERE aq.file_hash = s.file_hash AND aq.status = 'queued') THEN 30 \
+             WHEN s.transcript_source = 'lyrics' THEN 40 \
+             WHEN s.transcript_source = 'generated' OR s.transcript_source IS NULL THEN 41 \
+             WHEN s.transcript_source = 'lrc' THEN 42 \
+             WHEN s.transcript_source = 'usdx' THEN 43 \
+             ELSE 44 END"
         }
     }
 }
