@@ -48,6 +48,7 @@ export type PlaybackTransportActions = {
   getVocalsBuffer: AudioPlayer['getVocalsBuffer'];
   getScoringBuffer: AudioPlayer['getScoringBuffer'];
   getAudioContext: AudioPlayer['getAudioContext'];
+  getRecordingTarget: AudioPlayer['getRecordingTarget'];
   /** Raw audio-engine pause; does NOT raise the `paused` UI flag. */
   pauseAudio: () => void;
   handlePause: () => void;
@@ -174,6 +175,7 @@ export function PlaybackTransportProvider({
       getVocalsBuffer: audio.getVocalsBuffer,
       getScoringBuffer: audio.getScoringBuffer,
       getAudioContext: audio.getAudioContext,
+      getRecordingTarget: audio.getRecordingTarget,
       pauseAudio: audio.pause,
       handlePause,
       handleContinue,
@@ -187,6 +189,7 @@ export function PlaybackTransportProvider({
       audio.getVocalsBuffer,
       audio.getScoringBuffer,
       audio.getAudioContext,
+      audio.getRecordingTarget,
       audio.pause,
       handlePause,
       handleContinue,

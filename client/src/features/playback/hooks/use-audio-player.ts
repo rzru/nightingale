@@ -3,7 +3,7 @@
  * rAF tick that notifies subscribers for visuals (background sync, lyrics, HUD).
  * The returned API object is referentially stable across renders when its fields are unchanged.
  *
- * Graph: instrumental buffer → destination; vocals buffer → gain (guide level) → destination.
+ * Graph: instrumental + (vocals → guide gain) → playback mix → speakers + recording limiter.
  * Playback position is derived from AudioContext.currentTime and a (offset, contextTimeAtStart)
  * pair because BufferSourceNode is one-shot: pause/seek recreate sources rather than mutating time.
  */
@@ -14,6 +14,10 @@ import type { PlaybackAdapter } from '@/bridge/playback';
 import { playbackAdapter } from '@/bridge/playback';
 
 export type TimeSubscriber = (time: number) => void;
+
+export type RecordingTarget = {
+  destination: MediaStreamAudioDestinationNode;
+};
 
 export type AudioPlayer = {
   getCurrentTime: () => number;
@@ -36,6 +40,7 @@ export type AudioPlayer = {
   getVocalsBuffer: () => AudioBuffer | null;
   getScoringBuffer: () => AudioBuffer | null;
   getAudioContext: () => AudioContext | null;
+  getRecordingTarget: () => RecordingTarget | null;
 };
 
 export function useAudioPlayer(
@@ -50,6 +55,9 @@ export function useAudioPlayer(
   const instrumentalSrcRef = useRef<AudioBufferSourceNode | null>(null);
   const vocalsSrcRef = useRef<AudioBufferSourceNode | null>(null);
   const vocalsGainRef = useRef<GainNode | null>(null);
+  const playbackMixRef = useRef<GainNode | null>(null);
+  const recordingDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const recordingLimiterRef = useRef<DynamicsCompressorNode | null>(null);
   const rafRef = useRef<number>(0);
   const currentTimeRef = useRef(0);
   const subscribersRef = useRef<Set<TimeSubscriber>>(new Set());
@@ -77,6 +85,12 @@ export function useAudioPlayer(
   );
 
   const getAudioContext = useCallback(() => ctxRef.current, []);
+
+  const getRecordingTarget = useCallback((): RecordingTarget | null => {
+    const destination = recordingDestinationRef.current;
+
+    return destination ? { destination } : null;
+  }, []);
 
   const getCurrentTime = useCallback(() => {
     const ctx = ctxRef.current;
@@ -125,8 +139,9 @@ export function useAudioPlayer(
       const instBuf = instrumentalBufRef.current;
       const vocBuf = vocalsBufRef.current;
       const gainNode = vocalsGainRef.current;
+      const playbackMix = playbackMixRef.current;
 
-      if (!ctx || !instBuf) {
+      if (!ctx || !instBuf || !playbackMix) {
         return;
       }
 
@@ -136,7 +151,7 @@ export function useAudioPlayer(
 
       const instSrc = ctx.createBufferSource();
       instSrc.buffer = instBuf;
-      instSrc.connect(ctx.destination);
+      instSrc.connect(playbackMix);
 
       instSrc.addEventListener(
         'ended',
@@ -193,9 +208,26 @@ export function useAudioPlayer(
     const ctx = new AudioContext();
     ctxRef.current = ctx;
 
+    const playbackMix = ctx.createGain();
+    playbackMix.connect(ctx.destination);
+    playbackMixRef.current = playbackMix;
+
+    const recordingDestination = ctx.createMediaStreamDestination();
+    recordingDestinationRef.current = recordingDestination;
+
+    const recordingLimiter = ctx.createDynamicsCompressor();
+    recordingLimiter.threshold.value = -1;
+    recordingLimiter.knee.value = 0;
+    recordingLimiter.ratio.value = 20;
+    recordingLimiter.attack.value = 0.003;
+    recordingLimiter.release.value = 0.25;
+    recordingLimiter.connect(recordingDestination);
+    playbackMix.connect(recordingLimiter);
+    recordingLimiterRef.current = recordingLimiter;
+
     const gainNode = ctx.createGain();
     gainNode.gain.value = Math.max(0, Math.min(1, initialGuideVolume));
-    gainNode.connect(ctx.destination);
+    gainNode.connect(playbackMix);
     vocalsGainRef.current = gainNode;
 
     const isCancelled = () => cancelled || cancelledRef.current;
@@ -297,6 +329,9 @@ export function useAudioPlayer(
       instrumentalBufRef.current = null;
       vocalsBufRef.current = null;
       vocalsGainRef.current = null;
+      playbackMixRef.current = null;
+      recordingDestinationRef.current = null;
+      recordingLimiterRef.current = null;
       void ctx.close();
       ctxRef.current = null;
     };
@@ -361,6 +396,9 @@ export function useAudioPlayer(
 
     void ctxRef.current?.close();
     ctxRef.current = null;
+    playbackMixRef.current = null;
+    recordingDestinationRef.current = null;
+    recordingLimiterRef.current = null;
   }, [stopSources]);
 
   return useMemo(
@@ -383,6 +421,7 @@ export function useAudioPlayer(
       getVocalsBuffer,
       getScoringBuffer,
       getAudioContext,
+      getRecordingTarget,
     }),
     [
       getCurrentTime,
@@ -403,6 +442,7 @@ export function useAudioPlayer(
       getVocalsBuffer,
       getScoringBuffer,
       getAudioContext,
+      getRecordingTarget,
     ],
   );
 }

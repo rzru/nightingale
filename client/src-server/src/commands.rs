@@ -10,6 +10,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
@@ -45,6 +46,15 @@ pub(crate) async fn handle_cmd(
 ) -> Result<Json<Value>, ApiError> {
     let payload = body.map(|Json(v)| v).unwrap_or(Value::Null);
     let value = dispatch(state, &name, payload).await?;
+    Ok(Json(value))
+}
+
+pub(crate) async fn handle_save_recording(
+    State(state): State<AppState>,
+    body: Option<Json<Value>>,
+) -> Result<Json<Value>, ApiError> {
+    let payload = body.map(|Json(value)| value).unwrap_or(Value::Null);
+    let value = dispatch(state, "save_recording", payload).await?;
     Ok(Json(value))
 }
 
@@ -436,6 +446,7 @@ async fn dispatch(state: AppState, name: &str, payload: Value) -> CmdResult {
             Ok(serde_json::to_value(path).map_err(serde_err)?)
         }
         "fetch_pixabay_videos" => fetch_pixabay_videos_cmd(events, payload),
+        "save_recording" => save_recording_cmd(payload).await,
 
         // ── Vendor ───────────────────────────────────────────────────────
         "is_ready" => Ok(Value::Bool(app_core::is_ready())),
@@ -505,6 +516,54 @@ fn save_config_cmd(payload: Value) -> CmdResult {
     // Web mode has no server-side cpal monitor stream, so `mic_monitor_gain`
     // is consumed entirely by the browser's monitor GainNode.
     serde_json::to_value(config).map_err(serde_err)
+}
+
+async fn save_recording_cmd(payload: Value) -> CmdResult {
+    const MAX_RECORDING_BASE64_BYTES: usize = 86 * 1024 * 1024;
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Args {
+        title: String,
+        album: String,
+        profile: String,
+        saved_at: String,
+        media_type: String,
+        audio_base64: String,
+        microphone_audio_base64: Option<String>,
+    }
+
+    let args: Args = deserialize(payload)?;
+    let microphone_base64_len = args.microphone_audio_base64.as_deref().map_or(0, str::len);
+    if args.audio_base64.len() + microphone_base64_len > MAX_RECORDING_BASE64_BYTES {
+        return Err(ApiError::bad_request("The recording is too large to save"));
+    }
+
+    tokio::task::spawn_blocking(move || {
+        let audio = B64
+            .decode(args.audio_base64)
+            .map_err(|_| ApiError::bad_request("The recording data is invalid"))?;
+        let microphone_audio = args
+            .microphone_audio_base64
+            .map(|encoded| {
+                B64.decode(encoded)
+                    .map_err(|_| ApiError::bad_request("The microphone recording data is invalid"))
+            })
+            .transpose()?;
+        app_core::save_recording(
+            &args.title,
+            &args.album,
+            &args.profile,
+            &args.saved_at,
+            &args.media_type,
+            &audio,
+            microphone_audio.as_deref(),
+        )
+        .map_err(ApiError::bad_request)
+    })
+    .await
+    .map_err(blocking_task_err)?
+    .map(Value::String)
 }
 
 fn shift_key_cmd(events: std::sync::Arc<EventBus>, payload: Value) -> CmdResult {

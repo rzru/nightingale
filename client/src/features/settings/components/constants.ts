@@ -149,10 +149,11 @@ export const NAV = {
   },
   playback: {
     mode: 1,
-    lyricsVerticalPosition: 2,
-    lyricsHorizontalPosition: 3,
-    lyricsScale: 4,
-    pitchGraphScale: 5,
+    recordingsFolder: 2,
+    lyricsVerticalPosition: 3,
+    lyricsHorizontalPosition: 4,
+    lyricsScale: 5,
+    pitchGraphScale: 6,
   },
 } as const;
 
@@ -189,7 +190,7 @@ export function getSettingsStops(tab: SettingsTab, isParakeet: boolean) {
     return [3, 2, 1, 1, 2, 2, 2];
   }
   if (tab === 'playback') {
-    return [3, 1, 1, 1, 1, 1, 2];
+    return [3, 1, 1, 1, 1, 1, 1, 2];
   }
 
   return isParakeet

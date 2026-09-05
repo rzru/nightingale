@@ -6,6 +6,8 @@
  * presentational tree that consumes the playback contexts via hooks.
  */
 
+import { useState } from 'react';
+
 import { isTauri } from '@/bridge/runtime';
 import { Background } from '@/features/playback/components/background';
 import { ResultDialog } from '@/features/playback/components/dialogs/result';
@@ -13,6 +15,7 @@ import { LyricsDisplay } from '@/features/playback/components/lyrics-display';
 import { PauseOverlay } from '@/features/playback/components/pause-overlay';
 import { PitchGraph } from '@/features/playback/components/pitch-graph';
 import { PlaybackHud } from '@/features/playback/components/playback-hud';
+import { RecordingControls } from '@/features/playback/components/recording-controls';
 import { usePlaybackInput, usePlaybackResult } from '@/features/playback/hooks';
 import {
   PlaybackProviders,
@@ -43,6 +46,7 @@ function displaySettings(config: AppConfig | null) {
 }
 
 function PlaybackLayout({ song, config, queuePlayback, sessionPlayback }: PlaybackLayoutProps) {
+  const [recordingActive, setRecordingActive] = useState(false);
   const { isReady, paused } = usePlaybackTransportState();
   const { handleContinue, handleExit } = usePlaybackTransportActions();
   const { segments } = usePlaybackTranscriptState();
@@ -67,13 +71,25 @@ function PlaybackLayout({ song, config, queuePlayback, sessionPlayback }: Playba
             config={config}
             position={hudPosition}
             windowControls={sessionWindowControls}
+            recordingActive={recordingActive}
           />
-          <PitchGraph series={series} position={hudPosition} scale={pitchGraphScale} />
+          <PitchGraph
+            series={series}
+            position={hudPosition}
+            scale={pitchGraphScale}
+            recordingActive={recordingActive}
+          />
           <LyricsDisplay
             segments={segments}
             verticalPosition={lyricsVerticalPosition}
             horizontalPosition={lyricsHorizontalPosition}
             scale={lyricsScale}
+            recordingActive={recordingActive}
+          />
+          <RecordingControls
+            song={song}
+            recordingsPath={config?.recordings_path ?? null}
+            onActiveChange={setRecordingActive}
           />
         </>
       )}

@@ -10,7 +10,7 @@ mod ws;
 use std::net::SocketAddr;
 
 use axum::routing::{any, get, post};
-use axum::Router;
+use axum::{extract::DefaultBodyLimit, Router};
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
 
@@ -75,6 +75,10 @@ async fn main() -> Result<(), String> {
 
     let app = Router::new()
         .route("/api/bootstrap", get(bootstrap::handle))
+        .route(
+            "/api/cmd/save_recording",
+            post(commands::handle_save_recording).layer(DefaultBodyLimit::max(88 * 1024 * 1024)),
+        )
         .route("/api/cmd/:name", post(commands::handle_cmd))
         .route("/api/asset", get(media::handle_asset))
         .route("/media/:hash/:kind", get(media::handle_hashed))

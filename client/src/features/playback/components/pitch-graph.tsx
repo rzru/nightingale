@@ -304,9 +304,23 @@ type PitchGraphProps = {
   series: PitchSeries;
   position?: 'top' | 'bottom';
   scale?: number | null;
+  recordingActive?: boolean;
 };
 
-export function PitchGraph({ series, position = 'top', scale = 1 }: PitchGraphProps) {
+const graphPositionClass = (position: 'top' | 'bottom', recordingActive: boolean): string => {
+  if (position === 'top') {
+    return 'top-2 sm:top-3';
+  }
+
+  return recordingActive ? 'bottom-[10rem]' : 'bottom-2 sm:bottom-3';
+};
+
+export function PitchGraph({
+  series,
+  position = 'top',
+  scale = 1,
+  recordingActive = false,
+}: PitchGraphProps) {
   const { micReady: visible } = usePlaybackMicState();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { height: windowHeight, width: windowWidth } = useWindowSize();
@@ -332,7 +346,7 @@ export function PitchGraph({ series, position = 'top', scale = 1 }: PitchGraphPr
     return null;
   }
 
-  const positionClass = position === 'bottom' ? 'bottom-2 sm:bottom-3' : 'top-2 sm:top-3';
+  const positionClass = graphPositionClass(position, recordingActive);
 
   return (
     <div

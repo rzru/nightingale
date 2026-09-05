@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 import { setFullScreen, isFullScreen as tauriIsFullScreen } from '@/bridge/fullScreen';
+import { selectRecordingsFolder } from '@/bridge/recording';
 import { clampPlaybackScale } from '@/features/playback/lib/display-scale';
 import {
   ALIGN_BACKENDS,
@@ -33,6 +35,7 @@ import { useSettingsNavigation } from '@/features/settings/hooks/use-settings-na
 import { Button } from '@/shared/components/ui/button';
 import { ButtonGroup } from '@/shared/components/ui/button-group';
 import { Field, FieldGroup } from '@/shared/components/ui/field';
+import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Slider } from '@/shared/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
@@ -58,12 +61,20 @@ const generalSettings = (config: AppConfig | undefined) => {
   };
 };
 
+const recordingsPath = (config: AppConfig | undefined): string | null =>
+  config?.recordings_path ?? null;
+
+const recordingsFolderButtonLabel = (path: string | null): string => {
+  return path === null || path === '' ? 'Choose Folder' : 'Change Folder';
+};
+
 const playbackSettings = (config: AppConfig | undefined) => ({
   mode: config?.playback_mode ?? DEFAULTS.playback_mode,
   lyricsVertical: config?.lyrics_vertical_position ?? DEFAULTS.lyrics_vertical_position,
   lyricsHorizontal: config?.lyrics_horizontal_position ?? DEFAULTS.lyrics_horizontal_position,
   lyricsScale: clampPlaybackScale(config?.lyrics_scale),
   pitchGraphScale: clampPlaybackScale(config?.pitch_graph_scale),
+  recordingsPath: recordingsPath(config),
 });
 
 const pendingValue = <T,>(input: T | null, saved: T): T => input ?? saved;
@@ -96,6 +107,19 @@ const analysisSettings = (config: AppConfig | undefined) => {
 
 const isSettingsTab = (value: string): value is SettingsTab =>
   SETTINGS_TABS.some((tab) => tab.value === value);
+
+const chooseRecordingsFolder = async (save: (patch: Partial<AppConfig>) => void) => {
+  try {
+    const recordings_path = await selectRecordingsFolder();
+    if (typeof recordings_path === 'string' && recordings_path !== '') {
+      save({ recordings_path });
+    }
+  } catch (error) {
+    toast.error(
+      `Could not choose recordings folder: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+};
 
 export const SettingsPage = () => {
   const navigate = useNavigate();
@@ -297,6 +321,27 @@ export const SettingsPage = () => {
                     triggerClassName={getFocusClassName(NAV.playback.mode)}
                     onValueChange={(playback_mode) => mutate({ playback_mode })}
                   />
+                </Field>
+
+                <Field>
+                  <Label htmlFor="recordings-folder-1">Recordings folder</Label>
+                  <Hint>Finished performances are saved here as 48 kHz MP3 files</Hint>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                    <Input
+                      id="recordings-folder-1"
+                      value={playback.recordingsPath ?? ''}
+                      placeholder="No folder selected"
+                      disabled
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={getFocusClassName(NAV.playback.recordingsFolder)}
+                      onClick={() => void chooseRecordingsFolder(mutate)}
+                    >
+                      {recordingsFolderButtonLabel(playback.recordingsPath)}
+                    </Button>
+                  </div>
                 </Field>
 
                 <Field>

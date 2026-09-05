@@ -12,6 +12,7 @@ mod playback;
 mod playback_queue;
 mod playback_session;
 mod profile;
+mod recording;
 mod scanner;
 mod secret;
 mod song;
@@ -51,6 +52,7 @@ pub use playback::{
 pub use playback_queue::{PlaybackQueue, PlaybackQueueEntry};
 pub use playback_session::{PlaybackSession, PlaybackSessionStore};
 pub use profile::ProfileStore;
+pub use recording::save_recording;
 pub use scanner::start_scan;
 pub use song::{Song, SongOrigin};
 pub use source::{

@@ -35,6 +35,7 @@ export type AppConfig = {
   lyrics_horizontal_position: string | null;
   lyrics_scale: number | null;
   pitch_graph_scale: number | null;
+  recordings_path: string | null;
   separator: string | null;
   asr_engine: string | null;
   align_backend: string | null;

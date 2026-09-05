@@ -1,5 +1,3 @@
-import { open } from '@tauri-apps/plugin-dialog';
-
 import type { AppConfig } from '@/types/AppConfig';
 import type { JellyfinHealth } from '@/types/JellyfinHealth';
 import type { JellyfinLoginResult } from '@/types/JellyfinLoginResult';
@@ -11,31 +9,9 @@ import type { PlexPinPollResult } from '@/types/PlexPinPollResult';
 import type { PlexPinStart } from '@/types/PlexPinStart';
 import type { PlexServer } from '@/types/PlexServer';
 
-import { invoke, isTauri } from './runtime';
+import { invoke } from './runtime';
 
-/**
- * Prompt the user for a local folder path. Returns `undefined` when the user
- * dismisses the picker.
- */
-export const selectFolderPath = async (): Promise<string | undefined> => {
-  if (!isTauri) {
-    // Browsers don't expose absolute filesystem paths via file pickers, so the
-    // server-hosted build asks the user to type a path the server can see.
-    const input = window.prompt('Songs folder path (visible to the server)', '/songs');
-
-    if (typeof input !== 'string' || input === '') {
-      return undefined;
-    }
-
-    const trimmed = input.trim();
-
-    return trimmed.length > 0 ? trimmed : undefined;
-  }
-
-  const folder = await open({ directory: true, multiple: false });
-
-  return folder ?? undefined;
-};
+export { selectFolderPath } from './folder';
 
 export const triggerScan = async (): Promise<void> => {
   await invoke('trigger_scan');

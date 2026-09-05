@@ -244,16 +244,18 @@ function Disclaimer({
   position,
   noStems,
   micActive,
+  recordingActive,
 }: {
   source: string;
   position: PlaybackHudPosition;
   noStems: boolean;
   micActive: boolean;
+  recordingActive: boolean;
 }) {
   // No stems means we score against the original mix, so pitch scoring suffers.
   if (noStems && micActive) {
     return (
-      <DisclaimerNote position={position}>
+      <DisclaimerNote position={position} recordingActive={recordingActive}>
         Original mix is used, so pitch scoring will likely be inaccurate
       </DisclaimerNote>
     );
@@ -269,41 +271,61 @@ function Disclaimer({
       ? 'Timing is AI-generated and may not be perfectly accurate'
       : 'Lyrics and timing are AI-generated and may not be perfectly accurate';
 
-  return <DisclaimerNote position={position}>{text}</DisclaimerNote>;
+  return (
+    <DisclaimerNote position={position} recordingActive={recordingActive}>
+      {text}
+    </DisclaimerNote>
+  );
 }
 
 function DisclaimerNote({
   position,
   children,
+  recordingActive,
 }: {
   position: PlaybackHudPosition;
   children: ReactNode;
+  recordingActive: boolean;
 }) {
   return (
     <p
-      className={`${NOTE_BASE_CLASS} ${notePositionClass(position)} left-1/2 -translate-x-1/2 whitespace-nowrap text-center`}
+      className={`${NOTE_BASE_CLASS} ${notePositionClass(position, recordingActive)} left-1/2 -translate-x-1/2 whitespace-nowrap text-center`}
     >
       {children}
     </p>
   );
 }
 
-function notePositionClass(hudPosition: PlaybackHudPosition): string {
-  return hudPosition === 'bottom' ? 'top-2' : 'bottom-2';
+function notePositionClass(hudPosition: PlaybackHudPosition, recordingActive: boolean): string {
+  if (hudPosition === 'bottom') {
+    return 'top-2';
+  }
+
+  return recordingActive ? 'bottom-[10rem]' : 'bottom-2';
 }
 
-function hudPositionClass(position: PlaybackHudPosition): string {
-  return position === 'bottom'
-    ? 'bottom-[calc(2rem+env(safe-area-inset-bottom))] items-end md:bottom-3'
-    : 'top-[4.25rem] items-start md:top-3';
+function hudPositionClass(position: PlaybackHudPosition, recordingActive: boolean): string {
+  if (position === 'top') {
+    return 'top-[4.25rem] items-start md:top-3';
+  }
+
+  return recordingActive
+    ? 'bottom-[10rem] items-end'
+    : 'bottom-[calc(2rem+env(safe-area-inset-bottom))] items-end md:bottom-3';
 }
 
 function windowControlsOffsetClass(position: PlaybackHudPosition, windowControls: boolean): string {
   return windowControls && position === 'top' ? 'md:pt-9' : '';
 }
 
-function creditPositionClass(position: PlaybackHudPosition, windowControls: boolean): string {
-  return windowControls && position === 'bottom' ? 'top-12' : notePositionClass(position);
+function creditPositionClass(
+  position: PlaybackHudPosition,
+  windowControls: boolean,
+  recordingActive: boolean,
+): string {
+  return windowControls && position === 'bottom'
+    ? 'top-12'
+    : notePositionClass(position, recordingActive);
 }
 
 type PlaybackHudProps = {
@@ -312,6 +334,7 @@ type PlaybackHudProps = {
   config: AppConfig | null;
   position?: PlaybackHudPosition;
   windowControls?: boolean;
+  recordingActive?: boolean;
 };
 
 function PlaybackHudImpl({
@@ -320,6 +343,7 @@ function PlaybackHudImpl({
   config,
   position = 'top',
   windowControls = false,
+  recordingActive = false,
 }: PlaybackHudProps) {
   const { duration, guideVolume, guideAvailable } = usePlaybackTransportState();
   const { subscribe, getCurrentTime } = usePlaybackTransportActions();
@@ -395,7 +419,7 @@ function PlaybackHudImpl({
     segments,
   ]);
 
-  const hudPosition = hudPositionClass(position);
+  const hudPosition = hudPositionClass(position, recordingActive);
   const rightHudOffset = windowControlsOffsetClass(position, windowControls);
   const hudFlowClass = position === 'bottom' ? 'flex-col-reverse' : 'flex-col';
   const skipButtonsClass = position === 'bottom' ? 'mb-2' : 'mt-2';
@@ -453,7 +477,7 @@ function PlaybackHudImpl({
 
       {showPixabayCredit && (
         <p
-          className={`${NOTE_BASE_CLASS} ${creditPositionClass(position, windowControls)} right-4`}
+          className={`${NOTE_BASE_CLASS} ${creditPositionClass(position, windowControls, recordingActive)} right-4`}
         >
           Videos by Pixabay
         </p>
@@ -464,6 +488,7 @@ function PlaybackHudImpl({
         position={position}
         noStems={!guideAvailable}
         micActive={micUserEnabled}
+        recordingActive={recordingActive}
       />
     </>
   );

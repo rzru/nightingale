@@ -43,6 +43,7 @@ export type PlaybackMicState = {
   micCaptureActive: boolean;
   micPitchActive: boolean;
   micReady: boolean;
+  micCaptureError: string | null;
 };
 
 export type PlaybackMicActions = {
@@ -50,6 +51,7 @@ export type PlaybackMicActions = {
   handleToggleMic: () => void;
   handleCycleMic: () => void;
   handleToggleMicMonitor: () => void;
+  setRecordingCaptureRequested: (requested: boolean) => void;
 };
 
 const MicStateContext = createContext<PlaybackMicState | null>(null);
@@ -66,6 +68,7 @@ type CaptureStateInput = {
   paused: boolean;
   micEnabled: boolean;
   monitorEnabled: boolean;
+  recordingRequested: boolean;
 };
 
 const captureState = (input: CaptureStateInput) => {
@@ -76,7 +79,7 @@ const captureState = (input: CaptureStateInput) => {
   return {
     micPitchEnabled,
     micMonitorEnabled,
-    captureEnabled: micPitchEnabled || micMonitorEnabled,
+    captureEnabled: micPitchEnabled || micMonitorEnabled || input.recordingRequested,
   };
 };
 
@@ -94,6 +97,7 @@ export function PlaybackMicProvider({ config, children }: PlaybackMicProviderPro
     config?.mic_monitoring ?? false,
   );
   const [selectedMicId, setSelectedMicId] = useState<string | null>(config?.preferred_mic ?? null);
+  const [recordingCaptureRequested, setRecordingCaptureRequested] = useState(false);
 
   const micDevices = useMicDevices();
 
@@ -103,6 +107,7 @@ export function PlaybackMicProvider({ config, children }: PlaybackMicProviderPro
     paused,
     micEnabled: micUserEnabled,
     monitorEnabled: micMonitorUserEnabled,
+    recordingRequested: recordingCaptureRequested,
   });
 
   const captureOptions = useMemo(() => ({ emit_audio: micMonitorEnabled }), [micMonitorEnabled]);
@@ -187,6 +192,7 @@ export function PlaybackMicProvider({ config, children }: PlaybackMicProviderPro
       micCaptureActive,
       micPitchActive,
       micReady,
+      micCaptureError,
     };
   }, [
     micUserEnabled,
@@ -197,6 +203,7 @@ export function PlaybackMicProvider({ config, children }: PlaybackMicProviderPro
     micCaptureActive,
     micPitchActive,
     micDevices,
+    micCaptureError,
   ]);
 
   const actionsValue = useMemo<PlaybackMicActions>(
@@ -205,8 +212,15 @@ export function PlaybackMicProvider({ config, children }: PlaybackMicProviderPro
       handleToggleMic,
       handleCycleMic,
       handleToggleMicMonitor,
+      setRecordingCaptureRequested,
     }),
-    [reactiveRef, handleToggleMic, handleCycleMic, handleToggleMicMonitor],
+    [
+      reactiveRef,
+      handleToggleMic,
+      handleCycleMic,
+      handleToggleMicMonitor,
+      setRecordingCaptureRequested,
+    ],
   );
 
   return (

@@ -13,6 +13,14 @@ below.
 
 ## [Unreleased]
 
+### Features
+
+- Added configurable 48 kHz MP3 performance recording with live guide-vocal levels, microphone audio, and right-aligned playback controls to pause, discard, or save a take.
+
+### Fixes
+
+- Recording now starts reliably in development Strict Mode without waiting indefinitely for microphone readiness, captures optional microphone audio at unity gain independently of speaker monitoring, uses readable title/album/profile/timestamp filenames, keeps capture failures visible beside the Record button, and reserves space so the active panel does not cover playback UI.
+
 ## [1.2.0] - 2026-09-02
 
 ### Features

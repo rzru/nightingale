@@ -8,6 +8,7 @@ mod playback;
 mod playback_queue;
 mod playback_session;
 mod profile;
+mod recording;
 mod scanner;
 mod vendor;
 
@@ -31,6 +32,7 @@ use playback_queue::{
 };
 use playback_session::{load_playback_session, save_playback_session};
 use profile::{add_score, create_profile, delete_profile, load_profiles, switch_profile};
+use recording::save_recording;
 use scanner::{
     clear_library_source, jellyfin_login, jellyfin_ping, load_analysis_queue,
     load_library_menu_items, load_songs, load_songs_by_hashes, load_songs_meta, navidrome_login,
@@ -160,6 +162,7 @@ pub fn run() {
             ensure_mp3_stems,
             ensure_playable_source_video,
             fetch_pixabay_videos,
+            save_recording,
             get_media_endpoint,
             list_microphones,
             start_mic_capture,
