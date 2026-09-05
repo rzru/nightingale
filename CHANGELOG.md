@@ -13,6 +13,10 @@ below.
 
 ## [Unreleased]
 
+### Fixes
+
+- Analysis status sorting now orders ready songs by the transcript source shown in their status badge.
+
 ## [1.2.0] - 2026-09-02
 
 ### Features
