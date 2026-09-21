@@ -438,6 +438,20 @@ pub(crate) fn iter_file_hashes_filtered_not_analyzed(
     iter_file_hashes_filtered(filters, &["s.is_analyzed = 0"])
 }
 
+/// Rows a shared cache could flip to analyzed: not yet analyzed, not USDX
+/// (marked analyzed at scan time from their own bundle), and not being worked
+/// on by this machine's analyzer, whose completion path owns those rows.
+pub(crate) fn iter_file_hashes_reconcilable() -> rusqlite::Result<Vec<String>> {
+    iter_file_hashes_filtered(
+        &LibraryMenuFilters::default(),
+        &[
+            "s.is_analyzed = 0",
+            "json_extract(s.payload, '$.usdx') IS NULL",
+            "NOT EXISTS (SELECT 1 FROM analysis_queue aq WHERE aq.file_hash = s.file_hash AND aq.status IN ('queued', 'analyzing'))",
+        ],
+    )
+}
+
 pub(crate) fn iter_file_hashes_filtered_analysis_busy(
     filters: &LibraryMenuFilters,
 ) -> rusqlite::Result<Vec<String>> {

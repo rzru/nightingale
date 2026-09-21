@@ -51,7 +51,7 @@ pub use playback::{
 pub use playback_queue::{PlaybackQueue, PlaybackQueueEntry};
 pub use playback_session::{PlaybackSession, PlaybackSessionStore};
 pub use profile::ProfileStore;
-pub use scanner::start_scan;
+pub use scanner::{CacheReconcileSummary, reconcile_cache, start_scan};
 pub use song::{Song, SongOrigin};
 pub use source::{
     JellyfinAuth, JellyfinSource, MediaSource, NavidromeAuth, NavidromeSource, PlexAuth,

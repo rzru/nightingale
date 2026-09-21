@@ -174,6 +174,13 @@ async fn dispatch(state: AppState, name: &str, payload: Value) -> CmdResult {
             app_core::start_scan();
             Ok(Value::Null)
         }
+        "reconcile_cache" => {
+            let summary = tokio::task::spawn_blocking(app_core::reconcile_cache)
+                .await
+                .map_err(blocking_task_err)?
+                .map_err(ApiError::internal)?;
+            Ok(serde_json::to_value(summary).map_err(serde_err)?)
+        }
         "set_library_source" => {
             #[derive(Deserialize)]
             struct Args {

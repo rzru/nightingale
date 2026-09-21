@@ -13,6 +13,10 @@ below.
 
 ## [Unreleased]
 
+### Features
+
+- **Rescan library** now also picks up analyses that another machine left in a shared cache folder: songs already in the library whose stems and transcript exist in the cache are marked ready without re-running analysis, and a toast summarizes how many were updated.
+
 ### Fixes
 
 - Analysis status sorting now orders ready songs by the transcript source shown in their status badge.

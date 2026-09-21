@@ -81,6 +81,12 @@ Connect a different source whenever you want to change libraries. Nightingale re
 
 Your analysis cache stays on disk. If you return to a source later, songs with the same audio can reuse existing stems, lyrics, and other analysis files.
 
+## Sharing a cache between machines
+
+Analysis is keyed by the audio file's content hash, not its path, so several installs can point their songs cache at the same shared folder (for example a NAS share chosen during setup). Analyze on the machine with the strong GPU, then on the other machine press **Rescan library**: besides picking up new files, the rescan checks the cache for finished analyses of songs already in that machine's library and marks them ready without re-running stem separation or transcription. A toast reports how many songs were marked ready; entries whose stems or transcript are not finished yet are left alone until the other machine completes them.
+
+Each machine still scans its own library folder, so the audio must be reachable from both — the paths can differ, only the file contents need to match. Songs that a rescan adds to the library for the first time are picked up on the next rescan.
+
 ## Passwords and tokens
 
 Plex, Jellyfin, and Navidrome credentials are saved so Nightingale can reconnect next time. Nightingale never asks for a Plex username or password; it stores only the PMS token returned by hosted authorization or entered in the advanced flow.

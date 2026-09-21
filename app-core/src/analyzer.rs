@@ -387,6 +387,7 @@ fn discard_cancelled_job(initial_hash: &str, file_hash: &str) -> bool {
     true
 }
 
+/// Returns whether a library row was written; `false` when the song is gone.
 pub(crate) fn update_song_analyzed(
     file_hash: &str,
     is_analyzed: bool,
@@ -394,9 +395,9 @@ pub(crate) fn update_song_analyzed(
     transcript_source: Option<TranscriptSource>,
     key: Option<String>,
     tempo: Option<f64>,
-) {
+) -> bool {
     let Some(mut song) = library_db::load_song_by_hash(file_hash).ok().flatten() else {
-        return;
+        return false;
     };
     song.is_analyzed = is_analyzed;
     song.language = language;
@@ -416,7 +417,7 @@ pub(crate) fn update_song_analyzed(
         song.key_offset = 0;
         song.no_stems = false;
     }
-    let _ = library_db::update_song_fields(file_hash, &song);
+    library_db::update_song_fields(file_hash, &song).is_ok()
 }
 
 // ─── Public API ──────────────────────────────────────────────────────

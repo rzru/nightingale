@@ -1,12 +1,19 @@
 use app_core::{
-    AnalysisQueue, AppConfig, JellyfinHealth, JellyfinLoginResult, LibraryMenuItems, LibrarySource,
-    LoadSongsParams, NavidromeHealth, NavidromeLoginResult, PlexHealth, PlexPinPollResult,
-    PlexPinStart, PlexServer, Song, SongsMeta, SongsStore,
+    AnalysisQueue, AppConfig, CacheReconcileSummary, JellyfinHealth, JellyfinLoginResult,
+    LibraryMenuItems, LibrarySource, LoadSongsParams, NavidromeHealth, NavidromeLoginResult,
+    PlexHealth, PlexPinPollResult, PlexPinStart, PlexServer, Song, SongsMeta, SongsStore,
 };
 
 #[tauri::command]
 pub(crate) fn trigger_scan() {
     app_core::start_scan();
+}
+
+#[tauri::command]
+pub(crate) async fn reconcile_cache() -> Result<CacheReconcileSummary, String> {
+    tauri::async_runtime::spawn_blocking(app_core::reconcile_cache)
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]

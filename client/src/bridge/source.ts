@@ -1,6 +1,8 @@
 import { open } from '@tauri-apps/plugin-dialog';
+import { z } from 'zod';
 
 import type { AppConfig } from '@/types/AppConfig';
+import type { CacheReconcileSummary } from '@/types/CacheReconcileSummary';
 import type { JellyfinHealth } from '@/types/JellyfinHealth';
 import type { JellyfinLoginResult } from '@/types/JellyfinLoginResult';
 import type { LibrarySource } from '@/types/LibrarySource';
@@ -39,6 +41,18 @@ export const selectFolderPath = async (): Promise<string | undefined> => {
 
 export const triggerScan = async (): Promise<void> => {
   await invoke('trigger_scan');
+};
+
+const cacheReconcileSummarySchema = z.object({
+  matched: z.number().int().nonnegative(),
+  updated: z.number().int().nonnegative(),
+  skipped: z.number().int().nonnegative(),
+}) satisfies z.ZodType<CacheReconcileSummary>;
+
+/** Mark library songs analyzed when the (possibly shared) cache already holds their analysis. */
+export const reconcileCache = async (): Promise<CacheReconcileSummary> => {
+  const value = await invoke('reconcile_cache');
+  return cacheReconcileSummarySchema.parse(value);
 };
 
 export const setLibrarySource = async (source: LibrarySource): Promise<AppConfig> => {

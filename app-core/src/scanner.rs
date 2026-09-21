@@ -3,9 +3,14 @@
 //!  - resolving the configured `LibrarySource` and instantiating the right adapter
 //!  - bumping the cancellation generation
 //!  - spawning the scan thread
+//!  - reconciling library rows against analyses that landed in a shared cache
 //!  - exposing `SongsStore` load/load_meta entry points used by the bridge
 
-use tracing::warn;
+use std::collections::HashSet;
+
+use serde::{Deserialize, Serialize};
+use tracing::{info, warn};
+use ts_rs::TS;
 
 use crate::{
     analyzer,
@@ -13,6 +18,7 @@ use crate::{
     config::AppConfig,
     library_db,
     library_model::{LibraryMenuFilters, LoadSongsParams, SongTarget, SongsMeta, SongsStore},
+    song::try_read_transcript_meta,
     source::{ScanContext, active_source_from_config},
 };
 
@@ -111,4 +117,97 @@ pub fn start_scan() {
             });
         }
     });
+}
+
+/// Outcome of [`reconcile_cache`], scoped to this library: `matched` rows had
+/// a transcript in the cache, of which `updated` were marked analyzed and
+/// `skipped` were left alone because the entry is incomplete.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct CacheReconcileSummary {
+    pub matched: usize,
+    pub updated: usize,
+    pub skipped: usize,
+}
+
+const TRANSCRIPT_SUFFIX: &str = "_transcript.json";
+
+/// Mark library rows analyzed when a complete analysis for their hash exists
+/// in the cache — the case where another machine sharing the cache folder did
+/// the work. Only rows already in the library are touched; nothing is created,
+/// moved, or re-analyzed. Entries without stems or with a transcript that is
+/// not valid JSON yet are skipped so a half-written analysis never becomes a
+/// playable song.
+pub fn reconcile_cache() -> Result<CacheReconcileSummary, String> {
+    let cache = CacheDir::new();
+    let cached_hashes = list_transcript_hashes(&cache)?;
+    let candidates: HashSet<String> = library_db::iter_file_hashes_reconcilable()
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .collect();
+
+    let mut summary = CacheReconcileSummary {
+        matched: 0,
+        updated: 0,
+        skipped: 0,
+    };
+    for hash in cached_hashes
+        .iter()
+        .filter(|hash| candidates.contains(*hash))
+    {
+        summary.matched += 1;
+        let meta = match try_read_transcript_meta(&cache, hash) {
+            Some(meta) if cache.transcript_exists(hash) => meta,
+            _ => {
+                warn!(
+                    "[scanner] Cached analysis for {hash} is incomplete; leaving song unanalyzed"
+                );
+                summary.skipped += 1;
+                continue;
+            }
+        };
+        let _ = library_db::analysis_queue_delete(hash);
+        if analyzer::update_song_analyzed(
+            hash,
+            true,
+            meta.language,
+            Some(meta.source),
+            meta.key,
+            Some(meta.tempo),
+        ) {
+            summary.updated += 1;
+        }
+    }
+
+    info!(
+        "[scanner] Cache reconcile: {} library song(s) have a cached transcript, {} marked analyzed, {} incomplete",
+        summary.matched, summary.updated, summary.skipped
+    );
+    Ok(summary)
+}
+
+/// Song hashes that have a base transcript in the cache, read from file names
+/// so a shared network cache is listed once instead of stat-ed per song.
+fn list_transcript_hashes(cache: &CacheDir) -> Result<HashSet<String>, String> {
+    let entries =
+        std::fs::read_dir(&cache.path).map_err(|e| format!("Cannot read cache folder: {e}"))?;
+    let mut hashes = HashSet::new();
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else {
+            continue;
+        };
+        if let Some(hash) = name.strip_suffix(TRANSCRIPT_SUFFIX)
+            && is_song_hash(hash)
+        {
+            hashes.insert(hash.to_string());
+        }
+    }
+    Ok(hashes)
+}
+
+/// Song hashes are the first 32 hex chars of a blake3 digest; variant
+/// transcripts (`<hash>_transcript_<tempo>.json`) never match this shape.
+fn is_song_hash(value: &str) -> bool {
+    value.len() == 32 && value.bytes().all(|b| b.is_ascii_hexdigit())
 }

@@ -311,6 +311,18 @@ pub(crate) fn build_song(
 }
 
 pub(crate) fn read_transcript_meta(cache: &CacheDir, hash: &str) -> TranscriptMetaInfo {
+    try_read_transcript_meta(cache, hash).unwrap_or(TranscriptMetaInfo {
+        source: TranscriptSource::Generated,
+        language: None,
+        key: None,
+        tempo: default_tempo(),
+        no_stems: false,
+    })
+}
+
+/// `None` when the transcript is missing or not (yet) valid JSON — a
+/// half-written file from another machine must not pass as an analysis.
+pub(crate) fn try_read_transcript_meta(cache: &CacheDir, hash: &str) -> Option<TranscriptMetaInfo> {
     #[derive(serde::Deserialize)]
     struct TranscriptMeta {
         #[serde(default)]
@@ -324,31 +336,21 @@ pub(crate) fn read_transcript_meta(cache: &CacheDir, hash: &str) -> TranscriptMe
         #[serde(default)]
         no_stems: bool,
     }
-    let path = cache.transcript_path(hash);
-    if let Ok(data) = std::fs::read_to_string(&path)
-        && let Ok(parsed) = serde_json::from_str::<TranscriptMeta>(&data)
-    {
-        let src = match parsed.source.as_deref() {
-            Some("lyrics") => TranscriptSource::Lyrics,
-            Some("usdx") => TranscriptSource::Usdx,
-            Some("lrc") => TranscriptSource::Lrc,
-            _ => TranscriptSource::Generated,
-        };
-        return TranscriptMetaInfo {
-            source: src,
-            language: parsed.language,
-            key: parsed.key,
-            tempo: parsed.tempo,
-            no_stems: parsed.no_stems,
-        };
-    }
-    TranscriptMetaInfo {
-        source: TranscriptSource::Generated,
-        language: None,
-        key: None,
-        tempo: default_tempo(),
-        no_stems: false,
-    }
+    let data = std::fs::read_to_string(cache.transcript_path(hash)).ok()?;
+    let parsed = serde_json::from_str::<TranscriptMeta>(&data).ok()?;
+    let source = match parsed.source.as_deref() {
+        Some("lyrics") => TranscriptSource::Lyrics,
+        Some("usdx") => TranscriptSource::Usdx,
+        Some("lrc") => TranscriptSource::Lrc,
+        _ => TranscriptSource::Generated,
+    };
+    Some(TranscriptMetaInfo {
+        source,
+        language: parsed.language,
+        key: parsed.key,
+        tempo: parsed.tempo,
+        no_stems: parsed.no_stems,
+    })
 }
 
 type MediaMetadata = (String, String, String, f64, Option<Vec<u8>>);

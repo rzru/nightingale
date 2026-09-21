@@ -6,6 +6,7 @@ import {
   clearLibrarySource,
   jellyfinLogin,
   navidromeLogin,
+  reconcileCache,
   selectFolderPath,
   setLibrarySource,
   triggerScan,
@@ -24,6 +25,7 @@ import {
   SONGS_META,
 } from '@/shared/query-keys';
 import type { AppConfig } from '@/types/AppConfig';
+import type { CacheReconcileSummary } from '@/types/CacheReconcileSummary';
 import type { JellyfinHealth } from '@/types/JellyfinHealth';
 import type { JellyfinLoginResult } from '@/types/JellyfinLoginResult';
 import type { NavidromeHealth } from '@/types/NavidromeHealth';
@@ -87,13 +89,45 @@ export const useSelectFolderSource = () => {
   });
 };
 
-/** Re-run the scan against the currently configured source. */
+const songs = (count: number) => `${count} song${count === 1 ? '' : 's'}`;
+
+const notifyReconcile = ({ updated, skipped }: CacheReconcileSummary) => {
+  if (updated > 0) {
+    const detail = skipped > 0 ? `; ${songs(skipped)} still incomplete` : '';
+    toast.success(`Marked ${songs(updated)} ready from the cache${detail}`);
+  } else if (skipped > 0) {
+    toast.warning(`${songs(skipped)} in the cache still incomplete; nothing marked ready`);
+  }
+};
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : 'unknown error';
+
+/**
+ * Re-run the scan against the currently configured source, then pick up any
+ * analyses another machine left in a shared cache folder. The scan runs in the
+ * background as before; the cache pass is best-effort, so its failure reports
+ * separately instead of failing the rescan.
+ */
 export const useRescan = () => {
   const invalidateLibrary = useInvalidateLibrary();
 
   return useMutation({
-    mutationFn: triggerScan,
-    onSuccess: () => invalidateLibrary(),
+    mutationFn: async (): Promise<CacheReconcileSummary | null> => {
+      await triggerScan();
+      try {
+        return await reconcileCache();
+      } catch (error: unknown) {
+        toast.warning(`Rescan started, but the cache could not be checked: ${errorMessage(error)}`);
+        return null;
+      }
+    },
+    onSuccess: (summary) => {
+      invalidateLibrary();
+      if (summary) {
+        notifyReconcile(summary);
+      }
+    },
     onError: (error: Error) => {
       toast.error(`Rescan failed: ${error.message}`);
     },
