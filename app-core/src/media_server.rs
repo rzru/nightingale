@@ -9,9 +9,8 @@
 //!    handed to the renderer through the same init-script channel as
 //!    `__NIGHTINGALE_APP_CONFIG__`, and never logged.
 //!  - The local-file route (`/s/<token>/local/<urlencoded-path>`) resolves the
-//!    requested path against an allowed-roots list (data dir, default
-//!    nightingale dir, configured library folder) and refuses anything
-//!    outside.
+//!    requested path against [`local_media_roots`] — the same list the
+//!    self-hosted media routes use — and refuses anything outside.
 //!  - The provider-neutral proxy route (`/s/<token>/remote/<file_hash>`)
 //!    looks up the active source server-side, opens an authenticated stream,
 //!    and proxies bytes. **Provider credentials never appear in a URL or log
@@ -199,7 +198,7 @@ fn handle_local_file(request: Request, path_segment: &str) {
 
 fn resolve_within_allowed_roots(input: &Path) -> Option<PathBuf> {
     let canonical_input = std::fs::canonicalize(input).ok()?;
-    for root in allowed_roots() {
+    for root in local_media_roots() {
         let Ok(canon_root) = std::fs::canonicalize(&root) else {
             continue;
         };
@@ -210,13 +209,31 @@ fn resolve_within_allowed_roots(input: &Path) -> Option<PathBuf> {
     None
 }
 
-fn allowed_roots() -> Vec<PathBuf> {
+/// Directories a local-file media request may resolve into. The desktop
+/// server's `/local/` route and the self-hosted `/api/asset` and `/media`
+/// routes all check against this one list, so the media routes cannot drift
+/// apart on which folders they serve. (Album art on desktop goes through the
+/// Tauri asset protocol instead, whose scope is configured separately.)
+///
+/// The songs and videos caches default to subfolders of the data folder, but
+/// `cache_paths` in the config relocates each one independently, so a
+/// relocated cache sits outside every other root and needs its own entry.
+/// Nothing under the model or vendor caches is requested through these media
+/// routes, so they are not listed.
+pub fn local_media_roots() -> Vec<PathBuf> {
     let config = AppConfig::load();
     let mut roots = vec![
         crate::cache::nightingale_dir(),
+        // Default location, kept even when `data_path` points elsewhere.
         crate::cache::default_nightingale_dir(),
         config.effective_data_path(),
+        // Stems, transcripts, lyrics, covers, key/tempo variants, and
+        // transcoded source video.
+        crate::cache::songs_cache_dir(),
+        // Downloaded background videos.
+        crate::cache::videos_dir(),
     ];
+    // Folder-library songs are streamed from wherever they were scanned.
     if let Some(LibrarySource::Folder { path }) = config.library_source.as_ref() {
         roots.push(path.clone());
     }

@@ -12,15 +12,17 @@ use tower_http::services::ServeFile;
 use crate::state::AppState;
 
 /// Resolved-and-canonicalised view of a candidate media path. Constructing it
-/// guarantees the final path lives inside the data dir, so the caller can
-/// hand it to `ServeFile` without worrying about path-traversal.
+/// guarantees the final path lives inside one of the app's media roots, so
+/// the caller can hand it to `ServeFile` without worrying about
+/// path-traversal. The roots come from `app_core::local_media_roots()` rather
+/// than a list kept here, so these routes and the desktop media server's
+/// local-file route serve the same folders.
 struct ResolvedPath(PathBuf);
 
 impl ResolvedPath {
     fn resolve(input: &Path) -> Option<Self> {
         let canonical_input = std::fs::canonicalize(input).ok()?;
-        let allowed_roots = allowed_roots();
-        for root in allowed_roots {
+        for root in app_core::local_media_roots() {
             if let Ok(canon_root) = std::fs::canonicalize(&root) {
                 if canonical_input.starts_with(&canon_root) {
                     return Some(Self(canonical_input));
@@ -29,23 +31,6 @@ impl ResolvedPath {
         }
         None
     }
-}
-
-fn allowed_roots() -> Vec<PathBuf> {
-    // The data path and the default Nightingale dir (which can hold `config.json`,
-    // logs, etc.) are both legitimate sources of media. Songs scanned from
-    // user library folders are streamed straight from disk, so we additionally
-    // honour the configured `library_source` folder if any.
-    let mut roots = vec![
-        app_core::nightingale_dir(),
-        app_core::default_nightingale_dir(),
-    ];
-    let config = app_core::AppConfig::load();
-    roots.push(config.effective_data_path());
-    if let Some(app_core::LibrarySource::Folder { path }) = config.library_source.as_ref() {
-        roots.push(path.clone());
-    }
-    roots
 }
 
 #[derive(Deserialize)]
@@ -90,7 +75,7 @@ pub(crate) async fn handle_hashed(
 
 async fn serve(path: &Path, _headers: HeaderMap, request: Request<Body>) -> Response<Body> {
     let Some(resolved) = ResolvedPath::resolve(path) else {
-        return not_found("media path not found or outside data dir");
+        return not_found("media path not found or outside media roots");
     };
 
     let serve = ServeFile::new(&resolved.0);

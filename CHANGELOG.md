@@ -19,6 +19,7 @@ below.
 
 ### Fixes
 
+- Stems, source videos, and background videos now play when the songs or videos cache has been moved to a separate folder (for example a network share): the desktop and self-hosted media servers only allowed files under the data folder and library folder, so a relocated cache failed with "Failed to fetch instrumental: 404".
 - Analysis status sorting now orders ready songs by the transcript source shown in their status badge.
 
 ## [1.2.0] - 2026-09-02

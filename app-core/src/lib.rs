@@ -40,7 +40,7 @@ pub use lyrics::{
     LrclibCandidate, LyricsFile, SidecarLrc, SidecarLrcKind, apply_timed_lyrics, load_lyrics_file,
     load_sidecar_lrc, provide_lrc, save_lyrics_and_realign, search_lrclib_for_hash,
 };
-pub use media_server::MediaEndpoint;
+pub use media_server::{MediaEndpoint, local_media_roots};
 pub use playback::{
     AudioPaths, PixabayVideoDownloaded, ShiftDone, ShiftResult, StemsReady,
     download_pixabay_videos, ensure_mp3_stems, ensure_mp3_stems_ready_payload,
