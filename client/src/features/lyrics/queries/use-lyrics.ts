@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { loadLyrics, searchLrclibLyrics } from '@/bridge/lyrics';
+import { loadLyrics, loadSidecarLrc, searchLrclibLyrics } from '@/bridge/lyrics';
 import { loadTranscript } from '@/bridge/playback';
 import { linesFromTranscript } from '@/features/lyrics/utils/edit-lyrics';
-import { LRCLIB, LYRICS } from '@/shared/query-keys';
+import { LRCLIB, LYRICS, SIDECAR_LRC } from '@/shared/query-keys';
 import type { LrclibCandidate } from '@/types/LrclibCandidate';
+import type { SidecarLrc } from '@/types/SidecarLrc';
 
 const fetchInitialLyrics = async (fileHash: string): Promise<string> => {
   const file = await loadLyrics(fileHash);
@@ -38,6 +39,14 @@ export const useLrclibCandidates = (fileHash: string | null) =>
   useQuery<LrclibCandidate[]>({
     queryKey: [...LRCLIB, fileHash],
     queryFn: () => searchLrclibLyrics(requireFileHash(fileHash)),
+    enabled: fileHash !== null,
+    staleTime: Infinity,
+  });
+
+export const useSidecarLrc = (fileHash: string | null) =>
+  useQuery<SidecarLrc | null>({
+    queryKey: [...SIDECAR_LRC, fileHash],
+    queryFn: () => loadSidecarLrc(requireFileHash(fileHash)),
     enabled: fileHash !== null,
     staleTime: Infinity,
   });

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
@@ -10,7 +10,8 @@ use crate::analyzer::{
 use crate::cache::CacheDir;
 use crate::library_db;
 use crate::lrc::{self, ParsedLrc};
-use crate::song::{Song, TranscriptSource, read_transcript_meta};
+use crate::song::{Song, SongOrigin, TranscriptSource, read_transcript_meta};
+use crate::usdx::decode_text;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -41,6 +42,43 @@ pub struct LrclibCandidate {
 pub struct LyricsFile {
     pub lines: Vec<String>,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum SidecarLrcKind {
+    Lrc,
+    Elrc,
+}
+
+impl SidecarLrcKind {
+    fn rank(self) -> u8 {
+        match self {
+            Self::Lrc => 0,
+            Self::Elrc => 1,
+        }
+    }
+
+    fn extension(self) -> &'static str {
+        match self {
+            Self::Lrc => "lrc",
+            Self::Elrc => "elrc",
+        }
+    }
+}
+
+/// An `.lrc` / `.elrc` file found next to a local song's audio. `file_name` is
+/// the bare basename so the UI can say which file was picked without ever
+/// receiving a directory.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct SidecarLrc {
+    pub text: String,
+    pub file_name: String,
+    pub kind: SidecarLrcKind,
+}
+
+const SIDECAR_LRC_MAX_BYTES: u64 = 1024 * 1024;
 
 pub(crate) fn lrclib_candidates(song: &Song) -> Vec<LrclibCandidate> {
     let title = &song.title;
@@ -148,6 +186,96 @@ pub fn load_lyrics_file(file_hash: &str) -> Option<LyricsFile> {
     }
     let bytes = std::fs::read(&path).ok()?;
     serde_json::from_slice::<LyricsFile>(&bytes).ok()
+}
+
+/// Read-only lookup of a sidecar LRC next to a local song's audio. Nothing is
+/// written; the editor decides whether to save the text. Remote origins point
+/// `Song.path` at a cache placeholder and USDX songs at their descriptor, so
+/// both are skipped. Any failure is treated as "no sidecar".
+pub fn load_sidecar_lrc(file_hash: &str) -> Option<SidecarLrc> {
+    let song = library_db::load_song_by_hash(file_hash).ok().flatten()?;
+    if !matches!(song.origin, SongOrigin::LocalFile) || song.usdx.is_some() {
+        return None;
+    }
+
+    let parent = song.path.parent()?;
+    let stem = song.path.file_stem()?.to_str()?;
+    let (path, kind) = find_sidecar(parent, stem)?;
+
+    // A symlinked sidecar must not read outside the song's own directory.
+    let canonical_parent = parent.canonicalize().ok()?;
+    let canonical_file = path.canonicalize().ok()?;
+    if canonical_file.parent()? != canonical_parent.as_path() {
+        return None;
+    }
+
+    let metadata = std::fs::metadata(&canonical_file).ok()?;
+    if !metadata.is_file() || metadata.len() > SIDECAR_LRC_MAX_BYTES {
+        return None;
+    }
+
+    let bytes = std::fs::read(&canonical_file).ok()?;
+    let text = normalize_newlines(&decode_text(&bytes));
+    if text.trim().is_empty() {
+        return None;
+    }
+
+    Some(SidecarLrc {
+        text,
+        file_name: path.file_name()?.to_str()?.to_string(),
+        kind,
+    })
+}
+
+/// Windows LRC tools commonly write CRLF; the raw text lands in the editor and
+/// is sent back on save, so stray returns are normalised here.
+fn normalize_newlines(text: &str) -> String {
+    text.replace("\r\n", "\n").replace('\r', "\n")
+}
+
+fn match_sidecar_name(name: &str, stem: &str) -> Option<(SidecarLrcKind, bool)> {
+    let path = Path::new(name);
+    let ext = path.extension()?.to_str()?;
+    let kind = if ext.eq_ignore_ascii_case("lrc") {
+        SidecarLrcKind::Lrc
+    } else if ext.eq_ignore_ascii_case("elrc") {
+        SidecarLrcKind::Elrc
+    } else {
+        return None;
+    };
+    let file_stem = path.file_stem()?.to_str()?;
+    if !file_stem.eq_ignore_ascii_case(stem) {
+        return None;
+    }
+    let exact = file_stem == stem && ext == kind.extension();
+    Some((kind, exact))
+}
+
+/// Case-insensitive sibling lookup so `Song.LRC` still matches on
+/// case-sensitive filesystems. Exact-case names win, then `.lrc` over `.elrc`,
+/// then name order so `read_dir` ordering never changes the result.
+fn find_sidecar(parent: &Path, stem: &str) -> Option<(PathBuf, SidecarLrcKind)> {
+    let mut best: Option<((bool, u8, String), PathBuf, SidecarLrcKind)> = None;
+    for entry in std::fs::read_dir(parent).ok()?.flatten() {
+        let name_os = entry.file_name();
+        let Some(name) = name_os.to_str() else {
+            continue;
+        };
+        let Some((kind, exact)) = match_sidecar_name(name, stem) else {
+            continue;
+        };
+        // `metadata` follows symlinks; the caller's canonicalize check keeps
+        // the target inside the song's directory.
+        let path = entry.path();
+        if !std::fs::metadata(&path).is_ok_and(|m| m.is_file()) {
+            continue;
+        }
+        let key = (!exact, kind.rank(), name.to_string());
+        if best.as_ref().is_none_or(|(current, _, _)| key < *current) {
+            best = Some((key, path, kind));
+        }
+    }
+    best.map(|(_, path, kind)| (path, kind))
 }
 
 pub fn save_lyrics_and_realign(file_hash: &str, lines: Vec<String>) -> Result<(), String> {

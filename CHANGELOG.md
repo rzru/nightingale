@@ -13,6 +13,10 @@ below.
 
 ## [Unreleased]
 
+### Features
+
+- The lyrics editor pre-fills from a `.lrc` / `.elrc` file next to a local song's audio when the song has no lyrics yet, and offers a **Use local .lrc** action otherwise; nothing is written until Save.
+
 ### Fixes
 
 - Analysis status sorting now orders ready songs by the transcript source shown in their status badge.

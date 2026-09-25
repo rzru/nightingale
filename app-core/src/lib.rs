@@ -37,8 +37,8 @@ pub use library_model::{
     SongsStore, SortDirection,
 };
 pub use lyrics::{
-    LrclibCandidate, LyricsFile, apply_timed_lyrics, load_lyrics_file, provide_lrc,
-    save_lyrics_and_realign, search_lrclib_for_hash,
+    LrclibCandidate, LyricsFile, SidecarLrc, SidecarLrcKind, apply_timed_lyrics, load_lyrics_file,
+    load_sidecar_lrc, provide_lrc, save_lyrics_and_realign, search_lrclib_for_hash,
 };
 pub use media_server::MediaEndpoint;
 pub use playback::{

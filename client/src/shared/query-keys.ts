@@ -9,6 +9,7 @@ export const MENU = ['menu'];
 export const UPDATER = ['updater'];
 export const LYRICS = ['lyrics'];
 export const LRCLIB = ['lrclib'];
+export const SIDECAR_LRC = ['sidecar-lrc'];
 export const JELLYFIN_HEALTH = ['jellyfin-health'];
 export const NAVIDROME_HEALTH = ['navidrome-health'];
 export const PLEX_HEALTH = ['plex-health'];

@@ -268,7 +268,7 @@ fn consume_text_remainder(s: &str) -> String {
 
 // ─── Encoding ────────────────────────────────────────────────────────
 
-fn decode_text(bytes: &[u8]) -> String {
+pub(crate) fn decode_text(bytes: &[u8]) -> String {
     let stripped = if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
         &bytes[3..]
     } else {

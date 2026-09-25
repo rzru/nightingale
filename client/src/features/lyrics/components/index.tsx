@@ -33,6 +33,7 @@ import { LrcOptions, type TimingChoice } from './lrc-options';
 import { LrclibMatches } from './lrclib-matches';
 import { LyricsEditor } from './lyrics-editor';
 import { ringFor } from './parts';
+import { SidecarLrcNotice } from './sidecar-lrc-notice';
 
 export { isEditLyricsDialogMode } from '@/features/lyrics/utils/edit-lyrics';
 
@@ -437,6 +438,12 @@ export const EditLyricsDialog = () => {
     setActiveTab('edit');
   };
 
+  const applySidecar = () => {
+    editor.applySidecar();
+    setTimingChoice('provided');
+    setActiveTab('edit');
+  };
+
   const currentCandidate = selectedCandidate(candidates, carouselIndex);
   const nav = navigationState({
     candidateCount,
@@ -577,6 +584,15 @@ export const EditLyricsDialog = () => {
         isDirty={editor.isDirty}
         focused={editorFocused}
       />
+      {editor.sidecar ? (
+        <SidecarLrcNotice
+          fileName={editor.sidecar.file_name}
+          kind={editor.sidecar.kind}
+          showing={editor.showingSidecar}
+          canUse={editor.canUseSidecar && !saving}
+          onUse={applySidecar}
+        />
+      ) : null}
       <LrcOptions
         level={lrcLevel}
         stemsSeparated={stemsSeparated}

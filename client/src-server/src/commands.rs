@@ -1,5 +1,5 @@
 use app_core::{
-    ensure_mp3_stems_ready_payload, load_lyrics_file, save_lyrics_and_realign,
+    ensure_mp3_stems_ready_payload, load_lyrics_file, load_sidecar_lrc, save_lyrics_and_realign,
     search_lrclib_for_hash, shift_key_done_payload, shift_tempo_done_payload, AnalysisQueue,
     AppConfig, CacheStats, LibraryMenuItems, LibrarySource, LoadSongsParams,
     PixabayVideoDownloaded, PlaybackSession, ProfileStore, SongTarget, SongsStore,
@@ -412,6 +412,13 @@ async fn dispatch(state: AppState, name: &str, payload: Value) -> CmdResult {
             app_core::apply_timed_lyrics(&args.file_hash, &args.lrc_text)
                 .map_err(ApiError::bad_request)?;
             Ok(Value::Null)
+        }
+        "load_sidecar_lrc" => {
+            let args: FileHashArgs = deserialize(payload)?;
+            let sidecar = tokio::task::spawn_blocking(move || load_sidecar_lrc(&args.file_hash))
+                .await
+                .map_err(blocking_task_err)?;
+            Ok(serde_json::to_value(sidecar).map_err(serde_err)?)
         }
 
         // ── Playback ─────────────────────────────────────────────────────
