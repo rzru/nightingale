@@ -142,6 +142,8 @@ type LyricsVerticalPosition = NonNullable<AppConfig['lyrics_vertical_position']>
 
 type LyricsHorizontalPosition = NonNullable<AppConfig['lyrics_horizontal_position']>;
 
+type LyricsRomanizationMode = NonNullable<AppConfig['lyrics_romanization_mode']>;
+
 const verticalClass: Record<LyricsVerticalPosition, string> = {
   bottom: 'top-[8rem] bottom-[calc(2rem+env(safe-area-inset-bottom))] justify-end sm:bottom-[60px]',
   center: 'inset-y-[6rem] justify-center',
@@ -229,6 +231,7 @@ type LyricsDisplayProps = {
   verticalPosition?: LyricsVerticalPosition | null;
   horizontalPosition?: LyricsHorizontalPosition | null;
   scale?: number | null;
+  romanizationMode: LyricsRomanizationMode;
 };
 
 const lyricPositions = (props: LyricsDisplayProps) => ({
@@ -237,7 +240,7 @@ const lyricPositions = (props: LyricsDisplayProps) => ({
 });
 
 function LyricsDisplayImpl(props: LyricsDisplayProps) {
-  const { segments } = props;
+  const { segments, romanizationMode } = props;
   const { vertical, horizontal } = lyricPositions(props);
   const scale = clampPlaybackScale(props.scale);
   const currentFontSize = `clamp(${1.35 * scale}rem, ${7 * scale}svh, ${2.5 * scale}rem)`;
@@ -348,8 +351,9 @@ function LyricsDisplayImpl(props: LyricsDisplayProps) {
   const seg = segments[segIdx];
   const nextSeg = segIdx + 1 < segments.length ? segments[segIdx + 1] : null;
 
-  const segHasReading = seg.words.some(hasReading);
-  const nextHasReading = nextSeg?.words.some(hasReading) ?? false;
+  const readingDisabled = romanizationMode === 'disabled';
+  const segHasReading = !readingDisabled && seg.words.some(hasReading);
+  const nextHasReading = !readingDisabled && (nextSeg?.words.some(hasReading) ?? false);
 
   return (
     <div

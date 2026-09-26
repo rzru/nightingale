@@ -91,6 +91,11 @@ export const LYRICS_HORIZONTAL_POSITIONS: SettingsOption[] = [
   { value: 'right', label: 'Right' },
 ];
 
+export const LYRICS_ROMANIZATION_MODES: SettingsOption[] = [
+  { value: 'enabled', label: 'Enabled' },
+  { value: 'disabled', label: 'Disabled' },
+];
+
 export const DEFAULTS = {
   separator: 'karaoke',
   asr_engine: 'whisper',
@@ -107,6 +112,7 @@ export const DEFAULTS = {
   lyrics_horizontal_position: 'center',
   lyrics_scale: DEFAULT_PLAYBACK_SCALE,
   pitch_graph_scale: DEFAULT_PLAYBACK_SCALE,
+  lyrics_romanization_mode: 'enabled',
 } satisfies Pick<
   AppConfig,
   | 'separator'
@@ -124,6 +130,7 @@ export const DEFAULTS = {
   | 'lyrics_horizontal_position'
   | 'lyrics_scale'
   | 'pitch_graph_scale'
+  | 'lyrics_romanization_mode'
 >;
 
 export const MIC_MONITOR_GAIN_STEP = 0.01;
@@ -153,6 +160,7 @@ export const NAV = {
     lyricsHorizontalPosition: 3,
     lyricsScale: 4,
     pitchGraphScale: 5,
+    lyricsRomanizationMode: 6,
   },
 } as const;
 
@@ -189,7 +197,7 @@ export function getSettingsStops(tab: SettingsTab, isParakeet: boolean) {
     return [3, 2, 1, 1, 2, 2, 2];
   }
   if (tab === 'playback') {
-    return [3, 1, 1, 1, 1, 1, 2];
+    return [3, 1, 1, 1, 1, 1, 2, 2];
   }
 
   return isParakeet

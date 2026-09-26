@@ -39,6 +39,7 @@ function displaySettings(config: AppConfig | null) {
     lyricsHorizontalPosition: config?.lyrics_horizontal_position ?? 'center',
     lyricsScale: config?.lyrics_scale,
     pitchGraphScale: config?.pitch_graph_scale,
+    lyricsRomanizationMode: config?.lyrics_romanization_mode ?? 'enabled',
   };
 }
 
@@ -47,8 +48,13 @@ function PlaybackLayout({ song, config, queuePlayback, sessionPlayback }: Playba
   const { handleContinue, handleExit } = usePlaybackTransportActions();
   const { segments } = usePlaybackTranscriptState();
   const { series } = usePlaybackMicState();
-  const { lyricsVerticalPosition, lyricsHorizontalPosition, lyricsScale, pitchGraphScale } =
-    displaySettings(config);
+  const {
+    lyricsVerticalPosition,
+    lyricsHorizontalPosition,
+    lyricsScale,
+    pitchGraphScale,
+    lyricsRomanizationMode,
+  } = displaySettings(config);
   const hudPosition = lyricsVerticalPosition === 'top' ? 'bottom' : 'top';
   const sessionWindowControls = sessionPlayback && isTauri;
 
@@ -74,6 +80,7 @@ function PlaybackLayout({ song, config, queuePlayback, sessionPlayback }: Playba
             verticalPosition={lyricsVerticalPosition}
             horizontalPosition={lyricsHorizontalPosition}
             scale={lyricsScale}
+            romanizationMode={lyricsRomanizationMode}
           />
         </>
       )}

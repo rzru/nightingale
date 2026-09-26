@@ -56,6 +56,42 @@ export function SettingsSelect({
   );
 }
 
+type SettingsButtonGroupOption<T> = {
+  value: T;
+  label: string;
+};
+
+type SettingsButtonGroupProps<T> = {
+  value: T;
+  options: SettingsButtonGroupOption<T>[];
+  segment: number;
+  getFocusClassName: (segment: number, slot?: number) => string;
+  onChange: (value: T) => void;
+};
+
+export function SettingsButtonGroup<T>({
+  value,
+  options,
+  segment,
+  getFocusClassName,
+  onChange,
+}: SettingsButtonGroupProps<T>) {
+  return (
+    <ButtonGroup>
+      {options.map((option, index) => (
+        <Button
+          key={option.label}
+          variant={option.value === value ? 'default' : 'outline'}
+          onClick={() => onChange(option.value)}
+          className={getFocusClassName(segment, index)}
+        >
+          {option.label}
+        </Button>
+      ))}
+    </ButtonGroup>
+  );
+}
+
 type NumberButtonGroupProps = {
   name: string;
   value: number;
