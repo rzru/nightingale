@@ -16,6 +16,7 @@ below.
 ### Features
 
 - The lyrics editor pre-fills from a `.lrc` / `.elrc` file next to a local song's audio when the song has no lyrics yet, and offers a **Use local .lrc** action otherwise; nothing is written until Save.
+- Added the ability to toggle the display of romanized lyrics for CJK languages in Settings.
 
 ### Fixes
 

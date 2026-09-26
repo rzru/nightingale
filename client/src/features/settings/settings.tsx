@@ -2,12 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { setFullScreen, isFullScreen as tauriIsFullScreen } from '@/bridge/fullScreen';
-import { clampPlaybackScale } from '@/features/playback/lib/display-scale';
+import { clampPlaybackScale, DEFAULT_PLAYBACK_SCALE } from '@/features/playback/lib/display-scale';
 import {
   ALIGN_BACKENDS,
   ASR_ENGINES,
   DEFAULTS,
   LYRICS_HORIZONTAL_POSITIONS,
+  LYRICS_ROMANIZATION_MODES,
   LYRICS_VERTICAL_POSITIONS,
   MODELS,
   NAV,
@@ -27,6 +28,7 @@ import {
   Hint,
   NumberButtonGroup,
   PageHeader,
+  SettingsButtonGroup,
   SettingsSelect,
 } from '@/features/settings/components/settings-controls';
 import { useSettingsNavigation } from '@/features/settings/hooks/use-settings-navigation';
@@ -58,13 +60,27 @@ const generalSettings = (config: AppConfig | undefined) => {
   };
 };
 
-const playbackSettings = (config: AppConfig | undefined) => ({
-  mode: config?.playback_mode ?? DEFAULTS.playback_mode,
-  lyricsVertical: config?.lyrics_vertical_position ?? DEFAULTS.lyrics_vertical_position,
-  lyricsHorizontal: config?.lyrics_horizontal_position ?? DEFAULTS.lyrics_horizontal_position,
-  lyricsScale: clampPlaybackScale(config?.lyrics_scale),
-  pitchGraphScale: clampPlaybackScale(config?.pitch_graph_scale),
-});
+const playbackSettings = (config: AppConfig | undefined) => {
+  if (!config) {
+    return {
+      mode: DEFAULTS.playback_mode,
+      lyricsVertical: DEFAULTS.lyrics_vertical_position,
+      lyricsHorizontal: DEFAULTS.lyrics_horizontal_position,
+      lyricsScale: DEFAULT_PLAYBACK_SCALE,
+      pitchGraphScale: DEFAULT_PLAYBACK_SCALE,
+      lyricsRomanizationMode: DEFAULTS.lyrics_romanization_mode,
+    };
+  }
+
+  return {
+    mode: config.playback_mode ?? DEFAULTS.playback_mode,
+    lyricsVertical: config.lyrics_vertical_position ?? DEFAULTS.lyrics_vertical_position,
+    lyricsHorizontal: config.lyrics_horizontal_position ?? DEFAULTS.lyrics_horizontal_position,
+    lyricsScale: clampPlaybackScale(config.lyrics_scale),
+    pitchGraphScale: clampPlaybackScale(config.pitch_graph_scale),
+    lyricsRomanizationMode: config.lyrics_romanization_mode ?? DEFAULTS.lyrics_romanization_mode,
+  };
+};
 
 const pendingValue = <T,>(input: T | null, saved: T): T => input ?? saved;
 
@@ -120,6 +136,11 @@ export const SettingsPage = () => {
   const lyricsScale = pendingValue(lyricsScaleInput, playback.lyricsScale);
   const [pitchGraphScaleInput, setPitchGraphScale] = useState<number | null>(null);
   const pitchGraphScale = pendingValue(pitchGraphScaleInput, playback.pitchGraphScale);
+  const [lyricsRomanizationModeInput, setLyricsRomanizationMode] = useState<string | null>(null);
+  const lyricsRomanizationMode = pendingValue(
+    lyricsRomanizationModeInput,
+    playback.lyricsRomanizationMode,
+  );
   const [vocalThresholdPctInput, setVocalThresholdPct] = useState<number | null>(null);
   const vocalThresholdPct = vocalThresholdPctInput ?? analysis.vocalThreshold;
 
@@ -184,6 +205,7 @@ export const SettingsPage = () => {
     setLyricsHorizontal(DEFAULTS.lyrics_horizontal_position);
     setLyricsScale(DEFAULTS.lyrics_scale);
     setPitchGraphScale(DEFAULTS.pitch_graph_scale);
+    setLyricsRomanizationMode(DEFAULTS.lyrics_romanization_mode);
     setVocalThresholdPct(DEFAULTS.vocal_detection_threshold_pct);
   };
 
@@ -356,6 +378,21 @@ export const SettingsPage = () => {
                     value={[pitchGraphScalePct]}
                     onValueChange={([pct]) => updatePitchGraphScale(pct / 100)}
                     className={getFocusClassName(NAV.playback.pitchGraphScale)}
+                  />
+                </Field>
+
+                <Field>
+                  <Label>Romanize lyrics</Label>
+                  <Hint>Whether to show romanized lyrics for songs in CJK languages</Hint>
+                  <SettingsButtonGroup
+                    value={lyricsRomanizationMode}
+                    options={LYRICS_ROMANIZATION_MODES}
+                    segment={NAV.playback.lyricsRomanizationMode}
+                    getFocusClassName={getFocusClassName}
+                    onChange={(lyrics_romanization_mode) => {
+                      setLyricsRomanizationMode(lyrics_romanization_mode);
+                      mutate({ lyrics_romanization_mode });
+                    }}
                   />
                 </Field>
               </FieldGroup>
