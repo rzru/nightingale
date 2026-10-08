@@ -310,6 +310,110 @@ pub(crate) fn build_song(
     })
 }
 
+fn default_true() -> bool {
+    true
+}
+
+/// The song metadata carried inside a `.nge` manifest. Mirrors the
+/// analysis-derived fields of `Song`; `build_nge_from_song` writes it on export
+/// and `build_nge_song` reads it back on import, so they must stay in sync.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct NgeSongMeta {
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub duration_secs: f64,
+    #[serde(default = "default_true")]
+    pub is_analyzed: bool,
+    #[serde(default)]
+    pub language: Option<String>,
+    #[serde(default)]
+    pub transcript_source: Option<TranscriptSource>,
+    #[serde(default)]
+    pub key: Option<String>,
+    #[serde(default)]
+    pub override_key: Option<String>,
+    #[serde(default = "default_tempo")]
+    pub tempo: f64,
+    #[serde(default)]
+    pub key_offset: i32,
+    #[serde(default)]
+    pub is_video: bool,
+    #[serde(default)]
+    pub no_stems: bool,
+}
+
+impl NgeSongMeta {
+    pub(crate) fn from_song(song: &Song) -> Self {
+        Self {
+            title: song.title.clone(),
+            artist: song.artist.clone(),
+            album: song.album.clone(),
+            duration_secs: song.duration_secs,
+            is_analyzed: song.is_analyzed,
+            language: song.language.clone(),
+            transcript_source: song.transcript_source,
+            key: song.key.clone(),
+            override_key: song.override_key.clone(),
+            tempo: song.tempo,
+            key_offset: song.key_offset,
+            is_video: song.is_video,
+            no_stems: song.no_stems,
+        }
+    }
+}
+
+/// Build a `Song` from a `.nge` bundle the scanner found in the library folder.
+/// `Song.path` points at the bundle itself — audio, stems, cover, transcript
+/// and video are all served out of it by the media server, never unpacked.
+pub(crate) fn build_nge_song(path: &Path, cache: &CacheDir) -> Result<Song, NightingaleError> {
+    let nge = crate::nge_format::NgeFile::open(path)?;
+    let meta: NgeSongMeta = serde_json::from_value(nge.manifest.metadata.clone())?;
+
+    Ok(Song {
+        path: path.to_path_buf(),
+        file_hash: nge.manifest.file_hash.clone(),
+        title: meta.title,
+        artist: meta.artist,
+        album: meta.album,
+        duration_secs: meta.duration_secs,
+        // Extract the cover to the content-
+        // addressed cache so every `AlbumArt` render site works unchanged. The
+        // rest (audio, stems, transcript) stays in the
+        // bundle and is only ever read in memory.
+        album_art_path: extract_nge_cover(&nge, cache),
+        is_analyzed: meta.is_analyzed,
+        language: meta.language,
+        transcript_source: meta.transcript_source,
+        key: meta.key,
+        override_key: meta.override_key,
+        tempo: meta.tempo,
+        key_offset: meta.key_offset,
+        is_video: meta.is_video,
+        usdx: None,
+        origin: SongOrigin::LocalFile,
+        no_stems: meta.no_stems,
+    })
+}
+
+/// Extract a bundle's cover (if any) to the content-addressed cover cache and
+/// return its path. Idempotent: skips the write when the file already exists.
+fn extract_nge_cover(nge: &crate::nge_format::NgeFile, cache: &CacheDir) -> Option<PathBuf> {
+    let name = nge
+        .manifest
+        .entries
+        .iter()
+        .find(|e| e.name.starts_with("cover."))
+        .map(|e| e.name.clone())?;
+    let bytes = nge.read_entry(&name).ok()?;
+    let cover_hash = blake3::hash(&bytes).to_hex()[..32].to_string();
+    let path = cache.cover_path(&cover_hash);
+    if !path.exists() {
+        std::fs::write(&path, &bytes).ok()?;
+    }
+    Some(path)
+}
+
 pub(crate) fn read_transcript_meta(cache: &CacheDir, hash: &str) -> TranscriptMetaInfo {
     try_read_transcript_meta(cache, hash).unwrap_or(TranscriptMetaInfo {
         source: TranscriptSource::Generated,

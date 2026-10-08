@@ -7,7 +7,7 @@ import type { QueuedStatus } from '@/types/QueuedStatus';
 import type { Song } from '@/types/Song';
 
 import { AlbumArt } from '../song/album-art';
-import { LanguageBadge, isDisplayableLanguage } from '../song/language-badge';
+import { LanguageBadge, NgeBadge, isDisplayableLanguage } from '../song/language-badge';
 import { StatusBadge } from '../song/status-badge';
 
 type SongDetailsHeaderProps = {
@@ -62,6 +62,12 @@ export const SongDetailsHeader = ({
         <>
           <span aria-hidden="true">·</span>
           <LanguageBadge language={song.language} />
+        </>
+      ) : null}
+      {song.path.toLowerCase().endsWith('.nge') ? (
+        <>
+          <span aria-hidden="true">·</span>
+          <NgeBadge song={song} />
         </>
       ) : null}
       <span aria-hidden="true">·</span>

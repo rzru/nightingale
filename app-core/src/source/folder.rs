@@ -11,7 +11,7 @@ use walkdir::WalkDir;
 use crate::cache::CacheDir;
 use crate::error::NightingaleError;
 use crate::library_db::{self, PlaylistDefinition, PlaylistSongKeyKind};
-use crate::song::{Song, SongOrigin, build_song};
+use crate::song::{Song, SongOrigin, build_nge_song, build_song};
 use crate::usdx;
 
 use super::{MediaSource, SCAN_BATCH_SIZE, ScanContext, SourceKind, flush_batch};
@@ -24,6 +24,8 @@ enum MediaKind {
     Audio,
     Video,
     Usdx,
+    /// A `.nge` bundle: Nightingale's canonical library file (a ZIP).
+    Nge,
 }
 
 pub(crate) struct FolderSource {
@@ -78,6 +80,7 @@ impl MediaSource for FolderSource {
                 MediaKind::Audio => build_song(path, ctx.cache, false),
                 MediaKind::Video => build_song(path, ctx.cache, true),
                 MediaKind::Usdx => usdx::build_usdx_song(path, ctx.cache),
+                MediaKind::Nge => build_nge_song(path, ctx.cache),
             };
             match result {
                 Ok(song) => batch.push(song),
@@ -124,7 +127,9 @@ fn classify_media_file(path: &Path) -> Option<MediaKind> {
 
     let ext_str = ext.as_deref()?;
 
-    if AUDIO_EXTENSIONS.contains(&ext_str) {
+    if ext_str == "nge" {
+        Some(MediaKind::Nge)
+    } else if AUDIO_EXTENSIONS.contains(&ext_str) {
         Some(MediaKind::Audio)
     } else if VIDEO_EXTENSIONS.contains(&ext_str) {
         Some(MediaKind::Video)

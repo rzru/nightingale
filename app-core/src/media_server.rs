@@ -177,6 +177,19 @@ fn handle_local_file(request: Request, path_segment: &str) {
         .map(|d| d.into_owned())
         .unwrap_or_else(|_| path_segment.to_string());
 
+    // `nge://<file_hash>/<entry>` rides through the same `/local/` route (so no
+    // CSP or frontend change is needed) but is served by reading the entry
+    // out of the song's `.nge` bundle in memory — never unpacked to disk.
+    if let Some(rest) = decoded.strip_prefix("nge://") {
+        match rest.split_once('/') {
+            Some((file_hash, entry_name)) => serve_nge_entry(request, file_hash, entry_name),
+            None => {
+                let _ = request.respond(with_cors(bad_request("malformed nge url")));
+            }
+        }
+        return;
+    }
+
     let cleaned = if cfg!(windows)
         && decoded
             .get(1..3)
@@ -310,6 +323,123 @@ fn serve_file(request: Request, file_path: &Path) {
     }
 }
 
+// ─── .nge bundle entries ─────────────────────────────────────────────
+//
+// Decrypt one entry (instrumental.mp3, vocals.mp3, cover.jpg, transcript.json,
+// audio.<ext>, video.mp4, …) out of the song's `.nge` and serve it from memory.
+// The audio player fetches whole entries (`arrayBuffer()` + `decodeAudioData`),
+// so a single full-body response is exactly what it wants; `<video>` sends
+// Range requests, which we satisfy by slicing the in-memory buffer. No
+// plaintext ever touches the disk.
+
+fn serve_nge_entry(request: Request, file_hash: &str, entry_name: &str) {
+    let Some(file_hash) = sanitize_file_hash(file_hash) else {
+        let _ = request.respond(with_cors(bad_request("invalid file hash")));
+        return;
+    };
+    let Some(entry_name) = sanitize_entry_name(entry_name) else {
+        let _ = request.respond(with_cors(bad_request("invalid entry name")));
+        return;
+    };
+
+    let song = match library_db::load_song_by_hash(&file_hash) {
+        Ok(Some(s)) => s,
+        Ok(None) => {
+            let _ = request.respond(with_cors(not_found("song not found")));
+            return;
+        }
+        Err(e) => {
+            warn!("[media_server] nge song lookup failed: {e}");
+            let _ = request.respond(with_cors(server_error("lookup")));
+            return;
+        }
+    };
+
+    if !song
+        .path
+        .to_string_lossy()
+        .to_ascii_lowercase()
+        .ends_with(".nge")
+    {
+        let _ = request.respond(with_cors(bad_request("song is not .nge-backed")));
+        return;
+    }
+
+    let data = match crate::nge_format::NgeFile::open(&song.path)
+        .and_then(|nge| nge.read_entry(&entry_name))
+    {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            warn!("[media_server] nge read failed for {file_hash}/{entry_name}: {e}");
+            let _ = request.respond(with_cors(server_error("nge read")));
+            return;
+        }
+    };
+
+    let mime = mime_for_path(Path::new(&entry_name));
+    serve_bytes(request, data, mime);
+}
+
+/// Entry names come from our own manifest, but are URL-decoded from the
+/// request, so re-validate them against a safe charset before use.
+fn sanitize_entry_name(raw: &str) -> Option<String> {
+    if raw.is_empty() || raw.len() > 64 {
+        return None;
+    }
+    if raw
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+    {
+        Some(raw.to_string())
+    } else {
+        None
+    }
+}
+
+/// Serve an in-memory buffer with the same Range / header semantics as
+/// [`serve_file`], without ever touching the disk.
+fn serve_bytes(request: Request, data: Vec<u8>, mime: &str) {
+    let total = data.len() as u64;
+
+    let Some(content_type) = header("Content-Type", mime) else {
+        let _ = request.respond(with_cors(server_error("content type")));
+        return;
+    };
+    let Some(accept_ranges) = header("Accept-Ranges", "bytes") else {
+        let _ = request.respond(with_cors(server_error("accept ranges")));
+        return;
+    };
+    let Some(no_sniff) = header("X-Content-Type-Options", "nosniff") else {
+        let _ = request.respond(with_cors(server_error("content options")));
+        return;
+    };
+
+    let range_val = request_header(&request, "Range");
+
+    if let Some((start, end)) = range_val.as_deref().and_then(|r| parse_range(r, total)) {
+        let slice = data[start as usize..=end as usize].to_vec();
+        let Some(content_range) = header("Content-Range", format!("bytes {start}-{end}/{total}"))
+        else {
+            let _ = request.respond(with_cors(server_error("content range")));
+            return;
+        };
+        let resp = Response::from_data(slice)
+            .with_status_code(StatusCode(206))
+            .with_header(content_type)
+            .with_header(accept_ranges)
+            .with_header(no_sniff)
+            .with_header(content_range);
+        let _ = request.respond(with_cors(resp));
+        return;
+    }
+
+    let resp = Response::from_data(data)
+        .with_header(content_type)
+        .with_header(accept_ranges)
+        .with_header(no_sniff);
+    let _ = request.respond(with_cors(resp));
+}
+
 fn mime_for_path(path: &Path) -> &'static str {
     let ext = path
         .extension()
@@ -325,6 +455,10 @@ fn mime_for_path(path: &Path) -> &'static str {
         "mp4" => "video/mp4",
         "mkv" => "video/x-matroska",
         "webm" => "video/webm",
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "webp" => "image/webp",
+        "json" => "application/json",
         _ => "application/octet-stream",
     }
 }

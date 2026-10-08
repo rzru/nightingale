@@ -214,6 +214,14 @@ pub struct AppConfig {
     pub align_backend: Option<String>,
     pub vocal_detection_threshold_pct: Option<f64>,
     pub auto_analyze: Option<bool>,
+    /// Audio codec used when exporting songs to `.nge` bundles: `"none"`
+    /// (keep stems as-is, lossless), `"opus128"`, or `"opus96"` (re-encode to
+    /// Opus at that bitrate to shrink bundles). Defaults to `"none"`.
+    pub export_audio_codec: Option<String>,
+    /// Hosts trusted to download from via the `nightingale://` deep link without
+    /// a confirmation prompt. Any other host prompts the user first. Empty/None
+    /// means every download is confirmed.
+    pub deep_link_allowed_hosts: Option<Vec<String>>,
     pub song_list_view: Option<String>,
     #[serde(default, deserialize_with = "deserialize_song_list_sort")]
     pub song_list_sort: Option<Vec<SongSort>>,
@@ -277,6 +285,8 @@ impl Default for AppConfig {
             align_backend: None,
             vocal_detection_threshold_pct: None,
             auto_analyze: None,
+            export_audio_codec: None,
+            deep_link_allowed_hosts: None,
             song_list_view: None,
             song_list_sort: None,
             language_overrides: None,
@@ -435,6 +445,10 @@ impl AppConfig {
 
     pub fn auto_analyze(&self) -> bool {
         self.auto_analyze.unwrap_or(false)
+    }
+
+    pub fn export_audio_codec(&self) -> &str {
+        self.export_audio_codec.as_deref().unwrap_or("none")
     }
 
     pub fn mic_monitor_gain(&self) -> f32 {

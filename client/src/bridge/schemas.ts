@@ -96,6 +96,8 @@ export const appConfigSchema: z.ZodType<AppConfig> = z.object({
   align_backend: nullableString,
   vocal_detection_threshold_pct: nullableNumber,
   auto_analyze: nullableBoolean,
+  export_audio_codec: nullableString,
+  deep_link_allowed_hosts: z.array(z.string()).nullable(),
   song_list_view: nullableString,
   song_list_sort: z
     .array(

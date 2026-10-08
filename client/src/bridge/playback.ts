@@ -4,16 +4,19 @@ import type { AudioPaths } from '@/types/Transcript';
 import {
   ensureMp3Stems as tauriEnsureMp3Stems,
   ensurePlayableSourceVideo as tauriEnsurePlayableSourceVideo,
+  exportLibraryNge as tauriExportLibraryNge,
+  exportSongNge as tauriExportSongNge,
   fetchPixabayVideos as tauriFetchPixabayVideos,
   getAudioPaths as tauriRawGetAudioPaths,
   getMediaEndpoint as tauriGetMediaEndpoint,
   loadTranscript as tauriLoadTranscript,
+  onLibraryExportDone as tauriOnLibraryExportDone,
   onPixabayVideoDownloaded as tauriOnPixabayVideoDownloaded,
   onStemsReady as tauriOnStemsReady,
 } from './playback.tauri';
 import { isTauri } from './runtime';
 
-export type { PixabayVideoDownloaded, StemsReadyEvent } from './playback.tauri';
+export type { LibraryExportDone, PixabayVideoDownloaded, StemsReadyEvent } from './playback.tauri';
 
 export type PlaybackAdapter = {
   /**
@@ -102,6 +105,9 @@ export const playbackAdapter: PlaybackAdapter = isTauri ? tauriPlaybackAdapter :
 export const loadTranscript = tauriLoadTranscript;
 export const ensureMp3Stems = tauriEnsureMp3Stems;
 export const ensurePlayableSourceVideo = tauriEnsurePlayableSourceVideo;
+export const exportSongNge = tauriExportSongNge;
+export const exportLibraryNge = tauriExportLibraryNge;
+export const onLibraryExportDone = tauriOnLibraryExportDone;
 export const fetchPixabayVideos = tauriFetchPixabayVideos;
 export const onStemsReady = tauriOnStemsReady;
 export const onPixabayVideoDownloaded = tauriOnPixabayVideoDownloaded;

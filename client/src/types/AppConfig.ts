@@ -46,6 +46,18 @@ export type AppConfig = {
   align_backend: string | null;
   vocal_detection_threshold_pct: number | null;
   auto_analyze: boolean | null;
+  /**
+   * Audio codec used when exporting songs to `.nge` bundles: `"none"`
+   * (keep stems as-is, lossless), `"opus128"`, or `"opus96"` (re-encode to
+   * Opus at that bitrate to shrink bundles). Defaults to `"none"`.
+   */
+  export_audio_codec: string | null;
+  /**
+   * Hosts trusted to download from via the `nightingale://` deep link without
+   * a confirmation prompt. Any other host prompts the user first. Empty/None
+   * means every download is confirmed.
+   */
+  deep_link_allowed_hosts: Array<string> | null;
   song_list_view: string | null;
   song_list_sort: Array<SongSort> | null;
   language_overrides: { [key in string]: string } | null;

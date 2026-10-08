@@ -7,7 +7,7 @@ import type { Song } from '@/types/Song';
 import type { SongSortColumn } from '@/types/SongSortColumn';
 
 import { AlbumArt } from '../song/album-art';
-import { LanguageBadge } from '../song/language-badge';
+import { LanguageBadge, NgeBadge } from '../song/language-badge';
 import { StatusBadge } from '../song/status-badge';
 
 export type SongColumn = {
@@ -45,6 +45,7 @@ export const SONG_COLUMNS: SongColumn[] = [
         <div className="flex h-5 min-w-0 items-center gap-2">
           <span className="min-w-0 truncate leading-5">{song.title}</span>
           <LanguageBadge language={song.language} />
+          <NgeBadge song={song} />
         </div>
         {bestScore === undefined ? null : <Stars score={bestScore} size="sm" className="mt-0.5" />}
       </div>

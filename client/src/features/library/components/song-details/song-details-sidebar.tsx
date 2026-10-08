@@ -27,6 +27,34 @@ type SongDetailsSidebarProps = {
   onClose: () => void;
 };
 
+/**
+ * Which analysis capabilities a song supports. A `.nge` is a sealed,
+ * already-analyzed bundle — its artifacts live inside the bundle file, so
+ * the mutating actions (reanalyze, realign, edit lyrics, key/tempo shift,
+ * refresh metadata) don't apply; playback stays fully available. To edit, the
+ * user re-analyzes the original source and exports a fresh bundle.
+ */
+function deriveAnalysisCaps(
+  song: Song,
+  isReady: boolean,
+  keyPending: boolean,
+): { supportsShifts: boolean; supportsAnalysisActions: boolean } {
+  if (song.path.toLowerCase().endsWith('.nge')) {
+    // A `.nge` is sealed, so analysis actions (reanalyze/realign/edit) stay
+    // hidden — but key/tempo shift is a playback transform derived from the
+    // sealed stems, so it's offered. Shifting materializes variant stems in the
+    // cache (the original bundle is untouched).
+    return {
+      supportsShifts: song.is_analyzed && song.transcript_source !== 'Usdx' && !keyPending,
+      supportsAnalysisActions: false,
+    };
+  }
+  return {
+    supportsShifts: song.is_analyzed && song.transcript_source !== 'Usdx' && !keyPending,
+    supportsAnalysisActions: isReady && song.transcript_source !== 'Usdx',
+  };
+}
+
 type AddToQueueButtonProps = {
   song: Song;
   tempo: number;
@@ -69,8 +97,11 @@ export const SongDetailsSidebar = ({ song, queueStatus, onClose }: SongDetailsSi
   // key/tempo section as pending rather than showing controls.
   const keyPending =
     song.is_analyzed && song.transcript_source === 'Lrc' && song.no_stems && song.key === null;
-  const supportsShifts = song.is_analyzed && song.transcript_source !== 'Usdx' && !keyPending;
-  const supportsAnalysisActions = status.isReady === true && song.transcript_source !== 'Usdx';
+  const { supportsShifts, supportsAnalysisActions } = deriveAnalysisCaps(
+    song,
+    status.isReady === true,
+    keyPending,
+  );
   const playbackDisabled = status.isReady !== true || preparingPlayback;
 
   // Off-queue key detection doesn't invalidate any query, so poll the song list

@@ -1,15 +1,20 @@
 import {
   AlignLeftIcon,
   AudioLinesIcon,
+  GaugeIcon,
   ImageIcon,
   MicIcon,
+  PackageIcon,
   RefreshCwIcon,
   Trash2Icon,
   XCircleIcon,
   EllipsisIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
+import { exportLibraryNge, onLibraryExportDone } from '@/bridge/playback';
+import { selectFolderPath } from '@/bridge/source';
 import { useAnalysis } from '@/features/library/hooks/use-analysis';
 import { useSongs } from '@/features/library/queries/use-songs';
 import { useMenuFocus } from '@/features/menu/providers/menu-focus-context';
@@ -19,9 +24,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
+import { useConfig } from '@/shared/config/use-config';
+import { useConfigMutation } from '@/shared/config/use-config-mutation';
 import { cn } from '@/shared/utils/cn';
 
 type CancelAnalysisItemProps = {
@@ -39,6 +51,34 @@ const CancelAnalysisItem = ({ count, onClick }: CancelAnalysisItemProps) => {
       <XCircleIcon />
       Cancel analysis ({count})
     </DropdownMenuItem>
+  );
+};
+
+// The `.nge` export audio codec, persisted in config and applied to every
+// export. Kept as its own component so its config read/write stays out of
+// `BulkActionsMenu`'s complexity budget.
+const ExportQualitySubmenu = () => {
+  const { data: config } = useConfig();
+  const { mutate } = useConfigMutation();
+  const value = config?.export_audio_codec ?? 'none';
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <GaugeIcon />
+        Export quality
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
+        <DropdownMenuRadioGroup
+          value={value}
+          onValueChange={(export_audio_codec) => mutate({ export_audio_codec })}
+        >
+          <DropdownMenuRadioItem value="none">Lossless (keep stems)</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="opus128">Opus 128 kbps</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="opus96">Opus 96 kbps</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   );
 };
 
@@ -74,6 +114,40 @@ export const BulkActionsMenu = () => {
       actions.onConfirmActions = null;
     };
   }, [actionsRef]);
+
+  useEffect(() => {
+    const state: { unlisten?: () => void; cancelled: boolean } = { cancelled: false };
+    void (async () => {
+      const unlisten = await onLibraryExportDone((event) => {
+        if (event.ok) {
+          toast.success(
+            `Exported ${event.exported} song(s) to .nge — skipped ${event.skipped}, failed ${event.failed}.`,
+          );
+        } else {
+          toast.error(`Library export failed: ${event.error ?? 'unknown error'}`);
+        }
+      });
+      if (state.cancelled) {
+        unlisten();
+      } else {
+        state.unlisten = unlisten;
+      }
+    })();
+    return () => {
+      state.cancelled = true;
+      state.unlisten?.();
+    };
+  }, []);
+
+  const handleExportLibrary = async () => {
+    const destDir = await selectFolderPath();
+    if (destDir === undefined) {
+      return;
+    }
+    setOpen(false);
+    toast.info('Exporting library to .nge… you’ll be notified when it finishes.');
+    exportLibraryNge(destDir);
+  };
 
   const isActionsFocused =
     focus.active && focus.panel === 'songList' && focus.actionsFocused && focus.actionsIndex === 1;
@@ -132,6 +206,13 @@ export const BulkActionsMenu = () => {
             </DropdownMenuItem>
           </>
         ) : null}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Export</DropdownMenuLabel>
+        <ExportQualitySubmenu />
+        <DropdownMenuItem onClick={() => void handleExportLibrary()}>
+          <PackageIcon />
+          Export library to .nge…
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

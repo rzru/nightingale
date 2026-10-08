@@ -19,6 +19,32 @@ export const ensurePlayableSourceVideo = async (fileHash: string): Promise<strin
   return await invoke<string | null>('ensure_playable_source_video', { fileHash });
 };
 
+/** Export an analyzed local song to a `.nge` bundle in `destDir`; resolves to
+ * the absolute path of the written file. */
+export const exportSongNge = async (fileHash: string, destDir: string): Promise<string> => {
+  return await invoke<string>('export_song_nge', { fileHash, destDir });
+};
+
+export type LibraryExportDone = {
+  ok: boolean;
+  exported: number;
+  skipped: number;
+  failed: number;
+  error: string | null;
+};
+
+/** Kick off exporting the whole library to `.nge` bundles in `destDir`. Runs in
+ * the background; completion is delivered via `onLibraryExportDone`. */
+export const exportLibraryNge = (destDir: string): void => {
+  void invoke<void>('export_library_nge', { destDir });
+};
+
+export const onLibraryExportDone = async (
+  cb: (event: LibraryExportDone) => void,
+): Promise<UnlistenFn> => {
+  return await listen<LibraryExportDone>('library-export-done', ({ payload }) => cb(payload));
+};
+
 export type StemsReadyEvent = {
   file_hash: string;
   error: string | null;

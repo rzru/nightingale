@@ -52,6 +52,7 @@
       {
         "allow": [
           "__NIGHTINGALE_APP_CONFIG__",
+          "__NIGHTINGALE_INITIAL_DEEP_LINK__",
           "__NIGHTINGALE_MEDIA_ENDPOINT__",
           "__NIGHTINGALE_SERVER_FLAGS__",
           "__NIGHTINGALE_SONGS_META__"

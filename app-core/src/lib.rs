@@ -2,6 +2,7 @@ mod analyzer;
 mod backgrounds;
 mod cache;
 mod config;
+mod download;
 mod error;
 mod library_db;
 mod library_menu;
@@ -9,6 +10,7 @@ mod library_model;
 mod lrc;
 mod lyrics;
 pub mod media_server;
+pub mod nge_format;
 mod playback;
 mod playback_queue;
 mod playback_session;
@@ -16,6 +18,7 @@ mod profile;
 mod scanner;
 mod secret;
 mod song;
+mod song_export;
 mod source;
 mod usdx;
 mod vendor;
@@ -37,6 +40,7 @@ pub use cache::{
     set_default_data_path,
 };
 pub use config::{AppConfig, LibrarySource};
+pub use download::{DownloadProgress, download_song_to_library};
 pub use library_db::{init_library, library_db_path};
 pub use library_menu::{LibraryMenuItem, LibraryMenuItems, load_library_menu_items};
 pub use library_model::{
@@ -60,6 +64,9 @@ pub use playback_session::{PlaybackPlayer, PlaybackSession, PlaybackSessionStore
 pub use profile::ProfileStore;
 pub use scanner::{CacheReconcileSummary, reconcile_cache, start_scan};
 pub use song::{Song, SongOrigin};
+pub use song_export::{
+    LibraryExportSummary, build_nge_from_song, export_library_nge, export_song_nge,
+};
 pub use source::{
     JellyfinAuth, JellyfinSource, MediaSource, NavidromeAuth, NavidromeSource, PlexAuth,
     PlexSource, SourceKind, active_source,

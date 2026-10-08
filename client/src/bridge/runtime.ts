@@ -39,6 +39,9 @@ const nativeCommands = new Set([
   'list_microphones',
   'start_mic_capture',
   'stop_mic_capture',
+  'export_song_nge',
+  'export_library_nge',
+  'download_song',
 ]);
 
 const apiCall = async (name: string, args: InvokeArgs): Promise<unknown> => {

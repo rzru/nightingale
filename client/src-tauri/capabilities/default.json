@@ -16,8 +16,10 @@
     "core:window:allow-set-fullscreen",
     "core:window:allow-set-simple-fullscreen",
     "core:window:allow-is-fullscreen",
+    "core:window:allow-unminimize",
     "process:default",
     "dialog:default",
-    "updater:default"
+    "updater:default",
+    "deep-link:default"
   ]
 }

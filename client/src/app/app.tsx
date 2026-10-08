@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route } from 'react-router';
 
 import { UPDATES_SUPPORTED } from '@/bridge/platform';
+import { DeepLinkListener } from '@/features/deep-link/deep-link-listener';
 import { LibraryPage } from '@/features/library/library-page';
 import { MenuLayout } from '@/features/menu/menu';
 import { MenuFocusProvider } from '@/features/menu/providers/menu-focus-context';
@@ -39,6 +40,7 @@ const InnerWrapper = () => (
         </Routes>
       </BrowserRouter>
     </MenuFocusProvider>
+    <DeepLinkListener />
     <Toaster />
     {UPDATES_SUPPORTED && <UpdateAutoCheck />}
   </>
