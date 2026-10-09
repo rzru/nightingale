@@ -28,6 +28,7 @@ import {
 } from '@/shared/components/ui/select';
 import { useConfig } from '@/shared/config/use-config';
 import { cn } from '@/shared/utils/cn';
+import type { AppConfig } from '@/types/AppConfig';
 
 const MAX_PLAYERS = 4;
 const RING = 'ring-2 ring-primary';
@@ -154,6 +155,9 @@ const setupDescription = (queuePlayback: boolean | undefined): string =>
     : 'Choose one microphone per singer.';
 
 const setupSubmitLabel = (label: string | undefined): string => label ?? 'Start multiplayer';
+
+const combineMultiChannel = (config: AppConfig | undefined): boolean =>
+  config?.combine_multi_channel ?? true;
 
 function setupError(input: SetupErrorInput): string | null {
   if (input.microphonesError) {
@@ -371,7 +375,7 @@ export function MultiplayerSetupDialog({
 }: MultiplayerSetupDialogProps) {
   const { data: profileStore, isLoading: profilesLoading } = useProfiles();
   const { data: config, isLoading: configLoading } = useConfig();
-  const microphones = useMicDevicesQuery(undefined, open);
+  const microphones = useMicDevicesQuery(undefined, open, combineMultiChannel(config));
   const [players, setPlayers] = useState<PlaybackPlayer[]>([]);
   const initialized = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);

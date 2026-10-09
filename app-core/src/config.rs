@@ -205,6 +205,7 @@ pub struct AppConfig {
     #[serde(alias = "mic_mirror_gain")]
     pub mic_monitor_gain: Option<f64>,
     pub mic_latency_compensation_sec: Option<f64>,
+    pub combine_multi_channel: Option<bool>,
     pub preferred_mic: Option<String>,
     pub whisper_model: Option<String>,
     pub beam_size: Option<u32>,
@@ -270,6 +271,7 @@ impl Default for AppConfig {
             mic_monitoring: None,
             mic_monitor_gain: None,
             mic_latency_compensation_sec: None,
+            combine_multi_channel: None,
             preferred_mic: None,
             whisper_model: None,
             beam_size: None,

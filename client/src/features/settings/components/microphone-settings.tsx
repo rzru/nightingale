@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useMicDevicesQuery, type MicDevice } from '@/features/microphone/queries/use-mic-devices';
 import { Button } from '@/shared/components/ui/button';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Field } from '@/shared/components/ui/field';
 import { Label } from '@/shared/components/ui/label';
 import { Slider } from '@/shared/components/ui/slider';
@@ -17,6 +18,7 @@ const DEFAULT_MIC_ID = '__default__';
 
 type MicrophoneSettingsProps = {
   savedMicId: string | null;
+  combineMultiChannel: boolean;
   monitorGain: number;
   latencySec: number;
   getFocusClassName: (segment: number, slot?: number) => string;
@@ -79,6 +81,7 @@ const useLegacyMicrophoneMigration = (
 
 export function MicrophoneSettings({
   savedMicId,
+  combineMultiChannel,
   monitorGain,
   latencySec,
   getFocusClassName,
@@ -86,7 +89,7 @@ export function MicrophoneSettings({
   onLatencyChange,
 }: MicrophoneSettingsProps) {
   const { mutate } = useConfigMutation();
-  const micDevicesQuery = useMicDevicesQuery();
+  const micDevicesQuery = useMicDevicesQuery(undefined, true, combineMultiChannel);
   const micDevices = micDevicesQuery.data;
   const [preferredMicInput, setPreferredMic] = useState<string | null | undefined>(undefined);
   const preferredMic = preferredMicInput === undefined ? savedMicId : preferredMicInput;
@@ -105,6 +108,14 @@ export function MicrophoneSettings({
     <>
       <Field>
         <Label>Microphone</Label>
+        <Label className="gap-1.5 text-xs/relaxed font-normal text-muted-foreground">
+          <Checkbox
+            checked={combineMultiChannel}
+            className={getFocusClassName(NAV.general.microphone, 0)}
+            onCheckedChange={(checked) => mutate({ combine_multi_channel: checked === true })}
+          />
+          Combine multi-channel
+        </Label>
         <Hint>{microphoneDiscoveryHint(micDevicesQuery)}</Hint>
         <SettingsSelect
           label="Microphone"
@@ -112,7 +123,7 @@ export function MicrophoneSettings({
           value={preferredMic ?? DEFAULT_MIC_ID}
           options={micOptions}
           disabled={controlsDisabled}
-          triggerClassName={getFocusClassName(NAV.general.microphone)}
+          triggerClassName={getFocusClassName(NAV.general.microphone, 1)}
           onValueChange={(value) => {
             const next = value === DEFAULT_MIC_ID ? null : value;
             setPreferredMic(next);
