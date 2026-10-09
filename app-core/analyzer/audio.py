@@ -82,6 +82,34 @@ def detect_vocal_region(audio, sr: int = 16000, win_secs: float = 0.5,
 
     return vocal_start, vocal_end
 
+def silent_gaps(audio, sr: int = 16000, win_secs: float = 0.5,
+                min_gap_secs: float = 3.0, threshold_pct=None) -> list[tuple[float, float]]:
+    """Return ``(start, end)`` seconds of stretches of at least ``min_gap_secs``
+    where the vocal stem's RMS stays under the vocal-detection threshold."""
+    if threshold_pct is None:
+        threshold_pct = _vocal_threshold_pct
+    window_samples = int(win_secs * sr)
+    rms_values = [
+        float(np.sqrt(np.mean(audio[i : i + window_samples] ** 2)))
+        for i in range(0, len(audio), window_samples)
+    ]
+    if not rms_values:
+        return []
+
+    threshold = max(rms_values) * threshold_pct
+    gaps: list[tuple[float, float]] = []
+    run_start = None
+    for i, rms in enumerate(rms_values + [threshold]):
+        if rms < threshold:
+            if run_start is None:
+                run_start = i
+            continue
+        if run_start is not None and (i - run_start) * win_secs >= min_gap_secs:
+            gaps.append((run_start * win_secs, min(i * win_secs, len(audio) / sr)))
+        run_start = None
+    return gaps
+
+
 def highpass_filter(audio, sr: int = 16000, cutoff_hz: float = 80.0):
     """Apply a simple highpass filter to remove sub-bass rumble from stems."""
     from scipy.signal import butter, sosfilt
