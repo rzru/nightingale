@@ -6,6 +6,7 @@ import { cn } from '@/shared/utils/cn';
 import { NO_FOCUS_RING_CLASS, RING_CLASS } from './parts';
 
 const TEXTAREA_ROWS = 16;
+const CJK_PATTERN = /[\u3040-\u30ff\u3400-\u9fff]/;
 
 const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
   if (event.key === 'Escape') {
@@ -24,6 +25,7 @@ type LyricsEditorProps = {
   lineCount: number;
   isDirty: boolean;
   focused: boolean;
+  hasLrc: boolean;
 };
 
 export const LyricsEditor = ({
@@ -35,6 +37,7 @@ export const LyricsEditor = ({
   lineCount,
   isDirty,
   focused,
+  hasLrc,
 }: LyricsEditorProps) => {
   return (
     <>
@@ -56,6 +59,24 @@ export const LyricsEditor = ({
       <p className="mt-2 text-[11px] text-muted-foreground">
         {lineCount} {lineCount === 1 ? 'line' : 'lines'}
         {isDirty ? ' • unsaved changes' : ''}
+      </p>
+      {!hasLrc && (
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Set timing with {'[mm:ss.xx]'} at the start of a line ({'[01:23.45]'} = 1 min 23.45 s),
+          and {'<mm:ss.xx>'} before a word for word timing
+        </p>
+      )}
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        {CJK_PATTERN.test(text) ? (
+          <>
+            Fix a reading with {'{漢字|romaji}'} or {'{漢字|かな}'}, e.g. {'{君|kimi}'} or{' '}
+            {'{彷徨|さまよ}って'}
+          </>
+        ) : (
+          <>
+            Add a note above a word with {'{word|note}'}, e.g. {'{colour|color}'}
+          </>
+        )}
       </p>
     </>
   );

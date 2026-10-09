@@ -1,9 +1,8 @@
+import type { TimingChoice } from '@/features/lyrics/lib/timing-choice';
 import type { LrcLevel } from '@/features/lyrics/utils/edit-lyrics';
 import { cn } from '@/shared/utils/cn';
 
 import { ringFor } from './parts';
-
-export type TimingChoice = 'provided' | 'align';
 
 type RadioOption<T extends string> = {
   value: T;
@@ -124,7 +123,8 @@ export const LrcOptions = ({
         onFocusSlot={(slot) => onFocusOption?.('timing', slot)}
         options={[
           { value: 'provided', title: 'Use provided', description: 'Instant · no transcription' },
-          { value: 'align', title: 'Run alignment', description: 'Runs AI · takes a while' },
+          { value: 'anchored', title: 'Align words', description: 'Keeps line timing · runs AI' },
+          { value: 'align', title: 'Run alignment', description: 'Ignores timing · runs AI' },
         ]}
       />
 

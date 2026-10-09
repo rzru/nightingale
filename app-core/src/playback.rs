@@ -90,7 +90,7 @@ fn variant_pair_exists(cache: &CacheDir, file_hash: &str, key: &str, tempo: f64)
 
 fn resolve_transcript_path(cache: &CacheDir, file_hash: &str) -> PathBuf {
     if let Some(song) = library_db::load_song_by_hash(file_hash).ok().flatten()
-        && let Some((_key, tempo)) = resolve_effective_key_tempo(&song)
+        && let Some((key, tempo)) = resolve_effective_key_tempo(&song)
     {
         if normalize_tempo(tempo) == 1.0 {
             return cache.transcript_path(file_hash);
@@ -98,6 +98,12 @@ fn resolve_transcript_path(cache: &CacheDir, file_hash: &str) -> PathBuf {
         let variant = cache.variant_transcript_path(file_hash, tempo);
         if variant.is_file() {
             return variant;
+        }
+        // Saving lyrics drops tempo transcripts but keeps the stretched stems,
+        // so rebuild the variant instead of serving unscaled timings.
+        match write_tempo_transcript(cache, file_hash, &key, tempo) {
+            Ok(path) => return path,
+            Err(e) => warn!("[playback] Failed to build tempo {tempo} transcript: {e}"),
         }
     }
     cache.transcript_path(file_hash)
@@ -479,15 +485,7 @@ fn no_stems_shift(
     // Tempo changes stretch the timeline, so scale the LRC timings into a
     // tempo variant that playback picks up for the shifted mix.
     if target_tempo != 1.0 {
-        let base_transcript = std::fs::read_to_string(cache.transcript_path(file_hash))?;
-        let mut transcript: Value = serde_json::from_str(&base_transcript)?;
-        scale_transcript_timestamps(&mut transcript, 1.0 / target_tempo);
-        transcript["tempo"] = Value::from(target_tempo);
-        transcript["key"] = Value::from(target_key.clone());
-        std::fs::write(
-            cache.variant_transcript_path(file_hash, target_tempo),
-            serde_json::to_string_pretty(&transcript)?,
-        )?;
+        write_tempo_transcript(cache, file_hash, &target_key, target_tempo)?;
     }
 
     song.override_key = if base_key == target_key {
@@ -505,15 +503,22 @@ fn no_stems_shift(
     })
 }
 
-fn resolve_source_transcript_path(cache: &CacheDir, file_hash: &str, tempo: f64) -> PathBuf {
-    if normalize_tempo(tempo) == 1.0 {
-        return cache.transcript_path(file_hash);
-    }
-    let variant = cache.variant_transcript_path(file_hash, tempo);
-    if variant.is_file() {
-        return variant;
-    }
-    cache.transcript_path(file_hash)
+/// Write the `tempo` variant of the base transcript, with every timestamp
+/// scaled to the stretched timeline.
+fn write_tempo_transcript(
+    cache: &CacheDir,
+    file_hash: &str,
+    key: &str,
+    tempo: f64,
+) -> Result<PathBuf, NightingaleError> {
+    let base_transcript = std::fs::read_to_string(cache.transcript_path(file_hash))?;
+    let mut transcript: Value = serde_json::from_str(&base_transcript)?;
+    scale_transcript_timestamps(&mut transcript, 1.0 / tempo);
+    transcript["tempo"] = Value::from(tempo);
+    transcript["key"] = Value::from(key);
+    let path = cache.variant_transcript_path(file_hash, tempo);
+    std::fs::write(&path, serde_json::to_string_pretty(&transcript)?)?;
+    Ok(path)
 }
 
 fn round_transcript_time(value: f64) -> f64 {
@@ -782,8 +787,6 @@ pub fn shift_tempo(file_hash: &str, tempo: f64) -> Result<ShiftResult, Nightinga
     let tempo_ratio = target_tempo / source_tempo;
     let target_inst = cache.variant_instrumental_path(file_hash, &key, target_tempo);
     let target_voc = cache.variant_vocals_path(file_hash, &key, target_tempo);
-    let target_transcript_path = cache.variant_transcript_path(file_hash, target_tempo);
-
     let (source_inst, source_voc) =
         resolve_canonical_stems_for_key(&cache, file_hash, &song, &key)?;
     run_rubberband_pair_parallel(
@@ -795,17 +798,7 @@ pub fn shift_tempo(file_hash: &str, tempo: f64) -> Result<ShiftResult, Nightinga
         tempo_ratio,
     )?;
 
-    let source_transcript_path = resolve_source_transcript_path(&cache, file_hash, source_tempo);
-    let source_transcript_data = std::fs::read_to_string(&source_transcript_path)?;
-    let mut source_transcript: Value = serde_json::from_str(&source_transcript_data)?;
-    let scale_factor = source_tempo / target_tempo;
-    scale_transcript_timestamps(&mut source_transcript, scale_factor);
-    source_transcript["tempo"] = Value::from(target_tempo);
-    source_transcript["key"] = Value::from(key.clone());
-    std::fs::write(
-        &target_transcript_path,
-        serde_json::to_string_pretty(&source_transcript)?,
-    )?;
+    write_tempo_transcript(&cache, file_hash, &key, target_tempo)?;
 
     song.tempo = target_tempo;
     library_db::update_song_fields(file_hash, &song).map_err(|e| e.to_string())?;

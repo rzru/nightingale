@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { applyTimedLyrics, provideLrc } from '@/bridge/lyrics';
+import { alignLrcLyrics, applyTimedLyrics, provideLrc } from '@/bridge/lyrics';
 import { ANALYSIS_QUEUE, LYRICS, MENU, SONGS, SONGS_META } from '@/shared/query-keys';
 
 const LYRICS_QUERY_KEYS = [LYRICS, MENU, SONGS, SONGS_META, ANALYSIS_QUEUE];
@@ -53,6 +53,21 @@ export const useApplyTimedLyricsMutation = () => {
     onSuccess: () => invalidateLyricsQueries(queryClient),
     onError: (error: Error) => {
       toast.error(`Error while applying timed lyrics: ${error.message}`);
+    },
+  });
+};
+
+export const useAlignLrcMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ hash, lrcText, title }: ApplyTimedLyricsInput) => {
+      await alignLrcLyrics(hash, lrcText);
+      toast.info(`Aligning words within the line timing of "${title}"`);
+    },
+    onSuccess: () => invalidateLyricsQueries(queryClient),
+    onError: (error: Error) => {
+      toast.error(`Error while aligning timed lyrics: ${error.message}`);
     },
   });
 };

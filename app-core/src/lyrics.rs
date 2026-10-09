@@ -41,6 +41,19 @@ pub struct LrclibCandidate {
 #[ts(export)]
 pub struct LyricsFile {
     pub lines: Vec<String>,
+    /// Per-line time windows from line-timed LRC, parallel to `lines`. When
+    /// present, alignment only places each line's words inside its window.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub windows: Option<Vec<LineWindow>>,
+}
+
+/// Start and end of a lyric line, in seconds on the original-tempo timeline.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct LineWindow {
+    pub start: f64,
+    pub end: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -293,12 +306,53 @@ pub fn save_lyrics_and_realign(file_hash: &str, lines: Vec<String>) -> Result<()
         return Err("Lyrics cannot be empty".to_string());
     }
 
+    store_lyrics_and_realign(
+        file_hash,
+        &LyricsFile {
+            lines: normalized,
+            windows: None,
+        },
+    )
+}
+
+/// Save line-timed LRC and realign it: each line keeps its LRC timing as a
+/// window and alignment only times the words inside it.
+pub fn align_lrc_lyrics(file_hash: &str, lrc_text: &str) -> Result<(), String> {
+    if is_usdx_song(file_hash) {
+        return Err("Cannot edit lyrics for USDX songs".to_string());
+    }
+
+    let parsed = lrc::parse_lrc(lrc_text)?;
+    let (lines, windows) = parsed
+        .segments
+        .iter()
+        .map(|segment| {
+            (
+                segment.text.clone(),
+                LineWindow {
+                    start: segment.start,
+                    end: segment.end,
+                },
+            )
+        })
+        .unzip();
+
+    store_lyrics_and_realign(
+        file_hash,
+        &LyricsFile {
+            lines,
+            windows: Some(windows),
+        },
+    )
+}
+
+fn store_lyrics_and_realign(file_hash: &str, lyrics: &LyricsFile) -> Result<(), String> {
     let cache = CacheDir::new();
     let previous_language = library_db::load_song_by_hash(file_hash)
         .ok()
         .flatten()
         .and_then(|song| song.language);
-    write_lyrics_file(&cache, file_hash, &normalized)
+    write_lyrics_json(&cache, file_hash, lyrics)
         .map_err(|e| format!("Failed to write lyrics file: {e}"))?;
 
     let _ = std::fs::remove_file(cache.transcript_path(file_hash));
@@ -435,9 +489,23 @@ pub(crate) fn write_lyrics_file(
     file_hash: &str,
     lines: &[String],
 ) -> std::io::Result<PathBuf> {
+    write_lyrics_json(
+        cache,
+        file_hash,
+        &LyricsFile {
+            lines: lines.to_vec(),
+            windows: None,
+        },
+    )
+}
+
+fn write_lyrics_json(
+    cache: &CacheDir,
+    file_hash: &str,
+    lyrics: &LyricsFile,
+) -> std::io::Result<PathBuf> {
     let out = cache.lyrics_path(file_hash);
-    let lyrics_json = serde_json::json!({ "lines": lines });
-    let json = serde_json::to_vec_pretty(&lyrics_json).map_err(std::io::Error::other)?;
+    let json = serde_json::to_vec_pretty(lyrics).map_err(std::io::Error::other)?;
     std::fs::write(&out, json)?;
     Ok(out)
 }

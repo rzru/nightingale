@@ -490,6 +490,18 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
                 .map_err(ApiError::bad_request)?;
             Ok(Value::Null)
         }
+        "align_lrc_lyrics" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Args {
+                file_hash: String,
+                lrc_text: String,
+            }
+            let args: Args = deserialize(payload)?;
+            app_core::align_lrc_lyrics(&args.file_hash, &args.lrc_text)
+                .map_err(ApiError::bad_request)?;
+            Ok(Value::Null)
+        }
         "load_sidecar_lrc" => {
             let args: FileHashArgs = deserialize(payload)?;
             let sidecar = tokio::task::spawn_blocking(move || load_sidecar_lrc(&args.file_hash))

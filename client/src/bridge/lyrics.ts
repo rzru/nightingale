@@ -40,3 +40,7 @@ export const provideLrc = async (
 export const applyTimedLyrics = async (fileHash: string, lrcText: string): Promise<void> => {
   return await invoke<void>('apply_timed_lyrics', { fileHash, lrcText });
 };
+
+export const alignLrcLyrics = async (fileHash: string, lrcText: string): Promise<void> => {
+  return await invoke<void>('align_lrc_lyrics', { fileHash, lrcText });
+};

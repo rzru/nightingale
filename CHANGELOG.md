@@ -22,6 +22,8 @@ below.
 - **Rescan library** now also picks up analyses that another machine left in a shared cache folder: songs already in the library whose stems and transcript exist in the cache are marked ready without re-running analysis, and a toast summarizes how many were updated.
 - The lyrics editor pre-fills from a `.lrc` / `.elrc` file next to a local song's audio when the song has no lyrics yet, and offers a **Use local .lrc** action otherwise; nothing is written until Save.
 - Added the ability to toggle the display of romanized lyrics for CJK languages in Settings.
+- Lyrics can carry a note above any word with `{word|note}` in the lyrics editor, in every language: it replaces the automatic reading (romaji, pinyin, Jyutping, romanization) of the characters it covers or adds one (e.g. `{君|kimi}`, `{行|háng}`, `{colour|color}`). For Japanese, a kana note (`{彷徨|さまよ}って`) also guides alignment.
+- Line-timed LRC can now guide alignment: the lyrics editor's new **Align words** timing keeps each line's LRC timing and has the AI time only the words inside it, so one misheard passage can no longer shift the rest of the song. Each word stays lit until the next one starts and a line stays on screen until its LRC end, unless the singing stops for a long pause.
 
 ### Improvements
 
@@ -29,6 +31,7 @@ below.
 - Migrated library persistence from handwritten runtime SQL to Diesel's typed SQLite query builder without changing existing databases or library behavior.
 - Playback queue songs can now be reordered by dragging or with Alt+Arrow keys.
 - The playback screen now shows the song's cover art, title, and artist on a loading screen while audio is still downloading/decoding, instead of a blank/shader background.
+- The lyrics editor shows the LRC timing syntax (`[mm:ss.xx]` per line, `<mm:ss.xx>` per word) under the text box.
 
 ### Fixes
 
@@ -38,6 +41,10 @@ below.
 - Song search is now case- and accent-insensitive for Unicode metadata and paths.
 - Stems, source videos, and background videos now play when the songs or videos cache has been moved to a separate folder (for example a network share): the desktop and self-hosted media servers only allowed files under the data folder and library folder, so a relocated cache failed with "Failed to fetch instrumental: 404".
 - Analysis status sorting now orders ready songs by the transcript source shown in their status badge.
+- Japanese romaji now reads kanji in sentence context (彷徨って → samayotte, 君 → kimi instead of hōkō / kun), romanizes the particles は / へ as wa / e, handles small っ across word boundaries, treats half-width spaces as word breaks (街 家 → machi ie, not machi ka), and fixes common lyric words the dictionary misreads (私, 明日, 三日月, 駆く…).
+- Lyrics now follow the song at a changed tempo after the lyrics were edited or re-aligned: the tempo-scaled lyric timings are rebuilt when missing instead of falling back to the original-speed timings.
+- Qwen lyrics alignment no longer shifts words onto the wrong lines after a token that spans two lyric lines (金の塔 / 北の丘 aligned as "塔北").
+- Lyrics alignment no longer keeps a word highlighted through instrumental breaks or long pauses: words stretched over a vocal silence are trimmed to their sung part.
 
 ## [1.2.0] - 2026-09-02
 

@@ -1,4 +1,5 @@
 import type { DialogMode } from '@/features/menu/hooks/use-dialog';
+import type { LineWindow } from '@/types/LineWindow';
 import type { Song } from '@/types/Song';
 import type { Transcript } from '@/types/Transcript';
 
@@ -15,6 +16,36 @@ export function formatSeconds(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const secs = Math.floor(seconds) % 60;
   return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}
+
+const pad2 = (value: number): string => value.toString().padStart(2, '0');
+
+/** Format seconds as an LRC `[mm:ss.xx]` tag. */
+function lrcTag(seconds: number): string {
+  const centis = Math.max(0, Math.round(seconds * 100));
+  const minutes = Math.floor(centis / 6000);
+  const secs = Math.floor((centis % 6000) / 100);
+  return `[${pad2(minutes)}:${pad2(secs)}.${pad2(centis % 100)}]`;
+}
+
+/**
+ * Rebuild line-timed LRC from saved lines and their windows. A window that
+ * ends before the next line starts gets an empty end tag, as in the source.
+ */
+export function lrcFromWindows(lines: readonly string[], windows: readonly LineWindow[]): string {
+  return lines
+    .flatMap((line, index) => {
+      const window = windows.at(index);
+      if (!window) {
+        return [line];
+      }
+      const next = windows.at(index + 1);
+      const gapAfter = next === undefined || next.start - window.end > 0.005;
+      return gapAfter
+        ? [`${lrcTag(window.start)}${line}`, lrcTag(window.end)]
+        : [`${lrcTag(window.start)}${line}`];
+    })
+    .join('\n');
 }
 
 export function normalizeLines(text: string): string[] {

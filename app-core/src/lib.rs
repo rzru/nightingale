@@ -44,8 +44,9 @@ pub use library_model::{
     SongsStore, SortDirection,
 };
 pub use lyrics::{
-    LrclibCandidate, LyricsFile, SidecarLrc, SidecarLrcKind, apply_timed_lyrics, load_lyrics_file,
-    load_sidecar_lrc, provide_lrc, save_lyrics_and_realign, search_lrclib_for_hash,
+    LineWindow, LrclibCandidate, LyricsFile, SidecarLrc, SidecarLrcKind, align_lrc_lyrics,
+    apply_timed_lyrics, load_lyrics_file, load_sidecar_lrc, provide_lrc, save_lyrics_and_realign,
+    search_lrclib_for_hash,
 };
 pub use media_server::{MediaEndpoint, local_media_roots};
 pub use playback::{
