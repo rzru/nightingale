@@ -79,9 +79,6 @@ type FooterMessageInput = {
 
 const footerMessage = (input: FooterMessageInput): string | undefined => {
   const hints: string[] = [];
-  if (!input.hasLrc) {
-    hints.push('Paste LRC / Enhanced LRC to set timing directly.');
-  }
   if (input.useProvidedTiming && input.lrcLevel === 'line') {
     hints.push('Line-level LRC highlights whole lines — no per-word timing.');
   }
@@ -583,6 +580,7 @@ export const EditLyricsDialog = () => {
         lineCount={editor.normalized.length}
         isDirty={editor.isDirty}
         focused={editorFocused}
+        hasLrc={hasLrc}
       />
       {editor.sidecar ? (
         <SidecarLrcNotice

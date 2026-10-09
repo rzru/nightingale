@@ -38,11 +38,21 @@ def align_lyrics(
     lines = lyrics_data.get("lines", [])
     print(f"[nightingale:LOG] Lyrics loaded: {len(lines)} lines", flush=True)
 
+    # {base|note} markup puts a note above a word; strip it here so the
+    # aligners and displayed text only see the base, and keep the spans.
     clean_lines: list[str] = []
+    line_spans: list[list[tuple[int, int, str]]] = []
     for line in lines:
         text = line.strip() if isinstance(line, str) else str(line).strip()
+        text, spans = cjk.parse_reading_markup(text)
         if text:
             clean_lines.append(text)
+            line_spans.append(spans)
+    if any(line_spans):
+        print(
+            f"[nightingale:LOG] Lyric notes: {sum(len(s) for s in line_spans)}",
+            flush=True,
+        )
 
     audio = whisperx.load_audio(vocals_path)
     duration_secs = len(audio) / 16000
@@ -74,7 +84,7 @@ def align_lyrics(
     import qwen_align
     if get_align_backend() == "qwen" and qwen_align.is_supported(language):
         qwen_segments = _align_lyrics_qwen(
-            clean_lines, audio, language, vocal_start, vocal_end, pre_align_cleanup,
+            clean_lines, line_spans, audio, language, vocal_start, vocal_end, pre_align_cleanup,
         )
         if qwen_segments is not None:
             progress(90, f"Alignment complete: {len(qwen_segments)} segments, lang={language}")
@@ -89,7 +99,10 @@ def align_lyrics(
 
     line_token_pairs: list[list[tuple[str, str]]] | None = None
     if cjk.is_cjk(language):
-        line_token_pairs = [cjk.tokenize_for_alignment(line, language) for line in clean_lines]
+        line_token_pairs = [
+            cjk.tokenize_for_alignment(line, language, spans)
+            for line, spans in zip(clean_lines, line_spans)
+        ]
         cleaned_lines = ["".join(r for _, r in toks) for toks in line_token_pairs]
         full_text = "".join(cleaned_lines)
         print(
@@ -109,12 +122,11 @@ def align_lyrics(
     )
 
     if cjk.is_cjk(language):
-        segments = _map_chars_to_lines_cjk(align_result, clean_lines, line_token_pairs, language)
+        segments = _map_chars_to_lines_cjk(
+            align_result, clean_lines, line_token_pairs, line_spans, language,
+        )
     else:
-        segments = _map_words_to_lines(align_result, clean_lines)
-        if cjk.is_korean(language):
-            for seg in segments:
-                cjk.attach_reading(seg["words"], language)
+        segments = _map_words_to_lines(align_result, clean_lines, line_spans, language)
 
     progress(90, f"Alignment complete: {len(segments)} segments, lang={language}")
     if segments:
@@ -157,6 +169,7 @@ def _map_chars_to_lines_cjk(
     align_result: dict,
     original_lines: list[str],
     line_token_pairs: list[list[tuple[str, str]]],
+    line_spans: list[list[tuple[int, int, str]]],
     language: str,
 ) -> list[dict]:
     """Map per-character whisperx timestamps onto fugashi/jieba tokens.
@@ -181,7 +194,7 @@ def _map_chars_to_lines_cjk(
     cursor = 0
     skipped_empty = 0
 
-    for original, token_pairs in zip(original_lines, line_token_pairs):
+    for original, token_pairs, spans in zip(original_lines, line_token_pairs, line_spans):
         n = sum(len(r) for _, r in token_pairs)
         if n == 0:
             skipped_empty += 1
@@ -218,7 +231,7 @@ def _map_chars_to_lines_cjk(
             if "score" in e and e["score"] is not None:
                 e["score"] = round(e["score"], 3)
 
-        cjk.attach_reading(valid, language)
+        cjk.attach_reading(valid, language, line=original, spans=spans)
 
         seg_start = valid[0]["start"]
         seg_end = valid[-1]["end"]
@@ -270,6 +283,7 @@ def _split_long_segments(segments: list[dict], joiner: str = " ") -> list[dict]:
 
 def _align_lyrics_qwen(
     clean_lines: list[str],
+    line_spans: list[list[tuple[int, int, str]]],
     audio,
     language: str,
     vocal_start: float,
@@ -299,7 +313,7 @@ def _align_lyrics_qwen(
         print(f"[nightingale:LOG] Qwen aligner failed: {e}", flush=True)
         return None
 
-    segments = _map_qwen_units_to_lines(result, clean_lines, language)
+    segments = _map_qwen_units_to_lines(result, clean_lines, line_spans, language)
     if not segments:
         return None
 
@@ -311,7 +325,12 @@ def _align_lyrics_qwen(
     return segments
 
 
-def _map_qwen_units_to_lines(align_result: dict, clean_lines: list[str], language: str) -> list[dict]:
+def _map_qwen_units_to_lines(
+    align_result: dict,
+    clean_lines: list[str],
+    line_spans: list[list[tuple[int, int, str]]],
+    language: str,
+) -> list[dict]:
     """Slice Qwen's flat timed-token stream onto lyric lines by kept-char count.
 
     Every Qwen token carries a timestamp (the model never drops units), and token
@@ -323,7 +342,7 @@ def _map_qwen_units_to_lines(align_result: dict, clean_lines: list[str], languag
     segments: list[dict] = []
     cursor = 0
 
-    for line_text in clean_lines:
+    for line_text, spans in zip(clean_lines, line_spans):
         need = cjk.qwen_kept_len(line_text)
         if need == 0:
             continue
@@ -350,8 +369,8 @@ def _map_qwen_units_to_lines(align_result: dict, clean_lines: list[str], languag
         if not words:
             continue
 
-        if cjk.is_supported_lang(language):
-            cjk.attach_reading(words, language)
+        if cjk.is_supported_lang(language) or spans:
+            cjk.attach_reading(words, language, line=line_text, spans=spans)
 
         seg_start = words[0]["start"]
         seg_end = words[-1]["end"]
@@ -377,7 +396,12 @@ def _map_qwen_units_to_lines(align_result: dict, clean_lines: list[str], languag
     return _split_long_segments(segments, joiner=joiner)
 
 
-def _map_words_to_lines(align_result: dict, clean_lines: list[str]) -> list[dict]:
+def _map_words_to_lines(
+    align_result: dict,
+    clean_lines: list[str],
+    line_spans: list[list[tuple[int, int, str]]],
+    language: str,
+) -> list[dict]:
     """Map aligned word timestamps back to original lyric lines.
 
     Walks the aligned stream with a single forward cursor and bounded lookahead
@@ -398,7 +422,7 @@ def _map_words_to_lines(align_result: dict, clean_lines: list[str]) -> list[dict
     missed_lyric_words = 0
     interpolated_drops = 0
 
-    for line_text in clean_lines:
+    for line_text, spans in zip(clean_lines, line_spans):
         word_entries = []
         for word_text in line_text.split():
             target = _normalize(word_text)
@@ -434,6 +458,8 @@ def _map_words_to_lines(align_result: dict, clean_lines: list[str]) -> list[dict
         valid_words = [e for e in word_entries if e["start"] is not None]
         if not valid_words:
             continue
+        if cjk.is_supported_lang(language) or spans:
+            cjk.attach_reading(valid_words, language, line=line_text, spans=spans)
 
         seg_start = valid_words[0]["start"]
         seg_end = valid_words[-1]["end"]
