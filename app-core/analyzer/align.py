@@ -218,7 +218,7 @@ def _map_chars_to_lines_cjk(
             if "score" in e and e["score"] is not None:
                 e["score"] = round(e["score"], 3)
 
-        cjk.attach_reading(valid, language)
+        cjk.attach_reading(valid, language, line=original)
 
         seg_start = valid[0]["start"]
         seg_end = valid[-1]["end"]
@@ -351,7 +351,7 @@ def _map_qwen_units_to_lines(align_result: dict, clean_lines: list[str], languag
             continue
 
         if cjk.is_supported_lang(language):
-            cjk.attach_reading(words, language)
+            cjk.attach_reading(words, language, line=line_text)
 
         seg_start = words[0]["start"]
         seg_end = words[-1]["end"]
