@@ -7,4 +7,8 @@ export type LibraryMenuItem = {
   queuedCount: bigint;
   analysingCount: bigint;
   count: bigint;
+  /**
+   * Nesting level of a folder item below the library root (0 = top level).
+   */
+  depth?: number;
 };

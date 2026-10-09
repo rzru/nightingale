@@ -8,4 +8,8 @@ export type LibraryMenuFilters = {
   status: string | null;
   transcript_source: string | null;
   search: string | null;
+  /**
+   * Folder path prefix (ending in a separator) from a folder menu item.
+   */
+  folder: string | null;
 };

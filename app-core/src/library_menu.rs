@@ -13,6 +13,10 @@ pub struct LibraryMenuItem {
     #[serde(rename = "analysingCount")]
     pub analysing_count: u64,
     pub count: u64,
+    /// Nesting level of a folder item below the library root (0 = top level).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub depth: Option<u32>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
@@ -23,6 +27,7 @@ pub struct LibraryMenuItems {
     pub artists: Vec<LibraryMenuItem>,
     pub albums: Vec<LibraryMenuItem>,
     pub playlists: Vec<LibraryMenuItem>,
+    pub folders: Vec<LibraryMenuItem>,
 }
 
 pub fn load_library_menu_items() -> Result<LibraryMenuItems, crate::error::NightingaleError> {

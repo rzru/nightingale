@@ -20,6 +20,10 @@ diesel::define_sql_function! {
 }
 
 diesel::define_sql_function! {
+    fn instr(haystack: Text, needle: Text) -> BigInt;
+}
+
+diesel::define_sql_function! {
     #[sql_name = "json_extract"]
     fn json_extract_text(json: Text, path: Text) -> NullableText;
 }

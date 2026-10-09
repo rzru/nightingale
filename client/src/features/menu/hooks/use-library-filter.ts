@@ -12,6 +12,7 @@ export const useLibraryFilter = () => {
     artist: filter.artist,
     album: filter.album,
     playlist: filter.playlist,
+    folder: filter.folder,
     query: filter.query,
     status: filter.status,
     transcript_source: filter.transcript_source,

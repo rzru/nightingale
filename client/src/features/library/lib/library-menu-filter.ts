@@ -1,7 +1,13 @@
 import type { LibraryMenuFilters } from '@/types/LibraryMenuFilters';
 import type { LibraryMenuItem } from '@/types/LibraryMenuItem';
 
-export type LibraryMenuSection = 'hot' | 'no_metadata' | 'artists' | 'albums' | 'playlists';
+export type LibraryMenuSection =
+  | 'hot'
+  | 'no_metadata'
+  | 'artists'
+  | 'albums'
+  | 'playlists'
+  | 'folders';
 
 export const EMPTY_LIBRARY_FILTER: LibraryMenuFilters = {
   artist: null,
@@ -11,6 +17,7 @@ export const EMPTY_LIBRARY_FILTER: LibraryMenuFilters = {
   status: null,
   transcript_source: null,
   search: null,
+  folder: null,
 };
 
 const HOT_FILTERS: Record<string, LibraryMenuFilters> = {
@@ -41,6 +48,8 @@ export function libraryFilterFromMenuSelection(
       return { ...EMPTY_LIBRARY_FILTER, album: item.value };
     case 'playlists':
       return { ...EMPTY_LIBRARY_FILTER, playlist: item.value };
+    case 'folders':
+      return { ...EMPTY_LIBRARY_FILTER, folder: item.value };
   }
   section satisfies never;
   return EMPTY_LIBRARY_FILTER;
@@ -48,7 +57,11 @@ export function libraryFilterFromMenuSelection(
 
 export function libraryFiltersEqual(a: LibraryMenuFilters, b: LibraryMenuFilters): boolean {
   return (
-    a.artist === b.artist && a.album === b.album && a.playlist === b.playlist && a.query === b.query
+    a.artist === b.artist &&
+    a.album === b.album &&
+    a.playlist === b.playlist &&
+    a.folder === b.folder &&
+    a.query === b.query
   );
 }
 

@@ -8,6 +8,7 @@ const INITIAL_SECTIONS_OPEN: Record<LibraryMenuSection, boolean> = {
   artists: false,
   albums: false,
   playlists: false,
+  folders: false,
 };
 
 const sidebarSectionsOpenAtom = atom<Record<LibraryMenuSection, boolean>>(INITIAL_SECTIONS_OPEN);

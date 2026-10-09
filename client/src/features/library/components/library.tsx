@@ -88,7 +88,7 @@ export const Library = () => {
   const { focus, actionsRef, setFocus, selectedSong, setSelectedSong } = useMenuFocus();
   const { setScrollContainer, resetScroll } = usePersistentScroll('songList');
   const { search } = useSearch();
-  const { artist, album, playlist, query, status, transcript_source } = useLibraryFilter();
+  const { artist, album, playlist, folder, query, status, transcript_source } = useLibraryFilter();
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useSongs();
   const [queueOpen, setQueueOpen] = useState(false);
   const view: SongListView = config?.song_list_view === 'grid' ? 'grid' : 'table';
@@ -101,6 +101,7 @@ export const Library = () => {
     artist,
     album,
     playlist,
+    folder,
     query,
     status,
     transcript_source,

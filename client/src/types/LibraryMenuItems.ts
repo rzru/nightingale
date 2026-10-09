@@ -7,4 +7,5 @@ export type LibraryMenuItems = {
   artists: Array<LibraryMenuItem>;
   albums: Array<LibraryMenuItem>;
   playlists: Array<LibraryMenuItem>;
+  folders: Array<LibraryMenuItem>;
 };

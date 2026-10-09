@@ -42,6 +42,9 @@ pub struct LibraryMenuFilters {
     pub transcript_source: Option<String>,
     #[serde(default)]
     pub search: Option<String>,
+    /// Folder path prefix (ending in a separator) from a folder menu item.
+    #[serde(default)]
+    pub folder: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

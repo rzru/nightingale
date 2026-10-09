@@ -1,6 +1,6 @@
 //! Read-side queries used by library navigation and analyzer enqueue paths.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use diesel::dsl::{case_when, exists};
 use diesel::prelude::*;
@@ -18,9 +18,8 @@ use super::connection::with_conn;
 use super::migrations::{is_song_migration_in_progress, song_migration_done, song_migration_total};
 use super::schema::{analysis_queue, library_meta, playlist_songs, playlists, songs};
 use super::sql_functions::{
-    CastInteger, CastOpen, NoCase, json_extract_text, normalize_search, search_normalize,
+    CastInteger, CastOpen, NoCase, instr, json_extract_text, normalize_search, search_normalize,
 };
-
 type SongQuery = songs::BoxedQuery<'static, Sqlite>;
 
 #[derive(Clone, Copy)]
@@ -169,6 +168,9 @@ fn filtered_songs(
         } else {
             query = query.filter(songs::album.eq(album.to_string()));
         }
+    }
+    if let Some(folder) = filters.folder.as_deref().filter(|value| !value.is_empty()) {
+        query = query.filter(instr(songs::path, folder.to_string()).eq(1));
     }
     match filters.query.as_deref() {
         Some("analysed") => query = query.filter(songs::is_analyzed.eq(true)),
@@ -499,8 +501,44 @@ impl MenuCounts {
             queued_count: self.queued,
             analysing_count: self.analyzing,
             count: self.count,
+            depth: None,
         }
     }
+}
+
+const PATH_SEPARATORS: [char; 2] = ['/', '\\'];
+
+struct FolderEntry {
+    prefix: String,
+    name: String,
+    depth: u32,
+    counts: MenuCounts,
+}
+
+/// Folders containing `path` below the library `root`, outermost first, as
+/// `(path prefix ending in its separator, folder name)`. The prefix is cut from
+/// `path` itself so it matches the stored paths' exact separators and casing.
+fn folder_prefixes<'a>(path: &'a str, root: &str) -> Vec<(&'a str, &'a str)> {
+    let root = root.trim_end_matches(PATH_SEPARATORS);
+    let Some(rest) = path.strip_prefix(root).filter(|_| !root.is_empty()) else {
+        return Vec::new();
+    };
+    if !rest.starts_with(PATH_SEPARATORS) {
+        return Vec::new();
+    }
+    let offset = path.len() - rest.len() + 1;
+    let mut folders = Vec::new();
+    let mut start = offset;
+    for (index, ch) in path[offset..].char_indices() {
+        if PATH_SEPARATORS.contains(&ch) {
+            let end = offset + index;
+            if end > start {
+                folders.push((&path[..=end], &path[start..end]));
+            }
+            start = end + 1;
+        }
+    }
+    folders
 }
 
 pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, NightingaleError> {
@@ -508,6 +546,7 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
         let song_rows = songs::table
             .left_join(analysis_queue::table.on(analysis_queue::file_hash.eq(songs::file_hash)))
             .select((
+                songs::path,
                 songs::artist,
                 songs::album,
                 songs::is_analyzed,
@@ -516,10 +555,24 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
                 analysis_queue::status.nullable(),
             ))
             .order((NoCase::new(songs::artist), NoCase::new(songs::album)))
-            .load::<(String, String, bool, bool, Option<String>, Option<String>)>(conn)?;
+            .load::<(
+                String,
+                String,
+                String,
+                bool,
+                bool,
+                Option<String>,
+                Option<String>,
+            )>(conn)?;
         let queue_statuses = analysis_queue::table
             .select(analysis_queue::status)
             .load::<String>(conn)?;
+        let root = library_meta::table
+            .find(1_i64)
+            .select(library_meta::folder)
+            .first::<String>(conn)
+            .optional()?
+            .unwrap_or_default();
 
         let mut all = MenuCounts::default();
         let mut videos = MenuCounts::default();
@@ -530,9 +583,24 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
         let mut artist_counts = HashMap::<String, MenuCounts>::new();
         let mut album_order = Vec::new();
         let mut album_counts = HashMap::<(String, String), MenuCounts>::new();
+        let mut folder_counts = BTreeMap::<Vec<(String, String)>, FolderEntry>::new();
 
-        for (artist, album, analyzed, is_video, transcript_source, status) in song_rows {
+        for (path, artist, album, analyzed, is_video, transcript_source, status) in song_rows {
             all.add(analyzed, status.as_deref());
+            let mut folder_key = Vec::new();
+            for (depth, (prefix, name)) in folder_prefixes(&path, &root).into_iter().enumerate() {
+                folder_key.push((name.to_lowercase(), name.to_string()));
+                folder_counts
+                    .entry(folder_key.clone())
+                    .or_insert_with(|| FolderEntry {
+                        prefix: prefix.to_string(),
+                        name: name.to_string(),
+                        depth: u32::try_from(depth).unwrap_or(u32::MAX),
+                        counts: MenuCounts::default(),
+                    })
+                    .counts
+                    .add(analyzed, status.as_deref());
+            }
             if is_video {
                 videos.add(analyzed, status.as_deref());
             }
@@ -579,6 +647,7 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
                 queued_count: queued_total,
                 analysing_count: analyzing_total,
                 count: all.count,
+                depth: None,
             },
             LibraryMenuItem {
                 value: "queued".into(),
@@ -587,6 +656,7 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
                 queued_count: queued_total,
                 analysing_count: analyzing_total,
                 count: queued_total + analyzing_total,
+                depth: None,
             },
             LibraryMenuItem {
                 value: "analysed".into(),
@@ -595,6 +665,7 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
                 queued_count: 0,
                 analysing_count: 0,
                 count: all.analyzed,
+                depth: None,
             },
             videos.item("videos".into(), "Videos".into()),
             usdx.item("usdx".into(), "USDX".into()),
@@ -658,12 +729,21 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
             })
             .collect();
 
+        let folders = folder_counts
+            .into_values()
+            .map(|entry| LibraryMenuItem {
+                depth: Some(entry.depth),
+                ..entry.counts.item(entry.prefix, entry.name)
+            })
+            .collect();
+
         Ok(LibraryMenuItems {
             hot,
             no_metadata,
             artists,
             albums,
             playlists,
+            folders,
         })
     })
 }

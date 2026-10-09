@@ -42,11 +42,22 @@ export const useSongsMeta = () => {
 export const useSongs = () => {
   const { data: config } = useConfig();
   const { search } = useSearch();
-  const { artist, album, playlist, query, status, transcript_source } = useLibraryFilter();
+  const { artist, album, playlist, folder, query, status, transcript_source } = useLibraryFilter();
   const sort = config?.song_list_sort ?? [];
 
   return useInfiniteQuery({
-    queryKey: [...SONGS, search, artist, album, playlist, query, status, transcript_source, sort],
+    queryKey: [
+      ...SONGS,
+      search,
+      artist,
+      album,
+      playlist,
+      folder,
+      query,
+      status,
+      transcript_source,
+      sort,
+    ],
     queryFn: ({ pageParam = 0 }: { pageParam?: number }) => {
       const params: LoadSongsParams = {
         search: search || null,
@@ -54,6 +65,7 @@ export const useSongs = () => {
           artist: artist ?? null,
           album: album ?? null,
           playlist: playlist ?? null,
+          folder,
           query: query ?? null,
           status: status ?? null,
           transcript_source: transcript_source ?? null,
