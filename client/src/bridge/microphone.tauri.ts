@@ -19,7 +19,8 @@ const enqueue = <T>(op: () => Promise<T>): Promise<T> => {
   return next;
 };
 
-const listDevices = (): Promise<MicrophoneInfo[]> => invoke<MicrophoneInfo[]>('list_microphones');
+const listDevices = (combineChannels: boolean): Promise<MicrophoneInfo[]> =>
+  invoke<MicrophoneInfo[]>('list_microphones', { combineChannels });
 
 const startCapture = (
   captureId: string,

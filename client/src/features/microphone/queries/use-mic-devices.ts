@@ -21,8 +21,11 @@ const browserMediaDevices = (): MediaDevices | undefined => {
   return navigator.mediaDevices;
 };
 
-async function listMicDevices(adapter: MicrophoneAdapter): Promise<MicDevice[]> {
-  const mics = await adapter.listDevices();
+async function listMicDevices(
+  adapter: MicrophoneAdapter,
+  combineChannels: boolean,
+): Promise<MicDevice[]> {
+  const mics = await adapter.listDevices(combineChannels);
   const seen = new Set<string>();
   return mics
     .filter(({ name, host }) => {
@@ -40,7 +43,11 @@ async function listMicDevices(adapter: MicrophoneAdapter): Promise<MicDevice[]> 
     }));
 }
 
-export function useMicDevicesQuery(adapter: MicrophoneAdapter = microphoneAdapter, enabled = true) {
+export function useMicDevicesQuery(
+  adapter: MicrophoneAdapter = microphoneAdapter,
+  enabled = true,
+  combineChannels = true,
+) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -63,8 +70,8 @@ export function useMicDevicesQuery(adapter: MicrophoneAdapter = microphoneAdapte
   }, [enabled, queryClient]);
 
   const query = useQuery({
-    queryKey: MIC_DEVICES,
-    queryFn: () => listMicDevices(adapter),
+    queryKey: [...MIC_DEVICES, combineChannels],
+    queryFn: () => listMicDevices(adapter, combineChannels),
     staleTime: MIC_DEVICE_CACHE_MS,
     cacheTime: MIC_DEVICE_CACHE_MS,
     retry: false,
@@ -76,6 +83,9 @@ export function useMicDevicesQuery(adapter: MicrophoneAdapter = microphoneAdapte
   return { ...query, data: query.data ?? EMPTY_MIC_DEVICES };
 }
 
-export function useMicDevices(adapter: MicrophoneAdapter = microphoneAdapter) {
-  return useMicDevicesQuery(adapter).data;
+export function useMicDevices(
+  adapter: MicrophoneAdapter = microphoneAdapter,
+  combineChannels = true,
+) {
+  return useMicDevicesQuery(adapter, true, combineChannels).data;
 }

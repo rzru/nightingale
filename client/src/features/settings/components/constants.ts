@@ -106,6 +106,7 @@ export const DEFAULTS = {
   batch_size: 8,
   mic_monitor_gain: 0.65,
   mic_latency_compensation_sec: DEFAULT_MIC_LATENCY_COMPENSATION_SEC,
+  combine_multi_channel: true,
   auto_analyze: false,
   master_volume: 1,
   last_background: { kind: 'built_in_shader', id: 'plasma' },
@@ -126,6 +127,7 @@ export const DEFAULTS = {
   | 'batch_size'
   | 'mic_monitor_gain'
   | 'mic_latency_compensation_sec'
+  | 'combine_multi_channel'
   | 'auto_analyze'
   | 'master_volume'
   | 'last_background'
@@ -200,7 +202,7 @@ export function getAnalysisNav(isParakeet: boolean) {
 
 export function getSettingsStops(tab: SettingsTab, isParakeet: boolean) {
   if (tab === 'general') {
-    return [3, 2, 1, 1, 2, 2, 2];
+    return [3, 2, 2, 1, 2, 2, 2];
   }
   if (tab === 'playback') {
     return [3, 2, 1, 1, 1, 1, 1, 1, 2, 2];

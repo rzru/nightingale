@@ -142,7 +142,7 @@ const browserMediaDevices = (): MediaDevices | undefined => {
   return navigator.mediaDevices;
 };
 
-const listDevices = async (): Promise<MicrophoneInfo[]> => {
+const listDevices = async (_combineChannels: boolean): Promise<MicrophoneInfo[]> => {
   const mediaDevices = browserMediaDevices();
   if (!mediaDevices) {
     throw new Error(
