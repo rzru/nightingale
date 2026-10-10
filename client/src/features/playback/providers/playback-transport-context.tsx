@@ -61,21 +61,22 @@ const TransportActionsContext = createContext<PlaybackTransportActions | null>(n
 type PlaybackTransportProviderProps = {
   fileHash: string;
   initialGuideVolume: number;
-  initialMasterVolume: number;
+  masterVolume: number;
   children: ReactNode;
 };
 
 export function PlaybackTransportProvider({
   fileHash,
   initialGuideVolume,
-  initialMasterVolume,
+  masterVolume,
   children,
 }: PlaybackTransportProviderProps) {
   const navigate = useNavigate();
-  // Snapshot the initial guide volume so changing config later doesn't
-  // re-instantiate the audio engine via useAudioPlayer's effect deps.
+  // Snapshot initial volumes so config changes don't re-instantiate the audio
+  // engine via useAudioPlayer's effect deps. Master-volume changes are applied
+  // directly to the live gain node below.
   const [initialGuideVolumeSnapshot] = useState(initialGuideVolume);
-  const [initialMasterVolumeSnapshot] = useState(initialMasterVolume);
+  const [initialMasterVolumeSnapshot] = useState(masterVolume);
 
   const [stemsReady, setStemsReady] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -122,6 +123,11 @@ export function PlaybackTransportProvider({
     { guide: initialGuideVolumeSnapshot, master: initialMasterVolumeSnapshot },
     stemsReady,
   );
+  const { setMasterVolume } = audio;
+
+  useEffect(() => {
+    setMasterVolume(masterVolume);
+  }, [masterVolume, setMasterVolume]);
 
   useEffect(() => {
     if (typeof audio.error === 'string' && audio.error !== '') {

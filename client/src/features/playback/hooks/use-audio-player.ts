@@ -37,6 +37,7 @@ export type AudioPlayer = {
   resume: () => void;
   seek: (time: number) => void;
   setGuideVolume: (v: number) => void;
+  setMasterVolume: (v: number) => void;
   cleanup: () => void;
   getVocalsBuffer: () => AudioBuffer | null;
   getScoringBuffer: () => AudioBuffer | null;
@@ -374,6 +375,14 @@ export function useAudioPlayer(
     }
   }, []);
 
+  const setMasterVolume = useCallback((v: number) => {
+    const clamped = Math.max(0, Math.min(1, v));
+
+    if (masterGainRef.current) {
+      masterGainRef.current.gain.value = clamped;
+    }
+  }, []);
+
   const cleanup = useCallback(() => {
     cancelledRef.current = true;
 
@@ -401,6 +410,7 @@ export function useAudioPlayer(
       resume,
       seek,
       setGuideVolume,
+      setMasterVolume,
       cleanup,
       getVocalsBuffer,
       getScoringBuffer,
@@ -421,6 +431,7 @@ export function useAudioPlayer(
       resume,
       seek,
       setGuideVolume,
+      setMasterVolume,
       cleanup,
       getVocalsBuffer,
       getScoringBuffer,

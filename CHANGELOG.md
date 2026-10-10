@@ -32,6 +32,7 @@ below.
 
 ### Fixes
 
+- Master volume now updates active playback, including dedicated playback windows and browser tabs.
 - Updated desktop microphone capture to CPAL 0.18.2, which fixes Windows ASIO device enumeration and stream creation from worker threads.
 - Song details now open without re-rendering every loaded song or initializing multiplayer devices.
 - Song selections now remain active while searching and after clearing the search field.

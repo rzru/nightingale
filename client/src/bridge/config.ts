@@ -1,7 +1,7 @@
 import type { AppConfig } from '@/types/AppConfig';
 
 import { updateMicMonitorGain } from './microphone';
-import { invoke } from './runtime';
+import { invoke, listen, type UnlistenFn } from './runtime';
 
 export function getPreloadedConfig(): AppConfig | undefined {
   if (typeof window === 'undefined') {
@@ -24,3 +24,14 @@ export const saveConfig = async (config: AppConfig): Promise<AppConfig> => {
 
   return saved;
 };
+
+export const onMasterVolumeChanged = async (
+  callback: (volume: number) => void,
+): Promise<UnlistenFn> =>
+  await listen<unknown>('master-volume-changed', ({ payload }) => {
+    if (typeof payload !== 'number' || !Number.isFinite(payload)) {
+      return;
+    }
+
+    callback(Math.max(0, Math.min(1, payload)));
+  });
