@@ -577,10 +577,17 @@ fn save_config_cmd(events: EventEmitter, payload: Value) -> CmdResult {
     let SaveConfigArgs { mut config } = deserialize(payload)?;
     let current = AppConfig::load();
     let was_auto_analyze = current.auto_analyze();
+    let master_volume_changed = config.master_volume != current.master_volume;
     config.desktop_window = current.desktop_window;
     config.playback_window = current.playback_window;
     config.save();
     events.0.set_monitor_gain(config.mic_monitor_gain());
+    if master_volume_changed {
+        events.emit(
+            "master-volume-changed",
+            &config.master_volume.unwrap_or(1.0),
+        );
+    }
     if config.auto_analyze() && !was_auto_analyze {
         let _ = app_core::enqueue(SongTarget::Filter {
             filters: app_core::LibraryMenuFilters::default(),
