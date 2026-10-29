@@ -9,6 +9,7 @@ mod library_model;
 mod lrc;
 mod lyrics;
 pub mod media_server;
+pub mod nge_format;
 mod playback;
 mod playback_queue;
 mod playback_session;
@@ -16,6 +17,7 @@ mod profile;
 mod scanner;
 mod secret;
 mod song;
+mod song_export;
 mod source;
 mod usdx;
 mod vendor;
@@ -61,6 +63,7 @@ pub use playback_session::{PlaybackPlayer, PlaybackSession, PlaybackSessionStore
 pub use profile::ProfileStore;
 pub use scanner::{CacheReconcileSummary, reconcile_cache, start_scan};
 pub use song::{Song, SongOrigin};
+pub use song_export::export_song_nge;
 pub use source::{
     JellyfinAuth, JellyfinSource, MediaSource, NavidromeAuth, NavidromeSource, PlexAuth,
     PlexSource, SourceKind, active_source,

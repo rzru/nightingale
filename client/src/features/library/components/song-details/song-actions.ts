@@ -4,8 +4,10 @@ import {
   ImageIcon,
   LanguagesIcon,
   MicIcon,
+  PackageIcon,
   PencilLineIcon,
   RefreshCwIcon,
+  ScrollTextIcon,
   Trash2Icon,
   XCircleIcon,
 } from 'lucide-react';
@@ -14,6 +16,18 @@ import type { Song } from '@/types/Song';
 
 import type { SongStatusInfo } from '../song/song-status';
 import type { ActionItemProps } from './action-item';
+
+function bundleActionCaps(
+  song: Song,
+  status: SongStatusInfo,
+): { canExport: boolean; canViewLyrics: boolean } {
+  const isNge = song.path.toLowerCase().endsWith('.nge');
+  const ready = status.isReady === true;
+  return {
+    canExport: ready && song.origin.kind === 'local_file' && !isNge,
+    canViewLyrics: ready && isNge,
+  };
+}
 
 type AnalysisHandler = (fileHash: string) => void | Promise<void>;
 
@@ -36,6 +50,8 @@ type BuildActionGroupsParams = {
   analysis: AnalysisHandlers;
   onEditLyrics: () => void;
   onChangeLanguage: () => void;
+  onExport: () => void;
+  onViewLyrics: () => void;
   run: (
     message: string,
     action: () => void | boolean | undefined | Promise<void | boolean | undefined>,
@@ -51,11 +67,14 @@ export function buildActionGroups({
   analysis,
   onEditLyrics,
   onChangeLanguage,
+  onExport,
+  onViewLyrics,
   run,
 }: BuildActionGroupsParams): ActionItemProps[][] {
   const groups: ActionItemProps[][] = [];
 
   const supportsProvideLyrics = song.transcript_source !== 'Usdx';
+  const { canExport, canViewLyrics } = bundleActionCaps(song, status);
 
   if (status.isReady !== true) {
     const notReadyGroup: ActionItemProps[] = [
@@ -88,6 +107,17 @@ export function buildActionGroups({
     }
 
     groups.push(notReadyGroup);
+  }
+
+  if (canViewLyrics) {
+    groups.push([
+      {
+        icon: ScrollTextIcon,
+        title: 'View lyrics',
+        description: 'Show the lyrics for this song (read-only).',
+        onClick: onViewLyrics,
+      },
+    ]);
   }
 
   if (supportsAnalysisActions) {
@@ -186,6 +216,17 @@ export function buildActionGroups({
         onClick: run(`Cache deleted for "${song.title}"`, () =>
           analysis.deleteSongCache(song.file_hash),
         ),
+      },
+    ]);
+  }
+
+  if (canExport) {
+    groups.push([
+      {
+        icon: PackageIcon,
+        title: 'Export (.nge)',
+        description: 'Create a single-file bundle of this song.',
+        onClick: onExport,
       },
     ]);
   }

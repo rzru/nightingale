@@ -19,6 +19,7 @@ export type DialogMode =
   | 'plex-connect'
   | { mode: 'language'; song: Song }
   | { mode: 'edit-lyrics'; song: Song }
+  | { mode: 'view-lyrics'; song: Song }
   | { mode: 'song-leaderboard'; song: Song }
   | { mode: 'clear-cache'; target: ClearCacheTarget }
   | null;

@@ -27,6 +27,23 @@ type SongDetailsSidebarProps = {
   onClose: () => void;
 };
 
+function deriveAnalysisCaps(
+  song: Song,
+  isReady: boolean,
+  keyPending: boolean,
+): { supportsShifts: boolean; supportsAnalysisActions: boolean } {
+  if (song.path.toLowerCase().endsWith('.nge')) {
+    return {
+      supportsShifts: song.is_analyzed && song.transcript_source !== 'Usdx' && !keyPending,
+      supportsAnalysisActions: false,
+    };
+  }
+  return {
+    supportsShifts: song.is_analyzed && song.transcript_source !== 'Usdx' && !keyPending,
+    supportsAnalysisActions: isReady && song.transcript_source !== 'Usdx',
+  };
+}
+
 type AddToQueueButtonProps = {
   song: Song;
   tempo: number;
@@ -69,8 +86,11 @@ export const SongDetailsSidebar = ({ song, queueStatus, onClose }: SongDetailsSi
   // key/tempo section as pending rather than showing controls.
   const keyPending =
     song.is_analyzed && song.transcript_source === 'Lrc' && song.no_stems && song.key === null;
-  const supportsShifts = song.is_analyzed && song.transcript_source !== 'Usdx' && !keyPending;
-  const supportsAnalysisActions = status.isReady === true && song.transcript_source !== 'Usdx';
+  const { supportsShifts, supportsAnalysisActions } = deriveAnalysisCaps(
+    song,
+    status.isReady === true,
+    keyPending,
+  );
   const playbackDisabled = status.isReady !== true || preparingPlayback;
 
   // Off-queue key detection doesn't invalidate any query, so poll the song list

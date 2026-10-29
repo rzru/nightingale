@@ -61,6 +61,20 @@ impl PixabayVideoDownloaded {
 }
 
 pub fn load_transcript(file_hash: &str) -> Result<Value, NightingaleError> {
+    if let Some(song) = library_db::load_song_by_hash(file_hash).ok().flatten()
+        && song_is_nge(&song)
+    {
+        let cache = CacheDir::new();
+        let cached = resolve_transcript_path(&cache, file_hash);
+        if cached.is_file() {
+            let data = std::fs::read_to_string(&cached)?;
+            return Ok(serde_json::from_str(&data)?);
+        }
+        let nge = crate::nge_format::NgeFile::open(&song.path)?;
+        let bytes = nge.read_entry("transcript.json")?;
+        return Ok(serde_json::from_slice(&bytes)?);
+    }
+
     let cache = CacheDir::new();
     let path = resolve_transcript_path(&cache, file_hash);
     let data = std::fs::read_to_string(&path)?;
@@ -127,9 +141,61 @@ fn resolve_original_media(song: &Song, cache: &CacheDir) -> String {
     }
 }
 
+pub(crate) fn song_is_nge(song: &Song) -> bool {
+    song.path
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("nge"))
+}
+
+fn nge_audio_paths(song: &Song, file_hash: &str) -> Option<AudioPaths> {
+    let nge = crate::nge_format::NgeFile::open(&song.path).ok()?;
+    let url = |entry: &str| format!("nge://{file_hash}/{entry}");
+    let find = |prefix: &str| {
+        nge.manifest
+            .entries
+            .iter()
+            .find(|e| e.name.starts_with(prefix))
+            .map(|e| e.name.clone())
+    };
+
+    if !song.no_stems
+        && let (Some(inst), Some(voc)) = (find("instrumental."), find("vocals."))
+    {
+        return Some(AudioPaths {
+            instrumental: url(&inst),
+            vocals: Some(url(&voc)),
+        });
+    }
+
+    let audio_entry = find("audio.")?;
+    Some(AudioPaths {
+        instrumental: url(&audio_entry),
+        vocals: None,
+    })
+}
+
 pub fn get_audio_paths(file_hash: &str) -> AudioPaths {
     let cache = CacheDir::new();
     if let Some(song) = library_db::load_song_by_hash(file_hash).ok().flatten() {
+        if song_is_nge(&song) {
+            let tempo = normalize_tempo(song.tempo);
+            if let Some(key) = song.override_key.as_ref().or(song.key.as_ref())
+                && !is_base_original_selection(&song, key, tempo)
+            {
+                let vi = cache.variant_instrumental_path(file_hash, key, tempo);
+                let vv = cache.variant_vocals_path(file_hash, key, tempo);
+                if vi.is_file() && vv.is_file() {
+                    return AudioPaths {
+                        instrumental: vi.to_string_lossy().into_owned(),
+                        vocals: Some(vv.to_string_lossy().into_owned()),
+                    };
+                }
+            }
+            if let Some(paths) = nge_audio_paths(&song, file_hash) {
+                return paths;
+            }
+        }
         if song.no_stems {
             let tempo = normalize_tempo(song.tempo);
             if let Some(key) = song.override_key.as_ref().or(song.key.as_ref())
@@ -259,6 +325,13 @@ pub fn ensure_playable_source_video(file_hash: &str) -> Result<Option<String>, N
 
     if !song.is_video && song.usdx.as_ref().and_then(|b| b.video.as_ref()).is_none() {
         return Ok(None);
+    }
+
+    if song_is_nge(&song)
+        && let Ok(nge) = crate::nge_format::NgeFile::open(&song.path)
+        && nge.manifest.entry("video.mp4").is_some()
+    {
+        return Ok(Some(format!("nge://{file_hash}/video.mp4")));
     }
 
     let cache = CacheDir::new();
@@ -417,6 +490,58 @@ fn run_rubberband_pair_parallel(
     Ok(())
 }
 
+fn extract_nge_entry(
+    nge: &crate::nge_format::NgeFile,
+    name: &str,
+    path: &Path,
+) -> Result<(), NightingaleError> {
+    let temporary = path.with_extension("part");
+    let result = nge
+        .copy_entry(name, std::fs::File::create(&temporary)?)
+        .and_then(|()| std::fs::rename(&temporary, path).map_err(NightingaleError::from));
+    if result.is_err() {
+        let _ = std::fs::remove_file(temporary);
+    }
+    result
+}
+
+fn ensure_nge_base_in_cache(song: &Song, cache: &CacheDir) -> Result<(), NightingaleError> {
+    if !song_is_nge(song) {
+        return Ok(());
+    }
+    let hash = &song.file_hash;
+    let inst = cache.instrumental_path(hash);
+    let voc = cache.vocals_path(hash);
+    let transcript = cache.transcript_path(hash);
+    if inst.is_file() && voc.is_file() && transcript.is_file() {
+        return Ok(());
+    }
+
+    let nge = crate::nge_format::NgeFile::open(&song.path)?;
+    let find = |prefix: &str| {
+        nge.manifest
+            .entries
+            .iter()
+            .find(|e| e.name.starts_with(prefix))
+            .map(|e| e.name.clone())
+    };
+    let (Some(inst_entry), Some(voc_entry)) = (find("instrumental."), find("vocals.")) else {
+        return Err(NightingaleError::Other(
+            "this .nge has no separated stems to shift".into(),
+        ));
+    };
+    if !inst.is_file() {
+        extract_nge_entry(&nge, &inst_entry, &inst)?;
+    }
+    if !voc.is_file() {
+        extract_nge_entry(&nge, &voc_entry, &voc)?;
+    }
+    if !transcript.is_file() && nge.manifest.entry("transcript.json").is_some() {
+        extract_nge_entry(&nge, "transcript.json", &transcript)?;
+    }
+    Ok(())
+}
+
 fn resolve_canonical_stems_for_key(
     cache: &CacheDir,
     file_hash: &str,
@@ -557,7 +682,7 @@ pub fn ensure_mp3_stems(file_hash: &str) -> Result<(), NightingaleError> {
     let cache = CacheDir::new();
 
     if let Some(song) = library_db::load_song_by_hash(file_hash).ok().flatten() {
-        if song.usdx.is_some() {
+        if song.usdx.is_some() || song_is_nge(&song) {
             return Ok(());
         }
         // LRC-provided songs without separation have no stems to convert; they
@@ -671,6 +796,8 @@ pub fn shift_key(
             tempo: target_tempo,
         });
     }
+    ensure_nge_base_in_cache(&song, &cache)?;
+
     let canonical_target_exists = canonical_target_inst.is_file() && canonical_target_voc.is_file();
     let target_is_original_key = song.key.as_deref() == Some(target_key.as_str());
     let canonical_for_target = if target_is_original_key && !canonical_target_exists {
@@ -783,6 +910,8 @@ pub fn shift_tempo(file_hash: &str, tempo: f64) -> Result<ShiftResult, Nightinga
         library_db::update_song_fields(file_hash, &song).map_err(|e| e.to_string())?;
         return Ok(ShiftResult { key, tempo: 1.0 });
     }
+    ensure_nge_base_in_cache(&song, &cache)?;
+
     let source_tempo = 1.0;
     let tempo_ratio = target_tempo / source_tempo;
     let target_inst = cache.variant_instrumental_path(file_hash, &key, target_tempo);

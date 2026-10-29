@@ -4,6 +4,7 @@ import type { AudioPaths } from '@/types/Transcript';
 import {
   ensureMp3Stems as tauriEnsureMp3Stems,
   ensurePlayableSourceVideo as tauriEnsurePlayableSourceVideo,
+  exportSongNge as tauriExportSongNge,
   fetchPixabayVideos as tauriFetchPixabayVideos,
   getAudioPaths as tauriRawGetAudioPaths,
   getMediaEndpoint as tauriGetMediaEndpoint,
@@ -102,6 +103,7 @@ export const playbackAdapter: PlaybackAdapter = isTauri ? tauriPlaybackAdapter :
 export const loadTranscript = tauriLoadTranscript;
 export const ensureMp3Stems = tauriEnsureMp3Stems;
 export const ensurePlayableSourceVideo = tauriEnsurePlayableSourceVideo;
+export const exportSongNge = tauriExportSongNge;
 export const fetchPixabayVideos = tauriFetchPixabayVideos;
 export const onStemsReady = tauriOnStemsReady;
 export const onPixabayVideoDownloaded = tauriOnPixabayVideoDownloaded;

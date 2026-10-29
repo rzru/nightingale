@@ -19,6 +19,10 @@ export const ensurePlayableSourceVideo = async (fileHash: string): Promise<strin
   return await invoke<string | null>('ensure_playable_source_video', { fileHash });
 };
 
+export const exportSongNge = async (fileHash: string, destDir: string): Promise<string> => {
+  return await invoke<string>('export_song_nge', { fileHash, destDir });
+};
+
 export type StemsReadyEvent = {
   file_hash: string;
   error: string | null;

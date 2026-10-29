@@ -5,7 +5,7 @@ import { cn } from '@/shared/utils/cn';
 import { formatSeconds } from '@/shared/utils/format-duration';
 
 import { AlbumArt } from '../../song/album-art';
-import { LanguageBadge } from '../../song/language-badge';
+import { LanguageBadge, NgeBadge } from '../../song/language-badge';
 import { StatusBadge } from '../../song/status-badge';
 import type { SongItemProps } from '../types';
 
@@ -42,6 +42,7 @@ export const SongGridCard = memo(
           </span>
           <div className="flex items-center gap-1">
             <LanguageBadge language={song.language} />
+            <NgeBadge song={song} />
             <StatusBadge song={song} queueStatus={queueStatus} />
           </div>
         </div>

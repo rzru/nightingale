@@ -310,6 +310,134 @@ pub(crate) fn build_song(
     })
 }
 
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub(crate) struct NgeSongMeta {
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub duration_secs: f64,
+    #[serde(default = "default_true")]
+    pub is_analyzed: bool,
+    #[serde(default)]
+    pub language: Option<String>,
+    #[serde(default)]
+    pub transcript_source: Option<TranscriptSource>,
+    #[serde(default)]
+    pub key: Option<String>,
+    #[serde(default)]
+    pub override_key: Option<String>,
+    #[serde(default = "default_tempo")]
+    pub tempo: f64,
+    #[serde(default)]
+    pub key_offset: i32,
+    #[serde(default)]
+    pub is_video: bool,
+    #[serde(default)]
+    pub no_stems: bool,
+}
+
+impl NgeSongMeta {
+    pub(crate) fn from_song(song: &Song) -> Self {
+        Self {
+            title: song.title.clone(),
+            artist: song.artist.clone(),
+            album: song.album.clone(),
+            duration_secs: song.duration_secs,
+            is_analyzed: song.is_analyzed,
+            language: song.language.clone(),
+            transcript_source: song.transcript_source,
+            key: song.key.clone(),
+            override_key: song.override_key.clone(),
+            tempo: song.tempo,
+            key_offset: song.key_offset,
+            is_video: song.is_video,
+            no_stems: song.no_stems,
+        }
+    }
+}
+
+pub(crate) fn build_nge_song(path: &Path, cache: &CacheDir) -> Result<Song, NightingaleError> {
+    let nge = crate::nge_format::NgeFile::open(path)?;
+    nge.validate()?;
+    let meta: NgeSongMeta = serde_json::from_value(nge.manifest.metadata.clone())?;
+    let entry_count = |prefix: &str| {
+        nge.manifest
+            .entries
+            .iter()
+            .filter(|entry| entry.name.starts_with(prefix))
+            .count()
+    };
+
+    if !meta.duration_secs.is_finite()
+        || meta.duration_secs < 0.0
+        || !meta.tempo.is_finite()
+        || meta.tempo != 1.0
+        || meta.override_key.is_some()
+        || meta.key_offset != 0
+    {
+        return Err(NightingaleError::Other(
+            "nge: invalid base song metadata".into(),
+        ));
+    }
+    if (meta.no_stems && entry_count("audio.") != 1)
+        || (!meta.no_stems && (entry_count("instrumental.") != 1 || entry_count("vocals.") != 1))
+    {
+        return Err(NightingaleError::Other(
+            "nge: audio entries do not match the metadata".into(),
+        ));
+    }
+    if meta.is_video && nge.manifest.entry("video.mp4").is_none() {
+        return Err(NightingaleError::Other(
+            "nge: video metadata requires video.mp4".into(),
+        ));
+    }
+    if meta.is_analyzed {
+        let transcript = nge.read_entry("transcript.json")?;
+        serde_json::from_slice::<serde_json::Value>(&transcript)?;
+    }
+
+    Ok(Song {
+        path: path.to_path_buf(),
+        file_hash: compute_file_hash(path)?,
+        title: meta.title,
+        artist: meta.artist,
+        album: meta.album,
+        duration_secs: meta.duration_secs,
+        album_art_path: extract_nge_cover(&nge, cache),
+        is_analyzed: meta.is_analyzed,
+        language: meta.language,
+        transcript_source: meta.transcript_source,
+        key: meta.key,
+        override_key: meta.override_key,
+        tempo: meta.tempo,
+        key_offset: meta.key_offset,
+        is_video: meta.is_video,
+        usdx: None,
+        origin: SongOrigin::LocalFile,
+        no_stems: meta.no_stems,
+    })
+}
+
+fn extract_nge_cover(nge: &crate::nge_format::NgeFile, cache: &CacheDir) -> Option<PathBuf> {
+    let name = nge
+        .manifest
+        .entries
+        .iter()
+        .find(|e| e.name.starts_with("cover."))
+        .map(|e| e.name.clone())?;
+    let bytes = nge.read_entry(&name).ok()?;
+    let cover_hash = blake3::hash(&bytes).to_hex()[..32].to_string();
+    let path = cache.cover_path(&cover_hash);
+    if !path.exists() {
+        std::fs::write(&path, &bytes).ok()?;
+    }
+    Some(path)
+}
+
 pub(crate) fn read_transcript_meta(cache: &CacheDir, hash: &str) -> TranscriptMetaInfo {
     try_read_transcript_meta(cache, hash).unwrap_or(TranscriptMetaInfo {
         source: TranscriptSource::Generated,
