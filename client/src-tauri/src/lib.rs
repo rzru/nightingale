@@ -1,7 +1,6 @@
 mod backgrounds;
 mod logging;
 mod microphones;
-mod nge_export;
 
 use std::{
     collections::HashMap,
@@ -14,7 +13,6 @@ use app_core::{AppConfig, SongsStore, WindowState};
 use backgrounds::import_custom_background;
 use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
 use microphones::{list_microphones, set_monitor_gain, start_mic_capture, stop_mic_capture};
-use nge_export::export_song_nge;
 use serde_json::Value;
 use tauri::{
     AppHandle, Emitter, Manager, PhysicalSize, RunEvent, WebviewWindow, WebviewWindowBuilder,
@@ -232,7 +230,6 @@ pub fn run() {
             list_microphones,
             start_mic_capture,
             stop_mic_capture,
-            export_song_nge,
         ])
         .setup(|app| {
             let _ = dotenvy::dotenv();

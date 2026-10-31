@@ -4,7 +4,7 @@ import type { AudioPaths } from '@/types/Transcript';
 import {
   ensureMp3Stems as tauriEnsureMp3Stems,
   ensurePlayableSourceVideo as tauriEnsurePlayableSourceVideo,
-  exportSongNge as tauriExportSongNge,
+  exportSongNge as invokeExportSongNge,
   fetchPixabayVideos as tauriFetchPixabayVideos,
   getAudioPaths as tauriRawGetAudioPaths,
   getMediaEndpoint as tauriGetMediaEndpoint,
@@ -13,6 +13,7 @@ import {
   onStemsReady as tauriOnStemsReady,
 } from './playback.tauri';
 import { isTauri } from './runtime';
+import { selectFolderPath } from './source';
 
 export type { PixabayVideoDownloaded, StemsReadyEvent } from './playback.tauri';
 
@@ -98,12 +99,39 @@ export const webPlaybackAdapter: PlaybackAdapter = {
 
 export const playbackAdapter: PlaybackAdapter = isTauri ? tauriPlaybackAdapter : webPlaybackAdapter;
 
+const downloadWebExport = (path: string): void => {
+  const anchor = document.createElement('a');
+  anchor.href = `${webToMediaUrl(path)}&download=true`;
+  anchor.download = path.split(/[/\\]/).pop() ?? 'song.nge';
+  anchor.hidden = true;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+};
+
+export type SongExportResult = {
+  path: string;
+  delivery: 'download' | 'filesystem';
+};
+
+export const exportSongNge = async (fileHash: string): Promise<SongExportResult | undefined> => {
+  const destDir = isTauri ? await selectFolderPath() : undefined;
+  if (isTauri && destDir === undefined) {
+    return undefined;
+  }
+
+  const path = await invokeExportSongNge(fileHash, destDir);
+  if (!isTauri) {
+    downloadWebExport(path);
+  }
+  return { path, delivery: isTauri ? 'filesystem' : 'download' };
+};
+
 // ─── Re-exports for command/event call sites ─────────────────────────────
 
 export const loadTranscript = tauriLoadTranscript;
 export const ensureMp3Stems = tauriEnsureMp3Stems;
 export const ensurePlayableSourceVideo = tauriEnsurePlayableSourceVideo;
-export const exportSongNge = tauriExportSongNge;
 export const fetchPixabayVideos = tauriFetchPixabayVideos;
 export const onStemsReady = tauriOnStemsReady;
 export const onPixabayVideoDownloaded = tauriOnPixabayVideoDownloaded;

@@ -222,8 +222,8 @@ fn resolve_within_allowed_roots(input: &Path) -> Option<PathBuf> {
 /// Directories a local-file media request may resolve into. The desktop
 /// server's `/local/` route and the self-hosted `/api/asset` and `/media`
 /// routes all check against this one list, so the media routes cannot drift
-/// apart on which folders they serve. (Album art on desktop goes through the
-/// Tauri asset protocol instead, whose scope is configured separately.)
+/// apart on which folders they serve. Album art uses this route too, avoiding
+/// custom-protocol cross-origin restrictions in desktop webviews.
 ///
 /// The songs and videos caches default to subfolders of the data folder, but
 /// `cache_paths` in the config relocates each one independently, so a
@@ -330,33 +330,12 @@ fn serve_nge_entry(request: Request, file_hash: &str, entry_name: &str) {
         return;
     };
 
-    let song = match library_db::load_song_by_hash(&file_hash) {
-        Ok(Some(s)) => s,
+    let region = match crate::nge_format::resolve_entry_region(&file_hash, &entry_name) {
+        Ok(Some(region)) => region,
         Ok(None) => {
             let _ = request.respond(with_cors(not_found("song not found")));
             return;
         }
-        Err(e) => {
-            warn!("[media_server] nge song lookup failed: {e}");
-            let _ = request.respond(with_cors(server_error("lookup")));
-            return;
-        }
-    };
-
-    if !song
-        .path
-        .to_string_lossy()
-        .to_ascii_lowercase()
-        .ends_with(".nge")
-    {
-        let _ = request.respond(with_cors(bad_request("song is not .nge-backed")));
-        return;
-    }
-
-    let region =
-        crate::nge_format::NgeFile::open(&song.path).and_then(|nge| nge.entry_region(&entry_name));
-    let (offset, length) = match region {
-        Ok(region) => region,
         Err(e) => {
             warn!("[media_server] nge read failed for {file_hash}/{entry_name}: {e}");
             let _ = request.respond(with_cors(server_error("nge read")));
@@ -365,7 +344,7 @@ fn serve_nge_entry(request: Request, file_hash: &str, entry_name: &str) {
     };
 
     let mime = mime_for_path(Path::new(&entry_name));
-    serve_file_region(request, &song.path, offset, length, mime);
+    serve_file_region(request, &region.path, region.offset, region.length, mime);
 }
 
 fn sanitize_entry_name(raw: &str) -> Option<String> {

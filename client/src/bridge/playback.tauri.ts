@@ -19,8 +19,9 @@ export const ensurePlayableSourceVideo = async (fileHash: string): Promise<strin
   return await invoke<string | null>('ensure_playable_source_video', { fileHash });
 };
 
-export const exportSongNge = async (fileHash: string, destDir: string): Promise<string> => {
-  return await invoke<string>('export_song_nge', { fileHash, destDir });
+export const exportSongNge = async (fileHash: string, destDir?: string): Promise<string> => {
+  const args = destDir === undefined ? { fileHash } : { fileHash, destDir };
+  return await invoke<string>('export_song_nge', args);
 };
 
 export type StemsReadyEvent = {

@@ -15,8 +15,12 @@ below.
 
 ### Features
 
-- `.nge` song bundles are now a first-class library format — a single file (a plain ZIP archive with a `.nge` extension) holding a song's stems, cover, synced lyrics, transcript, and optional video. Move a `.nge` into your library folder and Nightingale registers it as an already-analyzed song and plays it (stems, guide vocal, cover, lyrics, video) **directly from the bundle without unpacking or reconverting its stems**. A `.nge` is a read-only bundle, so the mutating analysis actions (reanalyze, realign, edit lyrics) are hidden while key/tempo shift keeps working; a read-only **View lyrics** action and an **NGE** tag next to the song's language mark it.
-- Added a per-song **Export (.nge)** action (analyzed local songs only; hidden for songs that are already `.nge`). Exported files are named `<artist>_<title>_<id>.nge`; when a song has separated stems the redundant original mix is left out, roughly halving bundle size with no quality loss. Bundle creation streams media to disk so large source videos do not block the app or exhaust memory, and always captures the original key and speed even when playback controls are shifted.
+- `.nge` song bundles are now a first-class library format — a single file (a plain ZIP archive with a `.nge` extension) holding a song's stems, cover, synced lyrics, transcript, and optional video. Move a `.nge` into your library folder and Nightingale registers it as an already-analyzed song and plays it on desktop and self-hosted web (stems, guide vocal, cover, lyrics, video) **directly from the bundle without unpacking or reconverting its stems**. A `.nge` is a read-only bundle, so the mutating analysis actions (reanalyze, realign, edit lyrics) are hidden while key/tempo shift keeps working; a read-only **View lyrics** action and an **NGE** tag next to the song's language mark it.
+- Added a per-song **Export (.nge)** action (analyzed local songs only; hidden for songs that are already `.nge`). Exported files are named `<artist>_<title>_<id>.nge`; when a song has separated stems the redundant original mix is left out, roughly halving bundle size with no quality loss. Bundle creation streams media to disk so large source videos do not block the app or exhaust memory, always captures the original key and speed even when playback controls are shifted, and downloads directly in self-hosted web while desktop users choose a destination folder.
+
+### Fixes
+
+- Desktop cover thumbnails now load through the authenticated local media server instead of a custom URL scheme that some webviews block as cross-origin.
 
 ## [1.3.0] - 2026-10-15
 

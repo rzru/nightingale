@@ -15,6 +15,18 @@ const MAX_MANIFEST_BYTES: u64 = 1024 * 1024;
 const MAX_MEMORY_ENTRY_BYTES: u64 = 16 * 1024 * 1024;
 const MAX_ENTRIES: usize = 32;
 
+fn valid_file_hash(value: &str) -> bool {
+    value.len() == 32 && value.chars().all(|character| character.is_ascii_hexdigit())
+}
+
+fn valid_entry_name(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 64
+        && value.chars().all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-')
+        })
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ManifestEntry {
     pub name: String,
@@ -111,6 +123,44 @@ pub struct NgeFile {
     pub manifest: Manifest,
 }
 
+pub struct NgeEntryRegion {
+    pub path: PathBuf,
+    pub offset: u64,
+    pub length: u64,
+}
+
+pub fn resolve_entry_region(
+    file_hash: &str,
+    entry_name: &str,
+) -> Result<Option<NgeEntryRegion>, NightingaleError> {
+    if !valid_file_hash(file_hash) {
+        return Err(nge_err("invalid source file hash"));
+    }
+    if !valid_entry_name(entry_name) {
+        return Err(nge_err("invalid entry name"));
+    }
+
+    let Some(song) = crate::library_db::load_song_by_hash(file_hash)? else {
+        return Ok(None);
+    };
+    if !song
+        .path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("nge"))
+    {
+        return Ok(None);
+    }
+
+    let nge = NgeFile::open(&song.path)?;
+    let (offset, length) = nge.entry_region(entry_name)?;
+    Ok(Some(NgeEntryRegion {
+        path: song.path,
+        offset,
+        length,
+    }))
+}
+
 fn open_archive(path: &Path) -> Result<ZipArchive<File>, NightingaleError> {
     ZipArchive::new(File::open(path)?).map_err(zip_err)
 }
@@ -145,25 +195,13 @@ impl NgeFile {
         if self.manifest.entries.len() > MAX_ENTRIES {
             return Err(nge_err("too many entries"));
         }
-        if self.manifest.file_hash.len() != 32
-            || !self
-                .manifest
-                .file_hash
-                .chars()
-                .all(|character| character.is_ascii_hexdigit())
-        {
+        if !valid_file_hash(&self.manifest.file_hash) {
             return Err(nge_err("invalid source file hash"));
         }
 
         let mut names = HashSet::new();
         for entry in &self.manifest.entries {
-            if entry.name.is_empty()
-                || entry.name.len() > 64
-                || !entry.name.chars().all(|character| {
-                    character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-')
-                })
-                || !names.insert(entry.name.as_str())
-            {
+            if !valid_entry_name(&entry.name) || !names.insert(entry.name.as_str()) {
                 return Err(nge_err(format!(
                     "invalid or duplicate entry name {}",
                     entry.name

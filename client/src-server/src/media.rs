@@ -1,11 +1,13 @@
+use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
 
 use axum::{
-    body::Body,
+    body::{Body, Bytes},
     extract::{Path as AxumPath, Query, State},
     http::{header, HeaderMap, HeaderValue, Request, Response, StatusCode},
 };
 use serde::Deserialize;
+use tokio::io::{AsyncReadExt, AsyncSeekExt};
 use tower::ServiceExt;
 use tower_http::services::ServeFile;
 
@@ -36,18 +38,33 @@ impl ResolvedPath {
 #[derive(Deserialize)]
 pub(crate) struct AssetQuery {
     path: String,
+    #[serde(default)]
+    download: bool,
 }
 
-/// Path-keyed file route used for media that does not have a stable hash key
-/// (Pixabay backgrounds, ffmpeg-transcoded source videos, etc.). Every path
-/// is canonicalised against the allowed roots before serving.
+/// Path-keyed route for regular media files and virtual entries inside `.nge`
+/// bundles. Files are canonicalised against the allowed roots; bundle entries
+/// are resolved by their library hash and validated manifest name.
 pub(crate) async fn handle_asset(
     State(_state): State<AppState>,
     Query(query): Query<AssetQuery>,
     headers: HeaderMap,
     request: Request<Body>,
 ) -> Response<Body> {
-    serve(query.path.as_ref(), headers, request).await
+    let response = if let Some(value) = query.path.strip_prefix("nge://") {
+        let Some((hash, entry)) = value.split_once('/') else {
+            return response(StatusCode::BAD_REQUEST, Body::from("invalid bundle path"));
+        };
+        serve_nge(hash, entry, headers).await
+    } else {
+        serve(query.path.as_ref(), headers, request).await
+    };
+
+    if query.download {
+        as_attachment(response)
+    } else {
+        response
+    }
 }
 
 /// Hash-keyed route for song stems and source video. The browser never sees
@@ -71,6 +88,112 @@ pub(crate) async fn handle_hashed(
     };
 
     serve(Path::new(&path), headers, request).await
+}
+
+async fn serve_nge(hash: &str, entry: &str, headers: HeaderMap) -> Response<Body> {
+    let hash = hash.to_owned();
+    let entry = entry.to_owned();
+    let region = match tokio::task::spawn_blocking({
+        let entry = entry.clone();
+        move || app_core::nge_format::resolve_entry_region(&hash, &entry)
+    })
+    .await
+    {
+        Ok(Ok(Some(region))) => region,
+        Ok(Ok(None)) => return not_found("song not found"),
+        Ok(Err(error)) => {
+            tracing::warn!("nge media resolve error: {error}");
+            return not_found("bundle entry not found");
+        }
+        Err(error) => {
+            tracing::warn!("nge media task failed: {error}");
+            return response(StatusCode::INTERNAL_SERVER_ERROR, Body::empty());
+        }
+    };
+
+    let range = headers
+        .get(header::RANGE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| parse_range(value, region.length));
+    let (status, start, end, length) = match range {
+        Some((start, end)) => (
+            StatusCode::PARTIAL_CONTENT,
+            start,
+            Some(end),
+            end - start + 1,
+        ),
+        None => (StatusCode::OK, 0, None, region.length),
+    };
+    let Some(position) = region.offset.checked_add(start) else {
+        return response(StatusCode::RANGE_NOT_SATISFIABLE, Body::empty());
+    };
+
+    let mut file = match tokio::fs::File::open(region.path).await {
+        Ok(file) => file,
+        Err(_) => return not_found("bundle not found"),
+    };
+    if file.seek(SeekFrom::Start(position)).await.is_err() {
+        return response(StatusCode::INTERNAL_SERVER_ERROR, Body::empty());
+    }
+
+    let stream =
+        futures_util::stream::try_unfold((file, length), |(mut file, remaining)| async move {
+            if remaining == 0 {
+                return Ok(None);
+            }
+            let mut bytes = vec![0; remaining.min(64 * 1024) as usize];
+            let count = file.read(&mut bytes).await?;
+            if count == 0 {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::UnexpectedEof,
+                    "bundle entry ended early",
+                ));
+            }
+            bytes.truncate(count);
+            Ok(Some((Bytes::from(bytes), (file, remaining - count as u64))))
+        });
+    let mut response = Response::new(Body::from_stream(stream));
+    *response.status_mut() = status;
+    let response_headers = response.headers_mut();
+    response_headers.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_str(
+            mime_guess::from_path(entry)
+                .first_or_octet_stream()
+                .as_ref(),
+        )
+        .unwrap_or_else(|_| HeaderValue::from_static("application/octet-stream")),
+    );
+    if let Ok(value) = HeaderValue::from_str(&length.to_string()) {
+        response_headers.insert(header::CONTENT_LENGTH, value);
+    }
+    response_headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
+    if let Some(end) = end {
+        if let Ok(value) = HeaderValue::from_str(&format!("bytes {start}-{end}/{}", region.length))
+        {
+            response_headers.insert(header::CONTENT_RANGE, value);
+        }
+    }
+    annotate_audio(response)
+}
+
+fn parse_range(value: &str, length: u64) -> Option<(u64, u64)> {
+    if length == 0 {
+        return None;
+    }
+    let (start, end) = value.strip_prefix("bytes=")?.split_once('-')?;
+    if start.is_empty() {
+        let suffix = end.parse::<u64>().ok()?;
+        return (suffix > 0).then(|| (length.saturating_sub(suffix), length - 1));
+    }
+
+    let start = start.parse::<u64>().ok()?;
+    let end = if end.is_empty() {
+        length - 1
+    } else {
+        end.parse::<u64>().ok()?.min(length - 1)
+    };
+    (start <= end).then_some((start, end))
 }
 
 async fn serve(path: &Path, _headers: HeaderMap, request: Request<Body>) -> Response<Body> {
@@ -101,6 +224,14 @@ fn annotate_audio(mut response: Response<Body>) -> Response<Body> {
     headers
         .entry(header::X_CONTENT_TYPE_OPTIONS)
         .or_insert_with(|| HeaderValue::from_static("nosniff"));
+    response
+}
+
+fn as_attachment(mut response: Response<Body>) -> Response<Body> {
+    response.headers_mut().insert(
+        header::CONTENT_DISPOSITION,
+        HeaderValue::from_static("attachment"),
+    );
     response
 }
 

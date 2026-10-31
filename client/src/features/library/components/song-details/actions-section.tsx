@@ -3,7 +3,6 @@ import { Fragment } from 'react';
 import { toast } from 'sonner';
 
 import { exportSongNge } from '@/bridge/playback';
-import { selectFolderPath } from '@/bridge/source';
 import { useAnalysis } from '@/features/library/hooks/use-analysis';
 import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useProfiles } from '@/features/profiles/queries/use-profiles';
@@ -46,13 +45,13 @@ export const ActionsSection = ({
   const hasScores = profiles?.scores.some((score) => score.song_hash === song.file_hash) ?? false;
 
   const onExport = async (): Promise<void> => {
-    const destDir = await selectFolderPath();
-    if (destDir === undefined) {
-      return;
-    }
     try {
-      const path = await exportSongNge(song.file_hash, destDir);
-      toast.success(`Exported "${song.title}" (${path})`);
+      const result = await exportSongNge(song.file_hash);
+      if (result?.delivery === 'filesystem') {
+        toast.success(`Exported "${song.title}"`, { description: result.path });
+      } else if (result !== undefined) {
+        toast.success(`Exported "${song.title}"`);
+      }
     } catch (error) {
       toast.error(`Export failed: ${error instanceof Error ? error.message : String(error)}`);
     }

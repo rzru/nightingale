@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use serde::Serialize;
 use tokio::sync::broadcast;
 
@@ -22,6 +24,15 @@ pub(crate) struct EventBus {
 impl app_api::CommandRuntime for EventBus {
     fn emit(&self, name: &str, payload: serde_json::Value) {
         self.emit_value(name, payload);
+    }
+
+    fn resolve_export_directory(&self, requested: Option<&Path>) -> Result<PathBuf, String> {
+        if requested.is_some() {
+            return Err("custom export destinations are unavailable in web mode".to_string());
+        }
+        Ok(app_core::AppConfig::load()
+            .effective_data_path()
+            .join("exports"))
     }
 }
 

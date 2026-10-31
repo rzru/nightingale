@@ -8,16 +8,24 @@ use crate::song::{NgeSongMeta, Song, SongOrigin, compute_file_hash};
 
 fn resolve_stem_files(song: &Song, cache: &CacheDir) -> Option<(PathBuf, PathBuf)> {
     let hash = &song.file_hash;
-    let i = cache.instrumental_path(hash);
-    let v = cache.vocals_path(hash);
-    if i.is_file() && v.is_file() {
-        return Some((i, v));
+    if let Some(key) = song.key.as_deref() {
+        let instrumental = cache.variant_instrumental_path(hash, key, 1.0);
+        let vocals = cache.variant_vocals_path(hash, key, 1.0);
+        if instrumental.is_file() && vocals.is_file() {
+            return Some((instrumental, vocals));
+        }
     }
 
-    let li = cache.legacy_instrumental_path(hash);
-    let lv = cache.legacy_vocals_path(hash);
-    if li.is_file() && lv.is_file() {
-        return Some((li, lv));
+    for (instrumental, vocals) in [
+        (cache.instrumental_path(hash), cache.vocals_path(hash)),
+        (
+            cache.legacy_instrumental_path(hash),
+            cache.legacy_vocals_path(hash),
+        ),
+    ] {
+        if instrumental.is_file() && vocals.is_file() {
+            return Some((instrumental, vocals));
+        }
     }
 
     None

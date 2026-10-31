@@ -1,6 +1,9 @@
 mod vendor;
 
-use std::{path::Path, sync::Arc};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use app_core::{
     AnalysisQueue, AppConfig, CacheStats, LibraryMenuItems, LibrarySource, LoadSongsParams,
@@ -19,6 +22,12 @@ pub trait CommandRuntime: Send + Sync + 'static {
 
     fn allow_directory(&self, _path: &Path) -> Result<(), String> {
         Ok(())
+    }
+
+    fn resolve_export_directory(&self, requested: Option<&Path>) -> Result<PathBuf, String> {
+        requested
+            .map(Path::to_path_buf)
+            .ok_or_else(|| "export destination required".to_string())
     }
 }
 
@@ -530,6 +539,27 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
                 .ok()
                 .flatten();
             Ok(serde_json::to_value(path).map_err(serde_err)?)
+        }
+        "export_song_nge" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Args {
+                file_hash: String,
+                #[serde(default)]
+                dest_dir: Option<String>,
+            }
+            let args: Args = deserialize(payload)?;
+            let dest_dir = state
+                .runtime
+                .resolve_export_directory(args.dest_dir.as_deref().map(Path::new))
+                .map_err(ApiError::bad_request)?;
+            let path = tokio::task::spawn_blocking(move || {
+                app_core::export_song_nge(&args.file_hash, &dest_dir)
+            })
+            .await
+            .map_err(blocking_task_err)?
+            .map_err(|error| ApiError::bad_request(error.to_string()))?;
+            Ok(Value::String(path.to_string_lossy().into_owned()))
         }
         "fetch_pixabay_videos" => fetch_pixabay_videos_cmd(events, payload),
 
