@@ -7,10 +7,20 @@ import {
 } from './constants';
 import { createPitchDetector, detectPitchFromSamplesRef } from './detect';
 
+export type ReferencePitchTrack = {
+  pitches: (number | null)[];
+  intervalSec: number;
+  singableTime: number;
+};
+
 export type PitchSeries = {
   refPitches: (number | null)[];
   userPitches: (number | null)[];
   similarities: number[];
+  times: number[];
+  referenceTrack: ReferencePitchTrack | null;
+  referenceTime: number;
+  currentTime: number;
 };
 
 export function freqToSemitone(hz: number): number {
@@ -95,6 +105,10 @@ export class PitchStateBuffer {
       refPitches: [...this.refPitches],
       userPitches: [...this.userPitches],
       similarities: [...this.similarities],
+      times: [...this.times],
+      referenceTrack: null,
+      referenceTime: this.times.at(-1) ?? 0,
+      currentTime: this.times.at(-1) ?? 0,
     };
   }
 
@@ -163,29 +177,30 @@ export class PitchScoring {
   }
 }
 
-export function computeSingableTime(vocals: AudioBuffer): number {
+export function analyzeReferencePitches(vocals: AudioBuffer): ReferencePitchTrack {
   const sr = vocals.sampleRate;
   const ch = vocals.numberOfChannels > 0 ? vocals.getChannelData(0) : null;
+  const hop = PITCH_WINDOW_SAMPLES / 2;
+  const intervalSec = hop / sr;
   if (ch === null) {
-    return 0;
+    return { pitches: [], intervalSec, singableTime: 0 };
   }
 
-  const hop = PITCH_WINDOW_SAMPLES / 2;
-  const hopSec = hop / sr;
   const detector = createPitchDetector();
   const window = new Float32Array(PITCH_WINDOW_SAMPLES);
-  let total = 0;
-  let offset = 0;
+  const pitches: (number | null)[] = [];
+  let singableTime = 0;
 
-  while (offset + PITCH_WINDOW_SAMPLES <= ch.length) {
+  for (let offset = 0; offset + PITCH_WINDOW_SAMPLES <= ch.length; offset += hop) {
     window.set(ch.subarray(offset, offset + PITCH_WINDOW_SAMPLES));
-    if (detectPitchFromSamplesRef(detector, window, sr) !== null) {
-      total += hopSec;
+    const pitch = detectPitchFromSamplesRef(detector, window, sr);
+    pitches.push(pitch);
+    if (pitch !== null) {
+      singableTime += intervalSec;
     }
-    offset += hop;
   }
 
-  return total;
+  return { pitches, intervalSec, singableTime };
 }
 
 export function sampleVocalsWindow(

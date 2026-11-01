@@ -438,12 +438,14 @@ function PlaybackHudImpl({
         </div>
 
         <div className={`flex min-w-0 items-end ${rightHudFlowClass} ${rightHudOffset}`}>
-          {multiplayer ? (
-            <MultiplayerScores players={players} />
-          ) : (
-            <div className={scoreTextClass(pitchScore)}>Score: {pitchScore ?? '--'}</div>
-          )}
-          <div className="my-1.5 hidden h-px w-full bg-white/20 sm:block" aria-hidden="true" />
+          <div className={`flex ${rightHudFlowClass}`}>
+            {multiplayer ? (
+              <MultiplayerScores players={players} />
+            ) : (
+              <div className={scoreTextClass(pitchScore)}>Score: {pitchScore ?? '--'}</div>
+            )}
+            <div className="my-1.5 hidden h-px w-full bg-white/20 sm:block" aria-hidden="true" />
+          </div>
           <div className="hidden sm:block">
             <SettingsInfo
               guideVolume={guideVolume}
