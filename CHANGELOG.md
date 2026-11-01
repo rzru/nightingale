@@ -21,6 +21,8 @@ below.
 
 ### Fixes
 
+- Seeking backward during playback now rewinds the pitch graph and removes score earned after the new position.
+- Microphone monitoring now pauses with playback and toggles without restarting the microphone stream, preventing buffer underrun warning floods.
 - Desktop cover thumbnails now load through the authenticated local media server instead of a custom URL scheme that some webviews block as cross-origin.
 
 ## [1.3.0] - 2026-10-15

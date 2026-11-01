@@ -271,6 +271,23 @@ const stopCaptureInternal = async (captureId: string): Promise<void> => {
   teardown(captureId);
 };
 
+const setMonitoringInternal = (captureId: string, enabled: boolean): void => {
+  const active = activeCaptures.get(captureId);
+  if (!active || active.emitAudio === enabled) {
+    return;
+  }
+
+  if (enabled) {
+    active.monitorGain = active.context.createGain();
+    active.monitorGain.gain.value = liveMonitorGain;
+    active.source.connect(active.monitorGain).connect(active.context.destination);
+  } else {
+    active.monitorGain?.disconnect();
+    active.monitorGain = null;
+  }
+  active.emitAudio = enabled;
+};
+
 const startCapture = (
   captureId: string,
   preferred: string | null,
@@ -281,9 +298,13 @@ const startCapture = (
 const stopCapture = (captureId: string): Promise<void> =>
   enqueueCaptureOperation(() => stopCaptureInternal(captureId));
 
+const setMonitoring = (captureId: string, enabled: boolean): Promise<void> =>
+  enqueueCaptureOperation(() => Promise.resolve(setMonitoringInternal(captureId, enabled)));
+
 export const webMicrophoneAdapter: MicrophoneAdapter = {
   listDevices,
   startCapture,
   stopCapture,
+  setMonitoring,
   subscribe: async (captureId, callback) => subscribeMicSamples(captureId, callback),
 };

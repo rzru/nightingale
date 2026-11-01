@@ -12,7 +12,9 @@ use app_api::{CommandRuntime, CommandState};
 use app_core::{AppConfig, SongsStore, WindowState};
 use backgrounds::import_custom_background;
 use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
-use microphones::{list_microphones, set_monitor_gain, start_mic_capture, stop_mic_capture};
+use microphones::{
+    list_microphones, set_mic_monitoring, set_monitor_gain, start_mic_capture, stop_mic_capture,
+};
 use serde_json::Value;
 use tauri::{
     AppHandle, Emitter, Manager, PhysicalSize, RunEvent, WebviewWindow, WebviewWindowBuilder,
@@ -229,6 +231,7 @@ pub fn run() {
             get_media_endpoint,
             list_microphones,
             start_mic_capture,
+            set_mic_monitoring,
             stop_mic_capture,
         ])
         .setup(|app| {

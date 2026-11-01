@@ -49,6 +49,7 @@ export class PitchStateBuffer {
   similarities: number[] = [];
   private smoothedRef: number | null = null;
   private smoothedUser: number | null = null;
+  private times: number[] = [];
   private lastPushTime = 0;
 
   tryPush(
@@ -57,6 +58,18 @@ export class PitchStateBuffer {
     similarity: number,
     time: number,
   ): void {
+    if (time < this.lastPushTime) {
+      while (this.times.length > 0 && this.times[this.times.length - 1] > time) {
+        this.times.pop();
+        this.refPitches.pop();
+        this.userPitches.pop();
+        this.similarities.pop();
+      }
+      this.smoothedRef = this.refPitches.at(-1) ?? null;
+      this.smoothedUser = this.userPitches.at(-1) ?? null;
+      this.lastPushTime = this.times.at(-1) ?? time - PUSH_INTERVAL_SEC;
+    }
+
     this.smoothedRef = ema(this.smoothedRef, refPitch);
     this.smoothedUser = ema(this.smoothedUser, userPitch);
 
@@ -66,10 +79,12 @@ export class PitchStateBuffer {
     this.lastPushTime = time;
 
     if (this.refPitches.length >= PITCH_BUFFER_SIZE) {
+      this.times.shift();
       this.refPitches.shift();
       this.userPitches.shift();
       this.similarities.shift();
     }
+    this.times.push(time);
     this.refPitches.push(this.smoothedRef);
     this.userPitches.push(this.smoothedUser);
     this.similarities.push(similarity);
@@ -87,6 +102,7 @@ export class PitchStateBuffer {
     this.refPitches = [];
     this.userPitches = [];
     this.similarities = [];
+    this.times = [];
     this.smoothedRef = null;
     this.smoothedUser = null;
     this.lastPushTime = 0;
@@ -97,9 +113,30 @@ export class PitchScoring {
   totalSingable: number;
   earned = 0;
   lastTime = 0;
+  private readonly contributions: { start: number; end: number; earned: number }[] = [];
 
   constructor(totalSingable: number) {
     this.totalSingable = Math.max(0.5, totalSingable);
+  }
+
+  private rewind(currentTime: number): void {
+    while (
+      this.contributions.length > 0 &&
+      this.contributions[this.contributions.length - 1].start >= currentTime
+    ) {
+      this.earned -= this.contributions.pop()?.earned ?? 0;
+    }
+
+    const contribution = this.contributions.at(-1);
+    if (contribution && contribution.end > currentTime) {
+      const kept =
+        contribution.earned *
+        ((currentTime - contribution.start) / (contribution.end - contribution.start));
+      this.earned -= contribution.earned - kept;
+      contribution.end = currentTime;
+      contribution.earned = kept;
+    }
+    this.lastTime = currentTime;
   }
 
   accumulate(
@@ -108,10 +145,16 @@ export class PitchScoring {
     userPitch: number | null,
     similarity: number,
   ): void {
+    if (currentTime < this.lastTime) {
+      this.rewind(currentTime);
+    }
+
     const dt = Math.min(0.1, Math.max(0, currentTime - this.lastTime));
     this.lastTime = currentTime;
-    if (refPitch !== null && userPitch !== null) {
-      this.earned += similarity * dt;
+    if (refPitch !== null && userPitch !== null && dt > 0) {
+      const earned = similarity * dt;
+      this.earned += earned;
+      this.contributions.push({ start: currentTime - dt, end: currentTime, earned });
     }
   }
 

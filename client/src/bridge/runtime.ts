@@ -40,6 +40,7 @@ const nativeCommands = new Set([
   'get_media_endpoint',
   'list_microphones',
   'start_mic_capture',
+  'set_mic_monitoring',
   'stop_mic_capture',
 ]);
 

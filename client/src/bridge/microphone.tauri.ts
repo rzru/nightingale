@@ -49,9 +49,15 @@ const stopCapture = (captureId: string): Promise<void> =>
     await invoke('stop_mic_capture', { captureId });
   });
 
+const setMonitoring = (captureId: string, enabled: boolean): Promise<void> =>
+  enqueue(async () => {
+    await invoke('set_mic_monitoring', { captureId, enabled });
+  });
+
 export const tauriMicrophoneAdapter: MicrophoneAdapter = {
   listDevices,
   startCapture,
   stopCapture,
+  setMonitoring,
   subscribe: async (captureId, callback) => subscribeMicSamples(captureId, callback),
 };

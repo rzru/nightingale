@@ -73,25 +73,16 @@ export function usePitchScoring(
     }
 
     const run = (t: number) => {
-      if (t <= 0) {
-        return;
-      }
-
       const reference = getReferenceBuffer();
       const mp = micPitchRef.current;
+      const refHz =
+        reference && sampleVocalsWindow(reference, t, scratchRef.current, latencyRef.current)
+          ? detectPitchFromSamplesRef(refDetector.current, scratchRef.current, reference.sampleRate)
+          : null;
+      const sim = refHz !== null && mp !== null ? pitchSimilarity(refHz, mp) : 0;
 
-      if (!reference || !sampleVocalsWindow(reference, t, scratchRef.current, latencyRef.current)) {
-        bufferRef.current.tryPush(null, mp, 0, t);
-      } else {
-        const refHz = detectPitchFromSamplesRef(
-          refDetector.current,
-          scratchRef.current,
-          reference.sampleRate,
-        );
-        const sim = refHz !== null && mp !== null ? pitchSimilarity(refHz, mp) : 0;
-        bufferRef.current.tryPush(refHz, mp, sim, t);
-        scoringRef.current.accumulate(t, refHz, mp, sim);
-      }
+      bufferRef.current.tryPush(refHz, mp, sim, t);
+      scoringRef.current.accumulate(t, refHz, mp, sim);
 
       setSeries(bufferRef.current.snapshot());
       setScore(scoringRef.current.score());

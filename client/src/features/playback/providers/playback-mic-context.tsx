@@ -157,14 +157,14 @@ function captureSettings(
     return {
       captureEnabled: playbackActive || micMonitorUserEnabled,
       pitchEnabled: playbackActive,
-      emitAudio: micMonitorUserEnabled,
+      emitAudio: playbackActive && micMonitorUserEnabled,
     };
   }
   const pitchEnabled = playbackActive && micUserEnabled;
   return {
     captureEnabled: pitchEnabled || micMonitorUserEnabled,
     pitchEnabled,
-    emitAudio: micMonitorUserEnabled,
+    emitAudio: playbackActive && micMonitorUserEnabled,
   };
 }
 

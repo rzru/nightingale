@@ -92,7 +92,7 @@ export function useMicCapture(
 
     const run = async () => {
       try {
-        await adapter.startCapture(captureId, deviceId, options);
+        await adapter.startCapture(captureId, deviceId, { emit_audio: false });
 
         if (cancelled) {
           return;
@@ -114,9 +114,20 @@ export function useMicCapture(
 
     return () => {
       cancelled = true;
+      setActive(false);
       void adapter.stopCapture(captureId).catch(() => {});
     };
-  }, [adapter, captureId, deviceId, enabled, options]);
+  }, [adapter, captureId, deviceId, enabled]);
+
+  useEffect(() => {
+    if (!enabled || !active) {
+      return;
+    }
+
+    void adapter.setMonitoring(captureId, options.emit_audio).catch((cause: unknown) => {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    });
+  }, [active, adapter, captureId, enabled, options.emit_audio]);
 
   return { active: enabled && active, error: enabled ? error : null };
 }

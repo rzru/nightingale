@@ -850,6 +850,39 @@ fn run_mic_loop(
 }
 
 #[tauri::command]
+pub(crate) fn set_mic_monitoring(capture_id: String, enabled: bool) {
+    let _guard = MIC_OP_LOCK.lock().unwrap_or_else(|p| p.into_inner());
+    let captures = MIC_CAPTURES
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    for capture in captures.values() {
+        let mut targets = capture
+            .targets
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let Some(target) = targets.get_mut(&capture_id) else {
+            continue;
+        };
+        target.emit_audio = enabled;
+        let monitor_enabled = targets.values().any(|target| target.emit_audio);
+        capture
+            .monitor_enabled
+            .store(monitor_enabled, Ordering::SeqCst);
+        drop(targets);
+
+        if !monitor_enabled {
+            capture
+                .audio
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .clear();
+        }
+        return;
+    }
+}
+
+#[tauri::command]
 pub(crate) fn stop_mic_capture(capture_id: String) {
     let _guard = MIC_OP_LOCK.lock().unwrap_or_else(|p| p.into_inner());
     stop_internal(&capture_id);
