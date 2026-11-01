@@ -17,13 +17,8 @@ import { computeLyricGapCaption, findCurrentSegment } from '@/features/playback/
 import { playerColorOption } from '@/shared/player-colors';
 import type { AppConfig } from '@/types/AppConfig';
 
+import { PlaybackTransportControls } from './playback-transport-controls';
 import { isPixabayTheme, themeName, type PlaybackTheme } from './theme';
-
-function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds) % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
 
 function formatGuideText(volume: number): string {
   const pct = Math.round(volume * 100);
@@ -367,8 +362,6 @@ function PlaybackHudImpl({
   const { pitchScore, micUserEnabled, micName, micMonitorUserEnabled, multiplayer, players } =
     usePlaybackMicState();
 
-  const lastSecondRef = useRef(-1);
-  const timerRef = useRef<HTMLParagraphElement>(null);
   const skipIntroRef = useRef<HTMLButtonElement>(null);
   const skipOutroRef = useRef<HTMLButtonElement>(null);
   const gapCaptionRef = useRef<HTMLOutputElement>(null);
@@ -400,20 +393,9 @@ function PlaybackHudImpl({
     };
 
     gapHintRef.current = 0;
-    if (timerRef.current) {
-      timerRef.current.textContent = `${formatTime(getCurrentTime())} / ${formatTime(duration)}`;
-    }
     updateGapCaption(getCurrentTime());
 
     return subscribe((time) => {
-      const sec = Math.floor(time);
-      if (sec !== lastSecondRef.current) {
-        lastSecondRef.current = sec;
-        if (timerRef.current) {
-          timerRef.current.textContent = `${formatTime(time)} / ${formatTime(duration)}`;
-        }
-      }
-
       if (skipIntroRef.current) {
         skipIntroRef.current.style.display =
           time < firstSegmentStart - introSkipLeadSec ? '' : 'none';
@@ -423,19 +405,11 @@ function PlaybackHudImpl({
       }
       updateGapCaption(time);
     });
-  }, [
-    subscribe,
-    getCurrentTime,
-    duration,
-    firstSegmentStart,
-    introSkipLeadSec,
-    lastSegmentEnd,
-    segments,
-  ]);
+  }, [subscribe, getCurrentTime, firstSegmentStart, introSkipLeadSec, lastSegmentEnd, segments]);
 
   const hudPosition = hudPositionClass(position);
   const rightHudOffset = windowControlsOffsetClass(position, windowControls);
-  const hudFlowClass = position === 'bottom' ? 'flex-col-reverse' : 'flex-col';
+  const rightHudFlowClass = position === 'bottom' ? 'flex-col-reverse' : 'flex-col';
   const skipButtonsClass = position === 'bottom' ? 'mb-2' : 'mt-2';
 
   return (
@@ -443,18 +417,14 @@ function PlaybackHudImpl({
       <div
         className={`pointer-events-auto absolute inset-x-0 z-20 flex justify-between gap-3 px-3 md:px-4 ${hudPosition}`}
       >
-        <div
-          className={`flex min-w-0 max-w-[58%] overflow-hidden sm:max-w-[34%] lg:max-w-[40%] ${hudFlowClass}`}
-        >
+        <div className="flex w-[70vw] min-w-0 max-w-80 flex-col sm:max-w-[48%] lg:max-w-96">
           <h1 className="line-clamp-2 [overflow-wrap:anywhere] text-base leading-tight text-white md:text-[1.375rem]">
             {title}
           </h1>
           <p className="line-clamp-1 [overflow-wrap:anywhere] text-sm text-white/70 md:text-base">
             {artist}
           </p>
-          <p ref={timerRef} className="text-sm text-white/70 md:text-base">
-            0:00 / {formatTime(duration)}
-          </p>
+          <PlaybackTransportControls duration={duration} segments={segments} />
           <output
             ref={gapCaptionRef}
             aria-live="polite"
@@ -467,7 +437,7 @@ function PlaybackHudImpl({
           </div>
         </div>
 
-        <div className={`flex min-w-0 items-end ${hudFlowClass} ${rightHudOffset}`}>
+        <div className={`flex min-w-0 items-end ${rightHudFlowClass} ${rightHudOffset}`}>
           {multiplayer ? (
             <MultiplayerScores players={players} />
           ) : (

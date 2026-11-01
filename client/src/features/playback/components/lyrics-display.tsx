@@ -147,7 +147,7 @@ type LyricsRomanizationMode = NonNullable<AppConfig['lyrics_romanization_mode']>
 const verticalClass: Record<LyricsVerticalPosition, string> = {
   bottom: 'top-[8rem] bottom-[calc(2rem+env(safe-area-inset-bottom))] justify-end sm:bottom-[60px]',
   center: 'inset-y-[6rem] justify-center',
-  top: 'top-[calc(2rem+env(safe-area-inset-top))] bottom-[8rem] justify-start overflow-visible sm:top-[60px]',
+  top: 'top-[calc(2rem+env(safe-area-inset-top))] bottom-[10rem] justify-start overflow-visible sm:top-[60px]',
 };
 
 const horizontalItemsClass: Record<LyricsHorizontalPosition, string> = {
