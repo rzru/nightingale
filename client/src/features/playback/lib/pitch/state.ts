@@ -16,6 +16,7 @@ export type ReferencePitchTrack = {
 export type PitchSeries = {
   refPitches: (number | null)[];
   userPitches: (number | null)[];
+  displaySemitones: (number | null)[];
   similarities: number[];
   times: number[];
   referenceTrack: ReferencePitchTrack | null;
@@ -53,14 +54,87 @@ export function snapToRefOctave(refSemi: number, userSemi: number): number {
   return userSemi - octaveOffset;
 }
 
+const DISPLAY_OCTAVE_STABILITY_SEC = 0.1;
+const OCTAVE_BOUNDARY_SEMITONES = 6;
+
 export class PitchStateBuffer {
   refPitches: (number | null)[] = [];
   userPitches: (number | null)[] = [];
+  displaySemitones: (number | null)[] = [];
   similarities: number[] = [];
   private smoothedRef: number | null = null;
   private smoothedUser: number | null = null;
   private times: number[] = [];
+  private octaveOffsets: number[] = [];
+  private displayOctaveOffset = 0;
+  private pendingOctaveOffset: number | null = null;
+  private pendingOctaveSince = 0;
+  private lastDisplaySemitone: number | null = null;
   private lastPushTime = 0;
+
+  private normalizeDisplayPitch(time: number): number | null {
+    if (this.smoothedUser === null) {
+      return null;
+    }
+
+    const userSemitone = freqToSemitone(this.smoothedUser);
+    if (this.smoothedRef !== null) {
+      const desiredOffset =
+        userSemitone - snapToRefOctave(freqToSemitone(this.smoothedRef), userSemitone);
+      if (desiredOffset === this.displayOctaveOffset) {
+        this.pendingOctaveOffset = null;
+      } else if (desiredOffset !== this.pendingOctaveOffset) {
+        this.pendingOctaveOffset = desiredOffset;
+        this.pendingOctaveSince = time;
+      } else if (time - this.pendingOctaveSince >= DISPLAY_OCTAVE_STABILITY_SEC) {
+        this.displayOctaveOffset = desiredOffset;
+        this.pendingOctaveOffset = null;
+      }
+    } else {
+      this.pendingOctaveOffset = null;
+    }
+
+    let displaySemitone = userSemitone - this.displayOctaveOffset;
+    const preserveOctave = this.smoothedRef === null || this.pendingOctaveOffset !== null;
+    if (
+      preserveOctave &&
+      this.lastDisplaySemitone !== null &&
+      Math.abs(displaySemitone - this.lastDisplaySemitone) > OCTAVE_BOUNDARY_SEMITONES
+    ) {
+      displaySemitone = this.preserveDisplayOctave(displaySemitone);
+    }
+
+    this.lastDisplaySemitone = displaySemitone;
+    return displaySemitone;
+  }
+
+  private preserveDisplayOctave(displaySemitone: number): number {
+    const normalized = snapToRefOctave(
+      this.lastDisplaySemitone ?? displaySemitone,
+      displaySemitone,
+    );
+    if (this.smoothedRef === null) {
+      this.displayOctaveOffset += displaySemitone - normalized;
+    }
+    return normalized;
+  }
+
+  private rewind(time: number): void {
+    while (this.times.length > 0 && this.times[this.times.length - 1] > time) {
+      this.times.pop();
+      this.refPitches.pop();
+      this.userPitches.pop();
+      this.displaySemitones.pop();
+      this.similarities.pop();
+      this.octaveOffsets.pop();
+    }
+    this.smoothedRef = this.refPitches.at(-1) ?? null;
+    this.smoothedUser = this.userPitches.at(-1) ?? null;
+    this.displayOctaveOffset = this.octaveOffsets.at(-1) ?? 0;
+    this.pendingOctaveOffset = null;
+    this.lastDisplaySemitone = this.displaySemitones.at(-1) ?? null;
+    this.lastPushTime = this.times.at(-1) ?? time - PUSH_INTERVAL_SEC;
+  }
 
   tryPush(
     refPitch: number | null,
@@ -69,15 +143,7 @@ export class PitchStateBuffer {
     time: number,
   ): void {
     if (time < this.lastPushTime) {
-      while (this.times.length > 0 && this.times[this.times.length - 1] > time) {
-        this.times.pop();
-        this.refPitches.pop();
-        this.userPitches.pop();
-        this.similarities.pop();
-      }
-      this.smoothedRef = this.refPitches.at(-1) ?? null;
-      this.smoothedUser = this.userPitches.at(-1) ?? null;
-      this.lastPushTime = this.times.at(-1) ?? time - PUSH_INTERVAL_SEC;
+      this.rewind(time);
     }
 
     this.smoothedRef = ema(this.smoothedRef, refPitch);
@@ -88,22 +154,29 @@ export class PitchStateBuffer {
     }
     this.lastPushTime = time;
 
+    const displaySemitone = this.normalizeDisplayPitch(time);
+
     if (this.refPitches.length >= PITCH_BUFFER_SIZE) {
       this.times.shift();
       this.refPitches.shift();
       this.userPitches.shift();
+      this.displaySemitones.shift();
       this.similarities.shift();
+      this.octaveOffsets.shift();
     }
     this.times.push(time);
     this.refPitches.push(this.smoothedRef);
     this.userPitches.push(this.smoothedUser);
+    this.displaySemitones.push(displaySemitone);
     this.similarities.push(similarity);
+    this.octaveOffsets.push(this.displayOctaveOffset);
   }
 
   snapshot(): PitchSeries {
     return {
       refPitches: [...this.refPitches],
       userPitches: [...this.userPitches],
+      displaySemitones: [...this.displaySemitones],
       similarities: [...this.similarities],
       times: [...this.times],
       referenceTrack: null,
@@ -115,10 +188,16 @@ export class PitchStateBuffer {
   reset(): void {
     this.refPitches = [];
     this.userPitches = [];
+    this.displaySemitones = [];
     this.similarities = [];
     this.times = [];
+    this.octaveOffsets = [];
     this.smoothedRef = null;
     this.smoothedUser = null;
+    this.displayOctaveOffset = 0;
+    this.pendingOctaveOffset = null;
+    this.pendingOctaveSince = 0;
+    this.lastDisplaySemitone = null;
     this.lastPushTime = 0;
   }
 }

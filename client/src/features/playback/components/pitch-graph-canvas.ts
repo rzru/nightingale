@@ -1,5 +1,5 @@
 import type { PitchSeries } from '@/features/playback/lib/pitch/state';
-import { freqToSemitone, snapToRefOctave } from '@/features/playback/lib/pitch/state';
+import { freqToSemitone } from '@/features/playback/lib/pitch/state';
 import type { Rgb } from '@/types/Rgb';
 
 type CanvasLayout = {
@@ -257,26 +257,28 @@ function userPointStyle(
 }
 
 type UserPointInput = {
-  userHz: number;
+  displaySemitone: number;
   index: number;
   series: PitchSeries;
   layout: CanvasLayout;
   baseColor: Rgb;
 };
 
-function buildUserPoint({ userHz, index, series, layout, baseColor }: UserPointInput): PlotPoint {
+function buildUserPoint({
+  displaySemitone,
+  index,
+  series,
+  layout,
+  baseColor,
+}: UserPointInput): PlotPoint {
   const seriesLength = series.userPitches.length;
   const refHz = series.refPitches[index];
-
-  const userSemi = freqToSemitone(userHz);
-  const displaySemi = refHz !== null ? snapToRefOctave(freqToSemitone(refHz), userSemi) : userSemi;
-
   const similarity = series.similarities[index] ?? 0;
   const { color, weight } = userPointStyle(similarity, refHz !== null, baseColor);
 
   return {
     x: timeToX((series.times[index] ?? series.currentTime) - series.currentTime, layout),
-    y: semitoneToY(displaySemi, layout),
+    y: semitoneToY(displaySemitone, layout),
     color,
     alpha: weight * ageAlpha(index, seriesLength),
   };
@@ -323,6 +325,7 @@ function drawPitchSeries({
   const visibleSeries: PitchSeries = {
     refPitches: series.refPitches.slice(historyStart),
     userPitches: series.userPitches.slice(historyStart),
+    displaySemitones: series.displaySemitones.slice(historyStart),
     similarities: series.similarities.slice(historyStart),
     times: series.times.slice(historyStart),
     referenceTrack: series.referenceTrack,
@@ -336,8 +339,8 @@ function drawPitchSeries({
     }
   }
 
-  const userSegments = buildSegments(visibleSeries.userPitches, (userHz, index) =>
-    buildUserPoint({ userHz, index, series: visibleSeries, layout, baseColor }),
+  const userSegments = buildSegments(visibleSeries.displaySemitones, (displaySemitone, index) =>
+    buildUserPoint({ displaySemitone, index, series: visibleSeries, layout, baseColor }),
   );
 
   for (const segment of userSegments) {

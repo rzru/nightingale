@@ -45,6 +45,7 @@ export function usePitchScoring(
   const [series, setSeries] = useState<PitchSeries>({
     refPitches: [],
     userPitches: [],
+    displaySemitones: [],
     similarities: [],
     times: [],
     referenceTrack: null,

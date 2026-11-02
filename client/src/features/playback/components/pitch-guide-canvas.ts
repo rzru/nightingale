@@ -1,5 +1,5 @@
 import type { PitchSeries, ReferencePitchTrack } from '@/features/playback/lib/pitch/state';
-import { freqToSemitone, snapToRefOctave } from '@/features/playback/lib/pitch/state';
+import { freqToSemitone } from '@/features/playback/lib/pitch/state';
 import type { Rgb } from '@/types/Rgb';
 
 export type PitchGuideNote = {
@@ -55,83 +55,126 @@ function rgba({ r, g, b }: Rgb, alpha: number): string {
   return `rgba(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)},${alpha})`;
 }
 
-function stableSampleCount(seconds: number, interval: number): number {
-  return Math.max(2, Math.ceil(seconds / interval));
+const MIN_GUIDE_NOTE_SECONDS = 0.1;
+const MAX_GUIDE_GAP_SECONDS = 0.16;
+
+type PitchSampleRun = {
+  start: number;
+  end: number;
+  semitone: number;
+};
+
+function buildPitchRuns(track: ReferencePitchTrack, start: number, end: number): PitchSampleRun[] {
+  const firstHz = track.pitches[start];
+  if (firstHz === null) {
+    return [];
+  }
+
+  const runs: PitchSampleRun[] = [];
+  let current = Math.round(freqToSemitone(firstHz));
+  let currentStart = start;
+
+  for (let index = start + 1; index < end; index++) {
+    const hz = track.pitches[index];
+    const detected = hz === null ? current : Math.round(freqToSemitone(hz));
+    if (detected === current) {
+      continue;
+    }
+
+    runs.push({ start: currentStart, end: index, semitone: current });
+    current = detected;
+    currentStart = index;
+  }
+
+  runs.push({ start: currentStart, end, semitone: current });
+  return runs;
 }
 
-type GuideBuildState = {
-  current: number | null;
-  currentStart: number;
-  candidate: number | null;
-  candidateStart: number;
-  candidateCount: number;
-};
+function dominantSemitone(runs: readonly PitchSampleRun[]): number {
+  const durations = new Map<number, number>();
+  let dominant = runs[0].semitone;
+  let dominantDuration = 0;
 
-type AdvanceGuideInput = {
-  state: GuideBuildState;
-  detected: number | null;
-  index: number;
-  track: ReferencePitchTrack;
-  notes: PitchGuideNote[];
-};
+  for (const run of runs) {
+    const duration = (durations.get(run.semitone) ?? 0) + run.end - run.start;
+    durations.set(run.semitone, duration);
+    if (duration > dominantDuration) {
+      dominant = run.semitone;
+      dominantDuration = duration;
+    }
+  }
+  return dominant;
+}
 
-function advanceGuideState({ state, detected, index, track, notes }: AdvanceGuideInput): void {
-  if (detected === state.current) {
-    state.candidate = null;
-    state.candidateCount = 0;
-    return;
-  }
-  if (detected !== state.candidate) {
-    state.candidate = detected;
-    state.candidateStart = index;
-    state.candidateCount = 1;
-    return;
+function simplifyPitchRegion(
+  track: ReferencePitchTrack,
+  start: number,
+  end: number,
+): PitchGuideNote[] {
+  const runs = buildPitchRuns(track, start, end);
+  const minimumSamples = Math.max(2, Math.ceil(MIN_GUIDE_NOTE_SECONDS / track.intervalSec));
+  const stableRuns: PitchSampleRun[] = [];
+
+  for (const run of runs) {
+    if (run.end - run.start < minimumSamples) {
+      continue;
+    }
+    const previous = stableRuns.at(-1);
+    if (previous?.semitone === run.semitone) {
+      previous.end = run.end;
+    } else {
+      stableRuns.push({ ...run });
+    }
   }
 
-  state.candidateCount++;
-  const requiredSamples = stableSampleCount(
-    state.candidate === null ? 0.16 : 0.1,
-    track.intervalSec,
-  );
-  if (state.candidateCount < requiredSamples) {
-    return;
+  if (stableRuns.length === 0) {
+    return [
+      {
+        start: start * track.intervalSec,
+        end: end * track.intervalSec,
+        semitone: dominantSemitone(runs),
+      },
+    ];
   }
 
-  const transitionTime = state.candidateStart * track.intervalSec;
-  if (state.current !== null && transitionTime - state.currentStart >= 0.1) {
-    notes.push({ start: state.currentStart, end: transitionTime, semitone: state.current });
-  }
-  state.current = state.candidate;
-  state.currentStart = transitionTime;
-  state.candidate = null;
-  state.candidateCount = 0;
+  let noteStart = start;
+  return stableRuns.map((run, index) => {
+    const next = stableRuns.at(index + 1);
+    const noteEnd = next ? Math.floor((run.end + next.start) / 2) : end;
+    const note = {
+      start: noteStart * track.intervalSec,
+      end: noteEnd * track.intervalSec,
+      semitone: run.semitone,
+    };
+    noteStart = noteEnd;
+    return note;
+  });
 }
 
 function segmentPitchTrack(track: ReferencePitchTrack): PitchGuideNote[] {
   const notes: PitchGuideNote[] = [];
-  const state: GuideBuildState = {
-    current: null,
-    currentStart: 0,
-    candidate: null,
-    candidateStart: 0,
-    candidateCount: 0,
-  };
+  const maximumGapSamples = Math.max(1, Math.ceil(MAX_GUIDE_GAP_SECONDS / track.intervalSec));
+  let regionStart: number | null = null;
+  let lastVoiced = 0;
 
-  for (let index = 0; index < track.pitches.length; index++) {
-    const hz = track.pitches[index];
-    advanceGuideState({
-      state,
-      detected: hz === null ? null : Math.round(freqToSemitone(hz)),
-      index,
-      track,
-      notes,
-    });
+  for (let index = 0; index <= track.pitches.length; index++) {
+    const voiced = index < track.pitches.length && track.pitches[index] !== null;
+    if (voiced) {
+      regionStart ??= index;
+      lastVoiced = index;
+      continue;
+    }
+    if (
+      regionStart === null ||
+      (index < track.pitches.length && index - lastVoiced < maximumGapSamples)
+    ) {
+      continue;
+    }
+
+    notes.push(...simplifyPitchRegion(track, regionStart, lastVoiced + 1));
+    regionStart = null;
   }
 
-  const trackEnd = track.pitches.length * track.intervalSec;
-  if (state.current !== null && trackEnd - state.currentStart >= 0.1) {
-    notes.push({ start: state.currentStart, end: trackEnd, semitone: state.current });
-  }
   return notes;
 }
 
@@ -276,18 +319,14 @@ function drawPlayerTrail(
   ctx.lineWidth = Math.max(4, layout.height / 180);
   let drawing = false;
 
-  for (let index = 0; index < series.userPitches.length; index++) {
-    const hz = series.userPitches[index];
+  for (let index = 0; index < series.displaySemitones.length; index++) {
+    const displaySemitone = series.displaySemitones[index];
     const time = series.times[index];
-    if (hz === null || time < series.currentTime - VIEW_SECONDS) {
+    if (displaySemitone === null || time < series.currentTime - VIEW_SECONDS) {
       drawing = false;
       continue;
     }
 
-    const userSemitone = freqToSemitone(hz);
-    const refHz = series.refPitches[index];
-    const displaySemitone =
-      refHz === null ? userSemitone : snapToRefOctave(freqToSemitone(refHz), userSemitone);
     const x = timeToX(time - series.currentTime, layout);
     const y = semitoneToY(displaySemitone, layout);
     const color = (series.similarities[index] ?? 0) >= 0.85 ? MATCH_COLOR : baseColor;

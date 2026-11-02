@@ -26,7 +26,7 @@ Treat `.rulesync/rules/*.md` as the only source of truth for agent instructions.
 
 After code or configuration changes:
 
-1. Add a concise entry under the appropriate `[Unreleased]` subsection in `CHANGELOG.md` for every finished change that affects application behavior. If a feature or improvement was introduced in the current release and already has an `[Unreleased]` entry, update that entry when refining it instead of adding a separate one. Do not add entries for changes limited to `site/` or documentation.
+1. Add a brief, friendly, user-facing entry under the appropriate `[Unreleased]` subsection in `CHANGELOG.md` for every finished change that affects application behavior. Describe the benefit or visible change without implementation details or exhaustive edge cases. If a feature or improvement was introduced in the current release and already has an `[Unreleased]` entry, update that entry when refining it instead of adding a separate one. Do not add entries for changes limited to `site/` or documentation.
 2. Re-read modified files and remove accidental comments, dead code, broad suppressions, and unrelated edits.
 3. Run `pnpm --dir client format`.
 4. Run `pnpm --dir client quality`.
