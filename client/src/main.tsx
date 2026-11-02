@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 
 import { App } from '@/app/app';
+import { getMediaEndpoint } from '@/bridge/playback.tauri';
 import { isTauri } from '@/bridge/runtime';
 import { webBootstrapSchema } from '@/bridge/schemas';
 
@@ -9,12 +10,17 @@ document.addEventListener('contextmenu', (e) => e.preventDefault());
 
 /**
  * Tauri injects `window.__NIGHTINGALE_*` ahead of script execution via the
- * webview `initialization_script`. The web target gets the same payload from
- * `/api/bootstrap` and seeds the globals before React mounts so downstream
- * code can read them synchronously.
+ * main webview's `initialization_script`; dynamically created webviews fetch
+ * the media endpoint before React mounts. The web target gets its payload from
+ * `/api/bootstrap` and also seeds the globals before mounting.
  */
-async function loadWebBootstrap(): Promise<void> {
+async function loadBootstrap(): Promise<void> {
   if (isTauri) {
+    if (!window.__NIGHTINGALE_MEDIA_ENDPOINT__) {
+      try {
+        window.__NIGHTINGALE_MEDIA_ENDPOINT__ = await getMediaEndpoint();
+      } catch {}
+    }
     return;
   }
 
@@ -34,7 +40,7 @@ async function loadWebBootstrap(): Promise<void> {
   } catch {}
 }
 
-void loadWebBootstrap().then(() => {
+void loadBootstrap().then(() => {
   const root = document.getElementById('root');
   if (root === null) {
     throw new Error('Missing application root');

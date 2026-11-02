@@ -35,17 +35,23 @@ export function PlaybackStartupProvider({ children }: { children: ReactNode }) {
 
     let paintFrame = 0;
     const commitFrame = requestAnimationFrame(() => {
-      paintFrame = requestAnimationFrame(() => {
-        startPlayback();
-        setStarted(true);
-      });
+      paintFrame = requestAnimationFrame(() => setStarted(true));
     });
 
     return () => {
       cancelAnimationFrame(commitFrame);
       cancelAnimationFrame(paintFrame);
     };
-  }, [activeThemeKey, audioReady, readyBackgroundKey, startPlayback, started, transcriptReady]);
+  }, [activeThemeKey, audioReady, readyBackgroundKey, started, transcriptReady]);
+
+  useEffect(() => {
+    if (!started) {
+      return undefined;
+    }
+
+    const playbackFrame = requestAnimationFrame(startPlayback);
+    return () => cancelAnimationFrame(playbackFrame);
+  }, [startPlayback, started]);
 
   const stateValue = useMemo<PlaybackStartupState>(() => ({ started }), [started]);
   const actionsValue = useMemo<PlaybackStartupActions>(

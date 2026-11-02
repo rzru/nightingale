@@ -1,4 +1,3 @@
-import loading from './fragments/loading.glsl?raw';
 import metaballs from './fragments/metaballs.glsl?raw';
 import nebula from './fragments/nebula.glsl?raw';
 import oscilloscope from './fragments/oscilloscope.glsl?raw';
@@ -17,12 +16,9 @@ import vertex from './vertex.glsl?raw';
 
 const compose = (...parts: string[]) => parts.join('\n');
 const withAudio = (frag: string) => compose(audioUniforms, srgb, noise, frag);
-const standalone = (frag: string) => compose(srgb, frag);
-
 export const composeCustomFragment = withAudio;
 
 export const vertexShader = vertex;
-export const loadingFragment = standalone(loading);
 
 export type ShaderDefinition = {
   id: string;

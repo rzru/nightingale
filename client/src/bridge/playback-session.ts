@@ -46,19 +46,13 @@ export const reservePlaybackTarget = (): PlaybackTarget => {
   if (isTauri || isSessionPlayback()) {
     return null;
   }
-  return window.open('', 'nightingale-playback') ?? undefined;
+  return window.open(SESSION_PLAYBACK_URL, 'nightingale-playback') ?? undefined;
 };
 
 export const showPlaybackTarget = async (target: PlaybackTarget): Promise<void> => {
   if (!isTauri) {
     if (!target) {
       throw new Error('Browser blocked playback tab');
-    }
-    if (
-      target.location.pathname !== '/playback' ||
-      !new URLSearchParams(target.location.search).has('session')
-    ) {
-      target.location.replace(SESSION_PLAYBACK_URL);
     }
     target.focus();
     return;
