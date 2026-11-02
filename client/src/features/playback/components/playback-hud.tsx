@@ -14,6 +14,7 @@ import {
   usePlaybackTransportState,
 } from '@/features/playback/providers';
 import { computeLyricGapCaption, findCurrentSegment } from '@/features/playback/utils/lyrics-gap';
+import { playerDisplayName } from '@/features/playback/utils/player-display-name';
 import { playerColorOption } from '@/shared/player-colors';
 import type { AppConfig } from '@/types/AppConfig';
 
@@ -317,13 +318,13 @@ const scoreTextClass = (score: number | null): string =>
 function MultiplayerScores({ players }: { players: PlaybackPlayerMicState[] }) {
   return (
     <div className="grid justify-items-end gap-0.5" aria-label="Player scores">
-      {players.map((player, index) => (
+      {players.map((player) => (
         <div
           key={player.id}
           className={`flex items-center justify-end gap-2 ${scoreTextClass(player.pitchScore)}`}
         >
           <span className="whitespace-nowrap">
-            {player.profile ?? `Guest ${index + 1}`}: {player.pitchScore ?? '--'}
+            {playerDisplayName(player, players)}: {player.pitchScore ?? '--'}
           </span>
           <span
             className={`size-2 rounded-full ${playerColorOption(player.color).className}`}

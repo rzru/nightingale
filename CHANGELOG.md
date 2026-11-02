@@ -23,6 +23,7 @@ below.
 
 ### Fixes
 
+- Multiplayer guest names now number only guest singers, while a single guest is simply labeled **Guest**.
 - Singer trails now stay on their normalized octave through reference-vocal pauses and brief detector octave jumps.
 - The playback score divider now matches the score width instead of the settings block beneath it.
 - Seeking backward during playback now rewinds the pitch graph and removes score earned after the new position.

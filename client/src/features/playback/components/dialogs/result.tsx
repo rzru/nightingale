@@ -5,6 +5,7 @@ import type { PlaybackPlayer } from '@/bridge/playback-session';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
 import { MultiplayerSetupDialog } from '@/features/playback/components/dialogs/multiplayer-setup';
 import type { PlaybackPlayerResult } from '@/features/playback/hooks/use-playback-result';
+import { playerDisplayName } from '@/features/playback/utils/player-display-name';
 import { topScoresForSong } from '@/features/playback/utils/result';
 import { Stars } from '@/shared/components/shared/stars';
 import { Button } from '@/shared/components/ui/button';
@@ -54,11 +55,6 @@ type Props = {
 const resultDialogWidth = (multiplayer: boolean): string =>
   multiplayer ? 'sm:max-w-md' : 'sm:max-w-sm';
 
-const playerNumber = (id: string, fallback: number): number => {
-  const parsed = Number(id.slice('player-'.length));
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
-};
-
 function MultiplayerResults({ results }: { results: PlaybackPlayerResult[] }) {
   return (
     <Table aria-label="Multiplayer results">
@@ -71,7 +67,6 @@ function MultiplayerResults({ results }: { results: PlaybackPlayerResult[] }) {
       </TableHeader>
       <TableBody>
         {results.map((result, index) => {
-          const number = playerNumber(result.id, index + 1);
           return (
             <TableRow key={result.id} className={cn(index === 0 && 'bg-primary/10')}>
               <TableCell className="tabular-nums">{index + 1}</TableCell>
@@ -81,9 +76,7 @@ function MultiplayerResults({ results }: { results: PlaybackPlayerResult[] }) {
                     className={`size-2.5 shrink-0 rounded-full ${playerColorOption(result.color).className}`}
                     aria-hidden="true"
                   />
-                  <span className="truncate font-medium">
-                    {result.profile ?? `Guest ${number}`}
-                  </span>
+                  <span className="truncate font-medium">{playerDisplayName(result, results)}</span>
                   {index === 0 ? (
                     <span className="flex shrink-0 items-center gap-1 text-xs text-primary">
                       <TrophyIcon className="size-3" /> Winner
