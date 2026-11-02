@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
@@ -15,30 +16,33 @@ export function usePlaybackLauncher() {
   const { data: config } = useConfig();
   const sessionMode = config?.playback_mode === 'session';
 
-  const reserveTarget = (): PlaybackTarget => {
+  const reserveTarget = useCallback((): PlaybackTarget => {
     const target = sessionMode ? reservePlaybackTarget() : null;
     if (target === undefined) {
       toast.error('Allow pop-ups to open the playback tab');
     }
     return target;
-  };
+  }, [sessionMode]);
 
-  const launch = async (session: PlaybackSession, target: PlaybackTarget): Promise<void> => {
-    try {
-      if (!sessionMode) {
-        await navigate('/playback', { replace: session.queuePlayback, state: session });
-        return;
+  const launch = useCallback(
+    async (session: PlaybackSession, target: PlaybackTarget): Promise<void> => {
+      try {
+        if (!sessionMode) {
+          await navigate('/playback', { replace: session.queuePlayback, state: session });
+          return;
+        }
+
+        await savePlaybackSession(session);
+        await showPlaybackTarget(target);
+      } catch (error) {
+        target?.close();
+        toast.error(
+          `Could not start playback: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
-
-      await savePlaybackSession(session);
-      await showPlaybackTarget(target);
-    } catch (error) {
-      target?.close();
-      toast.error(
-        `Could not start playback: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  };
+    },
+    [navigate, sessionMode],
+  );
 
   return { launch, reserveTarget, sessionMode };
 }

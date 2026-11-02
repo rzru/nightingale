@@ -182,11 +182,18 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
                 file_hash: String,
                 tempo: f64,
                 key_offset: i32,
+                #[serde(default)]
+                add_to_front: bool,
             }
             let args: Args = deserialize(payload)?;
             let entries = state
                 .playback_queue
-                .add(&args.file_hash, args.tempo, args.key_offset)
+                .add(
+                    &args.file_hash,
+                    args.tempo,
+                    args.key_offset,
+                    args.add_to_front,
+                )
                 .map_err(ApiError::bad_request)?;
             events.emit("playback-queue-changed", &entries);
             Ok(serde_json::to_value(entries).map_err(serde_err)?)

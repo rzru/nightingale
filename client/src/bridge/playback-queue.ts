@@ -22,8 +22,9 @@ export const addPlaybackQueueEntry = async (
   fileHash: string,
   tempo: number,
   keyOffset: number,
+  addToFront = false,
 ): Promise<PlaybackQueueEntry[]> =>
-  parseQueue(await invoke('add_playback_queue_entry', { fileHash, tempo, keyOffset }));
+  parseQueue(await invoke('add_playback_queue_entry', { fileHash, tempo, keyOffset, addToFront }));
 
 export const movePlaybackQueueEntry = async (
   id: string,

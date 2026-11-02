@@ -8,7 +8,7 @@ import type { SongSortColumn } from '@/types/SongSortColumn';
 
 import { songKey } from '../../song/song-key';
 import { SONG_COLUMNS, type SongColumn } from '../song-columns';
-import type { SongItemProps } from '../types';
+import type { SongItemProps, SongListActions } from '../types';
 import { SongTableRow } from './song-table-row';
 
 type SongTableProps = {
@@ -17,6 +17,7 @@ type SongTableProps = {
   sortingDisabled: boolean;
   onSort: (column: SongSortColumn) => void;
   getItemProps: (song: Song, index: number) => SongItemProps;
+  actions: SongListActions;
 };
 
 type SongTableHeaderProps = {
@@ -78,6 +79,7 @@ export const SongTable = ({
   sortingDisabled,
   onSort,
   getItemProps,
+  actions,
 }: SongTableProps) => {
   const bestScores = useBestScoresBySongForActiveProfile();
 
@@ -101,6 +103,7 @@ export const SongTable = ({
           <SongTableRow
             key={songKey(song)}
             {...getItemProps(song, index)}
+            actions={actions}
             bestScore={bestScores.get(song.file_hash)}
           />
         ))}

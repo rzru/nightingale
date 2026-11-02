@@ -8,7 +8,9 @@ import type { SongSortColumn } from '@/types/SongSortColumn';
 
 import { AlbumArt } from '../song/album-art';
 import { LanguageBadge, NgeBadge } from '../song/language-badge';
+import { SongQuickActions } from '../song/song-quick-actions';
 import { StatusBadge } from '../song/status-badge';
+import type { SongListActions } from './types';
 
 export type SongColumn = {
   id: string;
@@ -16,7 +18,12 @@ export type SongColumn = {
   sortColumn?: SongSortColumn;
   thClassName: string;
   tdClassName: string;
-  cell: (song: Song, queueStatus?: QueuedStatus, bestScore?: number) => ReactNode;
+  cell: (
+    song: Song,
+    queueStatus?: QueuedStatus,
+    bestScore?: number,
+    actions?: SongListActions,
+  ) => ReactNode;
 };
 
 export const SONG_COLUMNS: SongColumn[] = [
@@ -83,5 +90,15 @@ export const SONG_COLUMNS: SongColumn[] = [
     thClassName: 'song-table-status px-2 py-2 text-right font-medium',
     tdClassName: 'song-table-status px-2 py-2 text-right',
     cell: (song, queueStatus) => <StatusBadge song={song} queueStatus={queueStatus} />,
+  },
+  {
+    id: 'actions',
+    header: <span className="sr-only">Actions</span>,
+    thClassName: 'song-table-actions px-2 py-2',
+    tdClassName: 'song-table-actions px-2 py-2 text-right',
+    cell: (song, queueStatus, _bestScore, actions) =>
+      actions === undefined ? null : (
+        <SongQuickActions song={song} queueStatus={queueStatus} {...actions} />
+      ),
   },
 ];

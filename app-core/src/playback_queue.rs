@@ -34,6 +34,7 @@ impl PlaybackQueue {
         file_hash: &str,
         tempo: f64,
         key_offset: i32,
+        add_to_front: bool,
     ) -> Result<Vec<PlaybackQueueEntry>, String> {
         let song = SongsStore::load_by_hashes(&[file_hash.to_string()])
             .into_iter()
@@ -45,12 +46,17 @@ impl PlaybackQueue {
             .lock()
             .map_err(|_| "playback queue lock poisoned".to_string())?;
 
-        entries.push_back(PlaybackQueueEntry {
+        let entry = PlaybackQueueEntry {
             id,
             song,
             tempo,
             key_offset,
-        });
+        };
+        if add_to_front {
+            entries.push_front(entry);
+        } else {
+            entries.push_back(entry);
+        }
 
         Ok(entries.iter().cloned().collect())
     }

@@ -48,12 +48,16 @@ export function usePlaybackQueueQuery() {
   return query;
 }
 
+type AddPlaybackQueueEntryInput = PreparePlaybackInput & {
+  position?: 'top' | 'bottom';
+};
+
 export function useAddPlaybackQueueEntry() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ song, tempo, keyOffset }: PreparePlaybackInput) =>
-      addPlaybackQueueEntry(song.file_hash, tempo, keyOffset),
+    mutationFn: ({ song, tempo, keyOffset, position }: AddPlaybackQueueEntryInput) =>
+      addPlaybackQueueEntry(song.file_hash, tempo, keyOffset, position === 'top'),
     onSuccess: (entries) => queryClient.setQueryData(PLAYBACK_QUEUE, entries),
     onError: (error: Error) => toast.error(`Could not add song to queue: ${error.message}`),
   });

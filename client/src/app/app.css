@@ -208,6 +208,10 @@
     width: 9rem;
   }
 
+  .song-table-actions {
+    width: 4.5rem;
+  }
+
   .song-table-header {
     background-color: var(--background);
   }

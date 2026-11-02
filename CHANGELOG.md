@@ -15,6 +15,7 @@ below.
 
 ### Features
 
+- Added quick song-list actions to analyze unready songs or play and queue ready songs from both table and card views, with right-click menus for analysis options, queue position, and singleplayer or multiplayer playback.
 - The pitch graph now centers the current moment, previews upcoming vocal notes, and shows stabilized current vocal and singer notes without reacting to brief pitch fluctuations.
 - Added a playback timeline with scrubbing and controls to jump one second or one lyric line backward and forward.
 - `.nge` song bundles are now a first-class library format — a single file (a plain ZIP archive with a `.nge` extension) holding a song's stems, cover, synced lyrics, transcript, and optional video. Move a `.nge` into your library folder and Nightingale registers it as an already-analyzed song and plays it on desktop and self-hosted web (stems, guide vocal, cover, lyrics, video) **directly from the bundle without unpacking or reconverting its stems**. A `.nge` is a read-only bundle, so the mutating analysis actions (reanalyze, realign, edit lyrics) are hidden while key/tempo shift keeps working; a read-only **View lyrics** action and an **NGE** tag next to the song's language mark it.

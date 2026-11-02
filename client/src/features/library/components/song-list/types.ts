@@ -9,3 +9,12 @@ export type SongItemProps = {
   isSelected: boolean;
   onSelect: (song: Song) => void;
 };
+
+export type SongListActions = {
+  addingToQueue: boolean;
+  onAddToQueue: (song: Song, position: 'top' | 'bottom') => void;
+  onAnalyze: (song: Song) => void;
+  onPlay: (song: Song) => void;
+  onPlayMultiplayer: (song: Song) => void;
+  onProvideLyrics: (song: Song) => void;
+};
