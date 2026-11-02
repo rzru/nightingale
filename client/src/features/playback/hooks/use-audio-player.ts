@@ -264,10 +264,7 @@ export function useAudioPlayer(
         vocalsBufRef.current = vocBuf;
 
         setDuration(instBuf.duration);
-
-        startSources(0);
         setIsReady(true);
-        setIsPlaying(true);
         return undefined;
       })
       .catch((e: unknown) => {
@@ -314,19 +311,14 @@ export function useAudioPlayer(
       void ctx.close();
       ctxRef.current = null;
     };
-  }, [
-    adapter,
-    enabled,
-    fileHash,
-    initialGuideVolume,
-    initialMasterVolume,
-    startSources,
-    stopSources,
-  ]);
+  }, [adapter, enabled, fileHash, initialGuideVolume, initialMasterVolume, stopSources]);
 
   const play = useCallback(() => {
+    if (playingRef.current) {
+      return;
+    }
     startSources(startOffsetRef.current);
-    setIsPlaying(true);
+    setIsPlaying(playingRef.current);
   }, [startSources]);
 
   const pause = useCallback(() => {

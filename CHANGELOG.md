@@ -23,6 +23,7 @@ below.
 
 ### Fixes
 
+- Playback now waits for the background, lyrics, and HUD to finish loading before the music starts, without flashing the background during loading or pause transitions.
 - Multiplayer guest names now number only guest singers, while a single guest is simply labeled **Guest**.
 - Singer trails now stay on their normalized octave through reference-vocal pauses and brief detector octave jumps.
 - The playback score divider now matches the score width instead of the settings block beneath it.

@@ -25,6 +25,7 @@ import {
   usePlaybackTransportActions,
   usePlaybackTransportState,
 } from '@/features/playback/providers';
+import { usePlaybackStartupState } from '@/features/playback/providers/playback-startup-context';
 import type { AppConfig } from '@/types/AppConfig';
 import type { Song } from '@/types/Song';
 
@@ -55,9 +56,10 @@ function PlaybackLayout({
   sessionPlayback,
   players,
 }: PlaybackLayoutProps) {
-  const { isReady, paused } = usePlaybackTransportState();
+  const { paused } = usePlaybackTransportState();
   const { handleContinue, handleExit } = usePlaybackTransportActions();
   const { segments } = usePlaybackTranscriptState();
+  const { started } = usePlaybackStartupState();
   const { theme } = usePlaybackThemeState();
   const mic = usePlaybackMicState();
   const {
@@ -75,30 +77,26 @@ function PlaybackLayout({
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-black" style={{ contain: 'strict' }}>
-      {isReady ? (
-        <>
-          <Background />
-          <PlaybackHud
-            title={song.title}
-            artist={song.artist}
-            config={config}
-            position={hudPosition}
-            windowControls={sessionWindowControls}
-          />
-          {!isPitchGuideTheme(theme) && (
-            <PitchGraph series={mic.series} position={hudPosition} scale={pitchGraphScale} />
-          )}
-          <LyricsDisplay
-            segments={segments}
-            verticalPosition={lyricsVerticalPosition}
-            horizontalPosition={lyricsHorizontalPosition}
-            scale={lyricsScale}
-            romanizationMode={lyricsRomanizationMode}
-          />
-        </>
-      ) : (
-        <LoadingScreen song={song} />
+      <Background />
+      <PlaybackHud
+        title={song.title}
+        artist={song.artist}
+        config={config}
+        position={hudPosition}
+        windowControls={sessionWindowControls}
+      />
+      {!isPitchGuideTheme(theme) && (
+        <PitchGraph series={mic.series} position={hudPosition} scale={pitchGraphScale} />
       )}
+      <LyricsDisplay
+        segments={segments}
+        verticalPosition={lyricsVerticalPosition}
+        horizontalPosition={lyricsHorizontalPosition}
+        scale={lyricsScale}
+        romanizationMode={lyricsRomanizationMode}
+      />
+
+      {!started && <LoadingScreen song={song} />}
 
       <PauseOverlay
         open={paused && !result.open}

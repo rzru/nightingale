@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { MicReactiveRef } from '@/features/microphone/hooks/use-mic-reactive';
+import { useBackgroundLifecycle } from '@/features/playback/components/background-lifecycle-context';
 import {
   buildPitchGuideTrack,
   renderPitchGuide,
@@ -58,6 +59,7 @@ export function PitchGuideBackground({
   isPlaying,
   reactiveRef,
 }: PitchGuideBackgroundProps) {
+  const { ready } = useBackgroundLifecycle();
   const { multiplayer, players, series } = usePlaybackMicState();
   const lanesCanvasRef = useRef<HTMLCanvasElement>(null);
   const guideCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -138,6 +140,7 @@ export function PitchGuideBackground({
         isPlaying={isPlaying}
         reactiveRef={reactiveRef}
         className="absolute inset-0"
+        onReady={ready}
       />
       <canvas
         ref={lanesCanvasRef}

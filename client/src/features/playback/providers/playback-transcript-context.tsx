@@ -8,7 +8,17 @@
  * separate piece of useState wiring.
  */
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
+import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 import { usePlaybackTranscript } from '@/features/playback/hooks/use-playback-transcript';
 import { usePlaybackTransportActions } from '@/features/playback/providers/playback-transport-context';
@@ -22,6 +32,7 @@ export type PlaybackTranscriptState = {
   lastSegmentEnd: number;
   introSkipLeadSec: number;
   skipOutroPending: boolean;
+  isReady: boolean;
 };
 
 export type PlaybackTranscriptActions = {
@@ -42,9 +53,17 @@ export function PlaybackTranscriptProvider({
   fileHash,
   children,
 }: PlaybackTranscriptProviderProps) {
+  const navigate = useNavigate();
   const { seek, pauseAudio } = usePlaybackTransportActions();
-  const { segments, transcriptSource } = usePlaybackTranscript(fileHash);
+  const { segments, transcriptSource, isReady, error } = usePlaybackTranscript(fileHash);
   const [skipOutroPending, setSkipOutroPending] = useState(false);
+
+  useEffect(() => {
+    if (error !== null) {
+      toast.error(error);
+      void navigate('/', { replace: true });
+    }
+  }, [error, navigate]);
 
   const firstSegmentStart = segments.length > 0 ? segments[0].start : 0;
   const lastSegmentEnd = segments.length > 0 ? segments[segments.length - 1].end : 0;
@@ -76,8 +95,9 @@ export function PlaybackTranscriptProvider({
       lastSegmentEnd,
       introSkipLeadSec: INTRO_SKIP_LEAD_SEC,
       skipOutroPending,
+      isReady,
     }),
-    [segments, transcriptSource, firstSegmentStart, lastSegmentEnd, skipOutroPending],
+    [segments, transcriptSource, firstSegmentStart, lastSegmentEnd, skipOutroPending, isReady],
   );
 
   const actionsValue = useMemo<PlaybackTranscriptActions>(

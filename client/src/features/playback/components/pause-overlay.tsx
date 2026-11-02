@@ -43,28 +43,36 @@ export const PauseOverlay = ({ open, exitLabel, onExit, onContinue }: PauseOverl
   });
 
   return (
-    <AlertDialog open={open} onOpenChange={(v) => !v && onContinue()}>
-      <AlertDialogContent onEscapeKeyDown={(e) => e.preventDefault()}>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Paused</AlertDialogTitle>
-          <AlertDialogDescription>Exiting now won&apos;t save your progress</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel
-            onClick={onContinue}
-            className={cn(NO_FOCUS_RING, open && focusedIndex === 0 && RING)}
-          >
-            Continue
-          </AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            onClick={onExit}
-            className={cn(NO_FOCUS_RING, open && focusedIndex === 1 && RING)}
-          >
-            {exitLabel}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      {open && <div className="fixed inset-0 z-40 bg-black/80" aria-hidden />}
+      <AlertDialog open={open} onOpenChange={(v) => !v && onContinue()}>
+        <AlertDialogContent
+          style={{ animation: 'none' }}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Paused</AlertDialogTitle>
+            <AlertDialogDescription>
+              Exiting now won&apos;t save your progress
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={onContinue}
+              className={cn(NO_FOCUS_RING, open && focusedIndex === 0 && RING)}
+            >
+              Continue
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={onExit}
+              className={cn(NO_FOCUS_RING, open && focusedIndex === 1 && RING)}
+            >
+              {exitLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };

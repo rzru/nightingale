@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { playbackAdapter } from '@/bridge/playback';
+import { useBackgroundLifecycle } from '@/features/playback/components/background-lifecycle-context';
 import { useSourceVideoSync } from '@/features/playback/hooks/use-source-video-sync';
 import { VIDEO_CLASS_NAME } from '@/features/playback/lib/video-styles';
 import { usePlaybackThemeState } from '@/features/playback/providers/playback-theme-context';
@@ -41,6 +42,7 @@ export const SourceVideo = ({ isActive }: SourceVideoProps) => {
   const { sourceVideoPath, sourceVideoTempoRatio } = usePlaybackThemeState();
   const { isReady, isPlaying } = usePlaybackTransportState();
   const { subscribe, getCurrentTime } = usePlaybackTransportActions();
+  const { ready: markReady } = useBackgroundLifecycle();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const src = useMediaUrl(sourceVideoPath ?? '');
@@ -55,6 +57,12 @@ export const SourceVideo = ({ isActive }: SourceVideoProps) => {
     subscribe,
     getCurrentTime,
   });
+
+  useEffect(() => {
+    if (ready && isActive) {
+      markReady();
+    }
+  }, [isActive, markReady, ready]);
 
   if (!playableSource(sourceVideoPath, src)) {
     return null;

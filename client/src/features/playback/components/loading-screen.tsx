@@ -10,7 +10,7 @@ type LoadingScreenProps = {
 
 export function LoadingScreen({ song }: LoadingScreenProps) {
   return (
-    <div className="fixed inset-0">
+    <div className="fixed inset-0 z-50 bg-black">
       <ShaderVisualizer shaderIndex={0} isPlaying={true} customFragment={loadingFragment} />
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 px-6 text-center">
         <AlbumArt

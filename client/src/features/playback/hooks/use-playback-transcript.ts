@@ -11,14 +11,33 @@ import type { Segment, Transcript } from '@/types/Transcript';
 export function usePlaybackTranscript(fileHash: string) {
   const [segments, setSegments] = useState<Segment[]>([]);
   const [transcriptSource, setTranscriptSource] = useState('generated');
+  const [isReady, setIsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void loadTranscript(fileHash).then((transcript: Transcript) => {
-      setSegments(splitLongSegments(transcript.segments));
-      setTranscriptSource(transcript.source ?? 'generated');
-      return undefined;
-    });
+    let cancelled = false;
+
+    void loadTranscript(fileHash)
+      .then((transcript: Transcript) => {
+        if (!cancelled) {
+          setSegments(splitLongSegments(transcript.segments));
+          setTranscriptSource(transcript.source ?? 'generated');
+          setIsReady(true);
+        }
+        return undefined;
+      })
+      .catch((reason: unknown) => {
+        if (!cancelled) {
+          setError(
+            `Failed to load lyrics: ${reason instanceof Error ? reason.message : String(reason)}`,
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [fileHash]);
 
-  return { segments, transcriptSource };
+  return { segments, transcriptSource, isReady, error };
 }

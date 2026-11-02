@@ -10,6 +10,7 @@ import type { AppConfig } from '@/types/AppConfig';
 import type { Song } from '@/types/Song';
 
 import { PlaybackMicProvider } from './playback-mic-context';
+import { PlaybackStartupProvider } from './playback-startup-provider';
 import { PlaybackThemeProvider } from './playback-theme-context';
 import { PlaybackTranscriptProvider } from './playback-transcript-context';
 import { PlaybackTransportProvider } from './playback-transport-context';
@@ -31,7 +32,7 @@ export function PlaybackProviders({ song, config, players, children }: PlaybackP
       <PlaybackThemeProvider song={song} config={config}>
         <PlaybackMicProvider config={config} players={players}>
           <PlaybackTranscriptProvider fileHash={song.file_hash}>
-            {children}
+            <PlaybackStartupProvider>{children}</PlaybackStartupProvider>
           </PlaybackTranscriptProvider>
         </PlaybackMicProvider>
       </PlaybackThemeProvider>
@@ -46,6 +47,8 @@ export {
   type PlaybackTransportActions,
   type PlaybackTransportState,
 } from './playback-transport-context';
+
+export { PlaybackStartupProvider } from './playback-startup-provider';
 
 export {
   PlaybackThemeProvider,

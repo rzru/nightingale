@@ -11,6 +11,7 @@ type ShaderVisualizerProps = {
   customFragment?: string;
   reactiveRef?: MicReactiveRef;
   className?: string;
+  onReady?: () => void;
 };
 
 const ShaderQuad = ({
@@ -37,10 +38,11 @@ const ShaderQuad = ({
 
 export const ShaderVisualizer = ({
   className = 'fixed inset-0',
+  onReady,
   ...props
 }: ShaderVisualizerProps) => (
   <div className={className}>
-    <Canvas flat dpr={1}>
+    <Canvas flat dpr={1} onCreated={() => requestAnimationFrame(() => onReady?.())}>
       <ShaderQuad {...props} />
     </Canvas>
   </div>
