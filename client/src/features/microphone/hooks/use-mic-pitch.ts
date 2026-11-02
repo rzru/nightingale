@@ -8,10 +8,7 @@ import {
 import { useMicSamples } from '@/features/microphone/hooks/use-mic-samples';
 import { SampleRing } from '@/features/microphone/lib/sample-ring';
 import { PITCH_WINDOW_SAMPLES } from '@/features/playback/lib/pitch/constants';
-import {
-  createMicPitchDetector,
-  detectPitchFromSamplesMic,
-} from '@/features/playback/lib/pitch/detect';
+import { createPitchDetector, detectPitchFromSamples } from '@/features/playback/lib/pitch/detect';
 
 /** ~30 Hz pitch updates: more than enough for vocal pitch tracking. */
 const PITCH_TICK_MS = 33;
@@ -44,7 +41,7 @@ export function useMicPitch(captureId: string, enabled: boolean) {
       return undefined;
     }
 
-    const detector = createMicPitchDetector();
+    const detector = createPitchDetector();
     const window = new Float32Array(PITCH_WINDOW_SAMPLES);
 
     const tick = () => {
@@ -56,7 +53,7 @@ export function useMicPitch(captureId: string, enabled: boolean) {
       if (!ring.readMostRecent(window)) {
         return;
       }
-      const hz = detectPitchFromSamplesMic(detector, window, sr);
+      const hz = detectPitchFromSamples(detector, window, sr);
       setLatestPitch(hz);
     };
 

@@ -5,7 +5,7 @@ import {
   SEMITONE_TOLERANCE,
   SMOOTHING,
 } from './constants';
-import { createPitchDetector, detectPitchFromSamplesRef } from './detect';
+import { createPitchDetector, detectPitchFromSamples } from './detect';
 
 export type ReferencePitchTrack = {
   pitches: (number | null)[];
@@ -193,7 +193,7 @@ export function analyzeReferencePitches(vocals: AudioBuffer): ReferencePitchTrac
 
   for (let offset = 0; offset + PITCH_WINDOW_SAMPLES <= ch.length; offset += hop) {
     window.set(ch.subarray(offset, offset + PITCH_WINDOW_SAMPLES));
-    const pitch = detectPitchFromSamplesRef(detector, window, sr);
+    const pitch = detectPitchFromSamples(detector, window, sr);
     pitches.push(pitch);
     if (pitch !== null) {
       singableTime += intervalSec;

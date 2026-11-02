@@ -7,10 +7,7 @@ import {
   MIN_MIC_LATENCY_COMPENSATION_SEC,
   PITCH_WINDOW_SAMPLES,
 } from '@/features/playback/lib/pitch/constants';
-import {
-  createPitchDetector,
-  detectPitchFromSamplesRef,
-} from '@/features/playback/lib/pitch/detect';
+import { createPitchDetector, detectPitchFromSamples } from '@/features/playback/lib/pitch/detect';
 import type { PitchSeries, ReferencePitchTrack } from '@/features/playback/lib/pitch/state';
 import {
   analyzeReferencePitches,
@@ -83,7 +80,7 @@ export function usePitchScoring(
       const referenceTime = Math.max(0, t - latencyRef.current);
       const refHz =
         reference && sampleVocalsWindow(reference, t, scratchRef.current, latencyRef.current)
-          ? detectPitchFromSamplesRef(refDetector.current, scratchRef.current, reference.sampleRate)
+          ? detectPitchFromSamples(refDetector.current, scratchRef.current, reference.sampleRate)
           : null;
       const sim = refHz !== null && mp !== null ? pitchSimilarity(refHz, mp) : 0;
 

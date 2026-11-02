@@ -2,12 +2,10 @@ import { PitchDetector } from 'pitchy';
 
 import {
   MAX_PITCH_HZ,
-  MIC_PITCH_CLARITY_THRESHOLD,
-  MIC_RMS_GATE,
   MIN_PITCH_HZ,
   PITCH_CLARITY_THRESHOLD,
+  PITCH_RMS_GATE,
   PITCH_WINDOW_SAMPLES,
-  REF_RMS_GATE,
 } from './constants';
 
 function rms(samples: ArrayLike<number>): number {
@@ -26,13 +24,7 @@ export function createPitchDetector(): PitchDetector<Float32Array> {
   return PitchDetector.forFloat32Array(PITCH_WINDOW_SAMPLES);
 }
 
-export function createMicPitchDetector(): PitchDetector<Float32Array> {
-  const d = PitchDetector.forFloat32Array(PITCH_WINDOW_SAMPLES);
-  d.clarityThreshold = 0.65;
-  return d;
-}
-
-export function detectPitchFromSamplesRef(
+export function detectPitchFromSamples(
   detector: PitchDetector<Float32Array>,
   samples: Float32Array,
   sampleRate: number,
@@ -40,32 +32,11 @@ export function detectPitchFromSamplesRef(
   if (samples.length !== PITCH_WINDOW_SAMPLES) {
     throw new Error(`Expected ${PITCH_WINDOW_SAMPLES} samples`);
   }
-  if (rms(samples) < REF_RMS_GATE) {
+  if (rms(samples) < PITCH_RMS_GATE) {
     return null;
   }
   const [hz, clarity] = detector.findPitch(samples, sampleRate);
-  if (clarity < PITCH_CLARITY_THRESHOLD || hz <= 0) {
-    return null;
-  }
-  if (hz < MIN_PITCH_HZ || hz > MAX_PITCH_HZ) {
-    return null;
-  }
-  return hz;
-}
-
-export function detectPitchFromSamplesMic(
-  detector: PitchDetector<Float32Array>,
-  samples: Float32Array,
-  sampleRate: number,
-): number | null {
-  if (samples.length !== PITCH_WINDOW_SAMPLES) {
-    throw new Error(`Expected ${PITCH_WINDOW_SAMPLES} samples`);
-  }
-  if (rms(samples) < MIC_RMS_GATE) {
-    return null;
-  }
-  const [hz, clarity] = detector.findPitch(samples, sampleRate);
-  if (hz <= 0 || clarity < MIC_PITCH_CLARITY_THRESHOLD) {
+  if (hz <= 0 || clarity < PITCH_CLARITY_THRESHOLD) {
     return null;
   }
   if (hz < MIN_PITCH_HZ || hz > MAX_PITCH_HZ) {
