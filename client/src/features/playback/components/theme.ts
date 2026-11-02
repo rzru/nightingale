@@ -4,6 +4,8 @@ import type { CustomBackground } from '@/types/CustomBackground';
 
 import { shaders } from './shaders';
 
+export const PITCH_GUIDE_SHADER_ID = 'pitch-guide';
+
 export type PlaybackTheme =
   | { kind: 'shader'; id: string; name: string; shaderIndex: number }
   | { kind: 'pixabay' }
@@ -87,8 +89,11 @@ export function initialThemeKey(input: {
       return selected;
     }
   }
-  if (input.legacyIndex >= 0 && input.legacyIndex < input.themes.length) {
-    const legacy = input.themes[input.legacyIndex];
+  const pitchGuideIndex = shaders.findIndex((shader) => shader.id === PITCH_GUIDE_SHADER_ID);
+  const legacyIndex =
+    input.legacyIndex >= pitchGuideIndex ? input.legacyIndex + 1 : input.legacyIndex;
+  if (legacyIndex >= 0 && legacyIndex < input.themes.length) {
+    const legacy = input.themes[legacyIndex];
     if (legacy.kind !== 'source') {
       return themeKey(legacy);
     }
@@ -138,4 +143,8 @@ export function nextFlavorIndex(current: number): number {
 
 export function isPixabayTheme(theme: PlaybackTheme): boolean {
   return theme.kind === 'pixabay';
+}
+
+export function isPitchGuideTheme(theme: PlaybackTheme): boolean {
+  return theme.kind === 'shader' && theme.id === PITCH_GUIDE_SHADER_ID;
 }

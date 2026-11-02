@@ -2,6 +2,7 @@ import loading from './fragments/loading.glsl?raw';
 import metaballs from './fragments/metaballs.glsl?raw';
 import nebula from './fragments/nebula.glsl?raw';
 import oscilloscope from './fragments/oscilloscope.glsl?raw';
+import pitchGuide from './fragments/pitch-guide.glsl?raw';
 import plasma from './fragments/plasma.glsl?raw';
 import sonar from './fragments/sonar.glsl?raw';
 import spectrum from './fragments/spectrum.glsl?raw';
@@ -40,4 +41,5 @@ export const shaders: ShaderDefinition[] = [
   { id: 'metaballs', name: 'Metaballs', fragmentShader: withAudio(metaballs) },
   { id: 'spectrum', name: 'Spectrum', fragmentShader: withAudio(spectrum) },
   { id: 'oscilloscope', name: 'Oscilloscope', fragmentShader: withAudio(oscilloscope) },
+  { id: 'pitch-guide', name: 'Pitch Guide', fragmentShader: withAudio(pitchGuide) },
 ];

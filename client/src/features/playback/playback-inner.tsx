@@ -15,10 +15,12 @@ import { LyricsDisplay } from '@/features/playback/components/lyrics-display';
 import { PauseOverlay } from '@/features/playback/components/pause-overlay';
 import { PitchGraph } from '@/features/playback/components/pitch-graph';
 import { PlaybackHud } from '@/features/playback/components/playback-hud';
+import { isPitchGuideTheme } from '@/features/playback/components/theme';
 import { usePlaybackInput, usePlaybackResult } from '@/features/playback/hooks';
 import {
   PlaybackProviders,
   usePlaybackMicState,
+  usePlaybackThemeState,
   usePlaybackTranscriptState,
   usePlaybackTransportActions,
   usePlaybackTransportState,
@@ -56,6 +58,7 @@ function PlaybackLayout({
   const { isReady, paused } = usePlaybackTransportState();
   const { handleContinue, handleExit } = usePlaybackTransportActions();
   const { segments } = usePlaybackTranscriptState();
+  const { theme } = usePlaybackThemeState();
   const mic = usePlaybackMicState();
   const {
     lyricsVerticalPosition,
@@ -82,7 +85,9 @@ function PlaybackLayout({
             position={hudPosition}
             windowControls={sessionWindowControls}
           />
-          <PitchGraph series={mic.series} position={hudPosition} scale={pitchGraphScale} />
+          {!isPitchGuideTheme(theme) && (
+            <PitchGraph series={mic.series} position={hudPosition} scale={pitchGraphScale} />
+          )}
           <LyricsDisplay
             segments={segments}
             verticalPosition={lyricsVerticalPosition}

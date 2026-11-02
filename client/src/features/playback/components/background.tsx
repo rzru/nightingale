@@ -6,12 +6,31 @@ import { usePlaybackThemeState } from '@/features/playback/providers/playback-th
 import { usePlaybackTransportState } from '@/features/playback/providers/playback-transport-context';
 
 import { CustomBackground } from './custom-background';
+import { PitchGuideBackground } from './pitch-guide-background';
 import { PixabayVideo } from './pixabay-video';
 import { ShaderVisualizer } from './shader-visualizer';
 import { SourceVideo } from './source-video';
+import { PITCH_GUIDE_SHADER_ID } from './theme';
 
-function ShaderBranch({ shaderIndex, isPlaying }: { shaderIndex: number; isPlaying: boolean }) {
+function ShaderBranch({
+  id,
+  shaderIndex,
+  isPlaying,
+}: {
+  id: string;
+  shaderIndex: number;
+  isPlaying: boolean;
+}) {
   const { reactiveRef } = usePlaybackMicActions();
+  if (id === PITCH_GUIDE_SHADER_ID) {
+    return (
+      <PitchGuideBackground
+        shaderIndex={shaderIndex}
+        isPlaying={isPlaying}
+        reactiveRef={reactiveRef}
+      />
+    );
+  }
   return (
     <ShaderVisualizer shaderIndex={shaderIndex} isPlaying={isPlaying} reactiveRef={reactiveRef} />
   );
@@ -44,7 +63,7 @@ function BackgroundImpl() {
         <SourceVideo isActive={theme.kind === 'source'} />
       )}
       {theme.kind === 'shader' && (
-        <ShaderBranch shaderIndex={theme.shaderIndex} isPlaying={isPlaying} />
+        <ShaderBranch id={theme.id} shaderIndex={theme.shaderIndex} isPlaying={isPlaying} />
       )}
       {theme.kind === 'pixabay' && <PixabayVideo flavor={videoFlavor} isPlaying={isPlaying} />}
       {theme.kind === 'custom' && <CustomBranch isPlaying={isPlaying} />}
