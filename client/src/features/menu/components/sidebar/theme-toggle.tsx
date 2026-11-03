@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import { useTheme } from '@/app/providers/theme-context';
 import { useMenuFocus } from '@/features/menu/providers/menu-focus-context';
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { useConfigMutation } from '@/shared/config/use-config-mutation';
@@ -25,8 +26,8 @@ export const ThemeToggle = ({
 
   const { Icon, label } = useMemo(() => {
     return theme === 'dark'
-      ? { Icon: SunIcon, label: 'Light mode' }
-      : { Icon: MoonIcon, label: 'Dark mode' };
+      ? { Icon: SunIcon, label: 'menu.sidebar.themeToggle.lightMode' }
+      : { Icon: MoonIcon, label: 'menu.sidebar.themeToggle.darkMode' };
   }, [theme]);
 
   const handleToggle = useCallback(() => {
@@ -49,7 +50,7 @@ export const ThemeToggle = ({
           tabIndex={-1}
           variant="ghost"
           size="icon-xs"
-          aria-label={label}
+          aria-label={t(label)}
           onClick={handleToggle}
           data-sidebar-nav-index={focusedSidebarIndex}
           className={cn(
@@ -61,7 +62,7 @@ export const ThemeToggle = ({
           <Icon />
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="bottom">{label}</TooltipContent>
+      <TooltipContent side="bottom">{t(label)}</TooltipContent>
     </Tooltip>
   );
 };

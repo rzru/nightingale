@@ -1,3 +1,5 @@
+import { t } from '@/i18n';
+
 import { GENERIC_DESCRIPTION, PairFooter, type FocusCtx, type ViewParts } from '../parts';
 
 type Args = {
@@ -11,11 +13,16 @@ export const installErrorView = ({ ctx, message, onClose, onRetry }: Args): View
   description: GENERIC_DESCRIPTION,
   body: (
     <div className="flex flex-col gap-2 text-xs">
-      <p className="text-destructive">The update could not be installed.</p>
+      <p className="text-destructive">{t('updates.installError.theUpdateCouldNotBeInstalled')}</p>
       <p className="text-muted-foreground break-words">{message}</p>
     </div>
   ),
   footer: (
-    <PairFooter ctx={ctx} onClose={onClose} primaryLabel="Retry install" onPrimary={onRetry} />
+    <PairFooter
+      ctx={ctx}
+      onClose={onClose}
+      primaryLabel="updates.actions.retryInstall"
+      onPrimary={onRetry}
+    />
   ),
 });

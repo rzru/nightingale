@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 import { loadTranscript } from '@/bridge/playback';
 import { useDialog, type DialogMode } from '@/features/menu/hooks/use-dialog';
+import { t } from '@/i18n';
 import {
   Dialog,
   DialogContent,
@@ -19,10 +20,14 @@ type LyricsResult = { hash: string; lines?: string[]; error?: string };
 
 const renderBody = (current: LyricsResult | null): ReactNode => {
   if (current === null) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <p className="text-sm text-muted-foreground">{t('lyrics.viewLyrics.loading')}</p>;
   }
   if (current.error !== undefined) {
-    return <p className="text-sm text-destructive">Couldn’t load lyrics: {current.error}</p>;
+    return (
+      <p className="text-sm text-destructive">
+        {t('lyrics.viewLyrics.couldnTLoadLyricsValue1', { value1: current.error })}
+      </p>
+    );
   }
   if (current.lines !== undefined && current.lines.length > 0) {
     return (
@@ -31,7 +36,11 @@ const renderBody = (current: LyricsResult | null): ReactNode => {
       </pre>
     );
   }
-  return <p className="text-sm text-muted-foreground">No lyrics available for this song.</p>;
+  return (
+    <p className="text-sm text-muted-foreground">
+      {t('lyrics.viewLyrics.noLyricsAvailableForThisSong')}
+    </p>
+  );
 };
 
 export const ViewLyricsDialog = () => {
@@ -82,7 +91,7 @@ export const ViewLyricsDialog = () => {
     >
       <DialogContent className="flex h-[85vh] flex-col sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Lyrics</DialogTitle>
+          <DialogTitle>{t('lyrics.viewLyrics.lyrics')}</DialogTitle>
           <DialogDescription>
             {song !== null ? `${song.title} — ${song.artist}` : ''}
           </DialogDescription>

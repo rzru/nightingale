@@ -20,6 +20,7 @@ import { useMenuFocus } from '@/features/menu/providers/menu-focus-context';
 import { useCurrentProfile } from '@/features/profiles/hooks/use-current-profile';
 import { useShouldRunSetup } from '@/features/setup/hooks/use-should-run-setup';
 import { useUpdate } from '@/features/updates/queries/use-update';
+import { t } from '@/i18n';
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
 import {
   DropdownMenu,
@@ -60,7 +61,7 @@ const AvatarBadge = ({ update, donation }: { update: boolean; donation: boolean 
 
   return (
     <span
-      aria-label={update ? 'Update available' : 'Support Nightingale'}
+      aria-label={t(update ? 'menu.sidebar.updateAvailable' : 'menu.sidebar.supportNightingale')}
       className={`absolute -right-0.5 -top-0.5 size-2 rounded-full ring-2 ring-sidebar ${
         update ? 'bg-chart-3' : 'bg-pink-500'
       }`}
@@ -172,7 +173,9 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
                 </Avatar>
                 <AvatarBadge update={updateAvailable} donation={showDonationAvatarBadge} />
               </div>
-              <span className="truncate font-medium">{profile ?? 'No Selected Profile'}</span>
+              <span className="truncate font-medium">
+                {profile ?? t('menu.sidebar.noSelectedProfile')}
+              </span>
               <ChevronsUpDownIcon className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
@@ -182,15 +185,15 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
             collisionPadding={8}
             className="min-w-56"
           >
-            <DropdownMenuLabel>Setup</DropdownMenuLabel>
+            <DropdownMenuLabel>{t('menu.sidebar.actions.setup')}</DropdownMenuLabel>
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => setShouldRunSetup(true)}>
                 <RefreshCcwDotIcon />
-                Re-run Setup
+                {t('menu.sidebar.actions.reRunSetup')}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>General</DropdownMenuLabel>
+            <DropdownMenuLabel>{t('settings.tabs.general')}</DropdownMenuLabel>
             <DropdownMenuGroup>
               <DropdownMenuItem
                 onClick={() => {
@@ -198,11 +201,11 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
                 }}
               >
                 <UserIcon />
-                Profile
+                {t('menu.sidebar.actions.profile')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setMode('leaderboards')}>
                 <TrophyIcon />
-                Leaderboards
+                {t('menu.sidebar.actions.leaderboards')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
@@ -214,36 +217,36 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
                 }}
               >
                 <CogIcon />
-                Settings
+                {t('common.settings')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setMode('update')}>
                 <DownloadIcon />
-                <span>Update</span>
+                <span>{t('menu.sidebar.actions.update')}</span>
                 {updateAvailable && (
                   <span
-                    aria-label="Update available"
+                    aria-label={t('menu.sidebar.actions.updateAvailable')}
                     className="ml-auto size-2 rounded-full bg-chart-3"
                   />
                 )}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setMode('donate')}>
                 <HeartIcon />
-                <span>Donate</span>
+                <span>{t('menu.sidebar.actions.donate')}</span>
                 {showDonationBadge && (
                   <span
-                    aria-label="Support Nightingale"
+                    aria-label={t('menu.sidebar.actions.supportNightingale')}
                     className="ml-auto size-2 rounded-full bg-pink-500"
                   />
                 )}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setMode('about')}>
                 <InfoIcon />
-                About
+                {t('menu.sidebar.actions.about')}
               </DropdownMenuItem>
               {EXIT_SUPPORTED && (
                 <DropdownMenuItem onClick={() => setMode('exit')}>
                   <DoorOpenIcon />
-                  Exit
+                  {t('menu.sidebar.actions.exit')}
                 </DropdownMenuItem>
               )}
             </DropdownMenuGroup>

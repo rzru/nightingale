@@ -224,6 +224,12 @@
     box-shadow: 0 1px 0 var(--border);
   }
 
+  /* Cell content truncates instead of widening the column, so every column is
+     at least as wide as the header text it labels, in any language. */
+  .song-table-shell td {
+    max-width: 0;
+  }
+
   @container (max-width: 1100px) {
     .song-table-album {
       display: none;

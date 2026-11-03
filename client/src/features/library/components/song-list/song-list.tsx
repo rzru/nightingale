@@ -6,6 +6,7 @@ import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useAddPlaybackQueueEntry } from '@/features/playback-queue/use-playback-queue';
 import { MultiplayerSetupDialog } from '@/features/playback/components/dialogs/multiplayer-setup';
 import { usePlaybackLauncher } from '@/features/playback/hooks/use-playback-launcher';
+import { t } from '@/i18n';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/shared/components/ui/empty';
 import type { Song } from '@/types/Song';
 import type { SongSort } from '@/types/SongSort';
@@ -73,11 +74,15 @@ export const SongList = ({
     return (
       <Empty className="px-4">
         <EmptyHeader>
-          <EmptyTitle>{filtered ? 'No results' : 'No songs found'}</EmptyTitle>
+          <EmptyTitle>
+            {t(filtered ? 'library.songList.noResults' : 'library.songList.noSongs')}
+          </EmptyTitle>
           <EmptyDescription>
-            {filtered
-              ? 'No songs match your search or filters. Try adjusting them.'
-              : 'This library is empty or still being scanned.'}
+            {t(
+              filtered
+                ? 'library.songList.noResultsDescription'
+                : 'library.songList.noSongsDescription',
+            )}
           </EmptyDescription>
         </EmptyHeader>
       </Empty>

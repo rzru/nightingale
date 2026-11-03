@@ -1,4 +1,5 @@
 import { FLAVORS, type VideoFlavor } from '@/features/playback/lib/video-flavor';
+import { t } from '@/i18n';
 import type { BackgroundSelection } from '@/types/BackgroundSelection';
 import type { CustomBackground } from '@/types/CustomBackground';
 
@@ -26,7 +27,7 @@ export const BUILT_IN_BACKGROUND_OPTIONS: BuiltInBackgroundOption[] = [
     selection: { kind: 'built_in_shader' as const, id: shader.id },
     label: shader.name,
   })),
-  { selection: { kind: 'pixabay' }, label: 'Pixabay video' },
+  { selection: { kind: 'pixabay' }, label: 'playback.theme.pixabayVideo' },
 ];
 
 export function themeKey(theme: PlaybackTheme): string {
@@ -119,9 +120,11 @@ export function selectionForTheme(theme: PlaybackTheme): BackgroundSelection | n
 export function themeName(theme: PlaybackTheme, videoFlavor: VideoFlavor): string {
   switch (theme.kind) {
     case 'source':
-      return 'Source Video';
+      return t('playback.theme.sourceVideo');
     case 'pixabay':
-      return `Video — ${videoFlavor.charAt(0).toUpperCase()}${videoFlavor.slice(1)}`;
+      return t('playback.theme.videoFlavor', {
+        flavor: videoFlavor.charAt(0).toUpperCase() + videoFlavor.slice(1),
+      });
     case 'shader':
       return theme.name;
     case 'custom':

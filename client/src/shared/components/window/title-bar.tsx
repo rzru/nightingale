@@ -11,6 +11,7 @@ import {
 import { isSessionPlayback } from '@/bridge/playback-session';
 import { isTauri } from '@/bridge/runtime';
 import { minimizeWindow, triggerFrontendReady, windowImmersive } from '@/bridge/window';
+import { t } from '@/i18n';
 
 export function TauriAppShell({ children }: { children: React.ReactNode }) {
   const [fullscreen, setFullscreen] = useState(false);
@@ -94,13 +95,13 @@ function TitleBar({ fullscreen }: { fullscreen: boolean }) {
         <div
           className="h-full w-12 cursor-move border-r border-border"
           aria-hidden
-          title="Drag playback window"
+          title={t('shared.window.titleBar.dragPlaybackWindow')}
           onMouseDown={() => void win.startDragging()}
         />
         <button
           type="button"
           className="inline-flex size-7 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          aria-label="Minimize"
+          aria-label={t('shared.window.titleBar.minimize')}
           onClick={() => void minimizeWindow()}
         >
           <MinusIcon className="size-3.5" strokeWidth={2} />
@@ -108,7 +109,7 @@ function TitleBar({ fullscreen }: { fullscreen: boolean }) {
         <button
           type="button"
           className="inline-flex size-7 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          aria-label="Maximize"
+          aria-label={t('shared.window.titleBar.maximize')}
           onClick={() => void win.toggleMaximize()}
         >
           <SquareIcon className="size-3" strokeWidth={2} />
@@ -116,7 +117,7 @@ function TitleBar({ fullscreen }: { fullscreen: boolean }) {
         <button
           type="button"
           className="inline-flex size-7 items-center justify-center text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
-          aria-label="Close"
+          aria-label={t('common.actions.close')}
           onClick={() => void win.close()}
         >
           <XIcon className="size-3.5" strokeWidth={2} />
@@ -136,7 +137,7 @@ function TitleBar({ fullscreen }: { fullscreen: boolean }) {
         <button
           type="button"
           className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          aria-label="Minimize"
+          aria-label={t('shared.window.titleBar.minimize')}
           onClick={() => void minimizeWindow()}
         >
           <MinusIcon className="size-3.5" strokeWidth={2} />
@@ -144,7 +145,7 @@ function TitleBar({ fullscreen }: { fullscreen: boolean }) {
         <button
           type="button"
           className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          aria-label="Maximize"
+          aria-label={t('shared.window.titleBar.maximize')}
           onClick={() => void win.toggleMaximize()}
         >
           <SquareIcon className="size-3" strokeWidth={2} />
@@ -152,7 +153,7 @@ function TitleBar({ fullscreen }: { fullscreen: boolean }) {
         <button
           type="button"
           className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive"
-          aria-label="Close"
+          aria-label={t('common.actions.close')}
           onClick={() => void win.close()}
         >
           <XIcon className="size-3.5" strokeWidth={2} />

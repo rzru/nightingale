@@ -12,25 +12,25 @@ export type PlayerColorOption = {
 export const PLAYER_COLOR_OPTIONS: readonly PlayerColorOption[] = [
   {
     value: 'rose',
-    label: 'Rose',
+    label: 'shared.playerColors.rose',
     className: 'bg-rose-400',
     rgb: { r: 0.98, g: 0.44, b: 0.52 },
   },
   {
     value: 'fuchsia',
-    label: 'Fuchsia',
+    label: 'shared.playerColors.fuchsia',
     className: 'bg-fuchsia-400',
     rgb: { r: 0.91, g: 0.36, b: 0.78 },
   },
   {
     value: 'amber',
-    label: 'Amber',
+    label: 'shared.playerColors.amber',
     className: 'bg-amber-400',
     rgb: { r: 0.98, g: 0.66, b: 0.15 },
   },
   {
     value: 'emerald',
-    label: 'Emerald',
+    label: 'shared.playerColors.emerald',
     className: 'bg-emerald-400',
     rgb: { r: 0.2, g: 0.83, b: 0.6 },
   },

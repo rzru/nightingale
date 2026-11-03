@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/utils/cn';
 
@@ -38,7 +39,7 @@ export const ActionItem = ({
   >
     <Icon className="mt-0.5 size-4" />
     <span className="min-w-0">
-      <span className="block text-xs font-medium leading-tight">{title}</span>
+      <span className="block text-xs font-medium leading-tight">{t(title)}</span>
       <span
         className={
           destructive === true
@@ -46,7 +47,7 @@ export const ActionItem = ({
             : 'mt-0.5 block text-[0.625rem] leading-tight text-muted-foreground'
         }
       >
-        {description}
+        {t(description)}
       </span>
     </span>
   </Button>

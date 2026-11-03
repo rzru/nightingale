@@ -7,6 +7,7 @@ import { MultiplayerSetupDialog } from '@/features/playback/components/dialogs/m
 import type { PlaybackPlayerResult } from '@/features/playback/hooks/use-playback-result';
 import { playerDisplayName } from '@/features/playback/utils/player-display-name';
 import { topScoresForSong } from '@/features/playback/utils/result';
+import { t } from '@/i18n';
 import { Stars } from '@/shared/components/shared/stars';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -57,12 +58,12 @@ const resultDialogWidth = (multiplayer: boolean): string =>
 
 function MultiplayerResults({ results }: { results: PlaybackPlayerResult[] }) {
   return (
-    <Table aria-label="Multiplayer results">
+    <Table aria-label={t('playback.dialogs.result.multiplayerResults')}>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
           <TableHead className="w-12">#</TableHead>
-          <TableHead>Player</TableHead>
-          <TableHead className="text-right">Score</TableHead>
+          <TableHead>{t('playback.dialogs.result.player')}</TableHead>
+          <TableHead className="text-right">{t('playback.dialogs.result.score')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -79,7 +80,8 @@ function MultiplayerResults({ results }: { results: PlaybackPlayerResult[] }) {
                   <span className="truncate font-medium">{playerDisplayName(result, results)}</span>
                   {index === 0 ? (
                     <span className="flex shrink-0 items-center gap-1 text-xs text-primary">
-                      <TrophyIcon className="size-3" /> Winner
+                      <TrophyIcon className="size-3" />
+                      {t('playback.dialogs.result.winner')}
                     </span>
                   ) : null}
                 </div>
@@ -106,7 +108,7 @@ function SoloResults({ result, board }: { result: PlaybackPlayerResult; board: S
       <div className="flex flex-col items-center gap-1">
         <p
           className="text-4xl font-semibold text-primary tabular-nums"
-          aria-label={`Score ${result.score}`}
+          aria-label={t('playback.result.scoreLabel', { score: result.score })}
         >
           {result.score}
         </p>
@@ -117,14 +119,18 @@ function SoloResults({ result, board }: { result: PlaybackPlayerResult; board: S
         <>
           <div className="h-px w-full bg-border" />
           <p className="text-center text-[11px] font-medium tracking-wide text-muted-foreground">
-            BEST SCORES
+            {t('playback.dialogs.result.bestScores')}
           </p>
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="h-8 text-xs">#</TableHead>
-                <TableHead className="h-8 text-xs">Profile</TableHead>
-                <TableHead className="h-8 text-right text-xs">Score</TableHead>
+                <TableHead className="h-8 text-xs">
+                  {t('playback.dialogs.result.profile')}
+                </TableHead>
+                <TableHead className="h-8 text-right text-xs">
+                  {t('playback.dialogs.result.score')}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -190,7 +196,7 @@ function ChangePlayersButton({
       disabled={props.nextPending}
       onClick={onClick}
     >
-      Change players
+      {t('playback.dialogs.result.changePlayers')}
     </Button>
   );
 }
@@ -217,10 +223,11 @@ function NextSongButton({
     >
       {props.nextPending ? (
         <>
-          <Spinner className="size-4" /> Preparing…
+          <Spinner className="size-4" />
+          {t('playback.dialogs.result.preparing')}
         </>
       ) : (
-        'Next Song'
+        t('playback.result.nextSong')
       )}
     </Button>
   );
@@ -246,7 +253,7 @@ function NextSongSetup({
       onOpenChange={onOpenChange}
       onStart={onStart}
       queuePlayback
-      submitLabel="Start next song"
+      submitLabel={t('playback.result.startNextSong')}
     />
   );
 }

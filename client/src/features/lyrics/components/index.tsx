@@ -18,6 +18,8 @@ import {
 } from '@/features/lyrics/utils/edit-lyrics';
 import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
+import { t } from '@/i18n';
+import { Trans } from '@/i18n/trans';
 import {
   Dialog,
   DialogContent,
@@ -82,10 +84,10 @@ type FooterMessageInput = {
 const footerMessage = (input: FooterMessageInput): string | undefined => {
   const hints: string[] = [];
   if (input.useProvidedTiming && input.lrcLevel === 'line') {
-    hints.push('Line-level LRC highlights whole lines — no per-word timing.');
+    hints.push(t('lyrics.footer.lineTimedHint'));
   }
   if (input.hasLrc && input.useProvidedTiming && !input.willSeparate && !input.stemsSeparated) {
-    hints.push('Original mix is used, so pitch scoring will likely be inaccurate.');
+    hints.push(t('lyrics.footer.originalMixWarning'));
   }
 
   return hints.length > 0 ? hints.join(' ') : undefined;
@@ -141,11 +143,11 @@ const getSaveLabel = (
 ): string => {
   if (useProvidedTiming) {
     if (willSeparate) {
-      return 'Save & separate stems';
+      return t('lyrics.actions.saveAndSeparate');
     }
-    return isAnalyzed ? 'Use timed lyrics' : 'Save timed lyrics';
+    return t(isAnalyzed ? 'lyrics.actions.useTimedLyrics' : 'lyrics.actions.saveTimedLyrics');
   }
-  return isAnalyzed ? 'Save & realign' : 'Save & analyze';
+  return t(isAnalyzed ? 'lyrics.actions.saveAndRealign' : 'lyrics.actions.saveAndAnalyze');
 };
 
 type NavLayout = {
@@ -279,7 +281,7 @@ const EditLyricsWorkspace = (props: EditLyricsWorkspaceProps) => {
                 props.headerSegment !== null && props.isFocused(props.headerSegment, slot),
               )}
             >
-              {tab === 'edit' ? 'Edit' : 'LRCLIB matches'}
+              {t(tab === 'edit' ? 'common.actions.edit' : 'lyrics.tabs.lrclibMatches')}
               {tab === 'lrclib' &&
                 (props.matchesLoading ? (
                   <Loader2Icon className="size-3 animate-spin" />
@@ -632,21 +634,26 @@ export const EditLyricsDialog = () => {
       <DialogContent className="flex h-[85vh] flex-col sm:max-w-2xl">
         <div ref={containerRef} className="contents">
           <DialogHeader>
-            <DialogTitle>Edit lyrics</DialogTitle>
+            <DialogTitle>{t('lyrics.main.editLyrics')}</DialogTitle>
             <DialogDescription>
-              Type plain lyrics to run alignment, or paste{' '}
-              <a
-                href={LRC_SPEC_URL}
-                rel="noreferrer"
-                onClick={(event) => {
-                  event.preventDefault();
-                  void openUrl(LRC_SPEC_URL);
+              <Trans
+                id="lyrics.main.typePlainLyricsToRunDescription"
+                values={{
+                  lrc: (
+                    <a
+                      href={LRC_SPEC_URL}
+                      rel="noreferrer"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        void openUrl(LRC_SPEC_URL);
+                      }}
+                      className="text-primary underline underline-offset-2 hover:text-primary/80"
+                    >
+                      {t('lyrics.main.lrcEnhancedLrc')}
+                    </a>
+                  ),
                 }}
-                className="text-primary underline underline-offset-2 hover:text-primary/80"
-              >
-                LRC / Enhanced LRC
-              </a>{' '}
-              to set timing directly.
+              />
             </DialogDescription>
           </DialogHeader>
 

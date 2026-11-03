@@ -1,6 +1,7 @@
 import { MinusIcon, PlusIcon } from 'lucide-react';
 import type { MouseEvent } from 'react';
 
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { ButtonGroup, ButtonGroupText } from '@/shared/components/ui/button-group';
 import { Spinner } from '@/shared/components/ui/spinner';
@@ -52,7 +53,7 @@ export const Stepper = ({
         disabled={minusDisabled}
         variant="outline"
         size="icon-sm"
-        aria-label={`Decrease ${ariaLabel}`}
+        aria-label={t('common.actions.decreaseLabel', { label: ariaLabel })}
       >
         <MinusIcon />
       </Button>
@@ -65,7 +66,7 @@ export const Stepper = ({
         disabled={plusDisabled}
         variant="outline"
         size="icon-sm"
-        aria-label={`Increase ${ariaLabel}`}
+        aria-label={t('common.actions.increaseLabel', { label: ariaLabel })}
       >
         <PlusIcon />
       </Button>

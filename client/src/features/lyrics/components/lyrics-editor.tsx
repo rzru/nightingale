@@ -1,5 +1,6 @@
 import { type KeyboardEvent, type Ref } from 'react';
 
+import { t, tp } from '@/i18n';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { cn } from '@/shared/utils/cn';
 
@@ -47,7 +48,9 @@ export const LyricsEditor = ({
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         rows={TEXTAREA_ROWS}
-        placeholder={loadingInitial ? 'Loading lyrics…' : 'Enter lyrics, one line per row'}
+        placeholder={t(
+          loadingInitial ? 'lyrics.editor.loadingPlaceholder' : 'lyrics.editor.placeholder',
+        )}
         disabled={disabled}
         className={cn(
           'min-h-0 flex-1 overflow-y-auto bg-card font-mono whitespace-pre [field-sizing:fixed]',
@@ -57,24 +60,35 @@ export const LyricsEditor = ({
         spellCheck={false}
       />
       <p className="mt-2 text-[11px] text-muted-foreground">
-        {lineCount} {lineCount === 1 ? 'line' : 'lines'}
-        {isDirty ? ' • unsaved changes' : ''}
+        {tp('lyrics.editor.lineCountOne', 'lyrics.editor.lineCountOther', lineCount)}
+        {isDirty ? t('lyrics.editor.unsavedChanges') : ''}
       </p>
       {!hasLrc && (
         <p className="mt-1 text-[11px] text-muted-foreground">
-          Set timing with {'[mm:ss.xx]'} at the start of a line ({'[01:23.45]'} = 1 min 23.45 s),
-          and {'<mm:ss.xx>'} before a word for word timing
+          {t('lyrics.lyricsEditor.setTimingWithValue1AtDescription', {
+            value1: '[mm:ss.xx]',
+            value2: '[01:23.45]',
+            value3: '<mm:ss.xx>',
+          })}
         </p>
       )}
       <p className="mt-1 text-[11px] text-muted-foreground">
         {CJK_PATTERN.test(text) ? (
           <>
-            Fix a reading with {'{漢字|romaji}'} or {'{漢字|かな}'}, e.g. {'{君|kimi}'} or{' '}
-            {'{彷徨|さまよ}って'}
+            {t('lyrics.lyricsEditor.fixAReadingWithValue1Description', {
+              value1: '{漢字|romaji}',
+              value2: '{漢字|かな}',
+              value3: '{君|kimi}',
+              value4: ' ',
+              value5: '{彷徨|さまよ}って',
+            })}
           </>
         ) : (
           <>
-            Add a note above a word with {'{word|note}'}, e.g. {'{colour|color}'}
+            {t('lyrics.lyricsEditor.addANoteAboveADescription', {
+              value1: '{word|note}',
+              value2: '{colour|color}',
+            })}
           </>
         )}
       </p>

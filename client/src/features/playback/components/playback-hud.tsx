@@ -15,6 +15,7 @@ import {
 } from '@/features/playback/providers';
 import { computeLyricGapCaption, findCurrentSegment } from '@/features/playback/utils/lyrics-gap';
 import { playerDisplayName } from '@/features/playback/utils/player-display-name';
+import { t, useTranslation } from '@/i18n';
 import { playerColorOption } from '@/shared/player-colors';
 import type { AppConfig } from '@/types/AppConfig';
 
@@ -23,11 +24,16 @@ import { isPixabayTheme, themeName, type PlaybackTheme } from './theme';
 
 function formatGuideText(volume: number): string {
   const pct = Math.round(volume * 100);
-  return pct === 0 ? 'Guide: OFF' : `Guide: ${pct}% [G +/-]`;
+  return pct === 0
+    ? t('playback.hud.guideOffShortcut')
+    : t('playback.hud.guidePercentShortcut', { percent: pct });
 }
 
 function formatThemeText(theme: PlaybackTheme, videoFlavor: VideoFlavor): string {
-  return `Theme: ${themeName(theme, videoFlavor)} [T${isPixabayTheme(theme) ? '/F' : ''}]`;
+  return t('playback.hud.themeShortcut', {
+    theme: themeName(theme, videoFlavor),
+    shortcut: isPixabayTheme(theme) ? 'T/F' : 'T',
+  });
 }
 
 const SkipButton = forwardRef<HTMLButtonElement, { label: string; onClick: () => void }>(
@@ -122,25 +128,29 @@ function SettingsInfo({
         <HintText>
           {showShortcuts
             ? formatGuideText(guideVolume)
-            : `Guide: ${Math.round(guideVolume * 100)}%`}
+            : t('playback.hud.guidePercent', { percent: Math.round(guideVolume * 100) })}
         </HintText>
       )}
       {!multiplayer && (
         <HintText>
-          Mic: {micUserEnabled ? micName : 'OFF'}
-          {showShortcuts ? ' [M/N]' : ''}
+          {t('playback.hud.micStatus', {
+            status: micUserEnabled ? micName : t('common.states.off'),
+            shortcut: showShortcuts ? ' [M/N]' : '',
+          })}
         </HintText>
       )}
       <HintText>
-        Monitor: {micMonitorUserEnabled ? 'ON' : 'OFF'}
-        {showShortcuts ? ' [R]' : ''}
+        {t('playback.hud.monitorStatus', {
+          status: t(micMonitorUserEnabled ? 'common.states.on' : 'common.states.off'),
+          shortcut: showShortcuts ? ' [R]' : '',
+        })}
       </HintText>
       <HintText>
         {showShortcuts
           ? formatThemeText(theme, videoFlavor)
-          : `Theme: ${themeName(theme, videoFlavor)}`}
+          : t('playback.hud.theme', { theme: themeName(theme, videoFlavor) })}
       </HintText>
-      {showShortcuts && <HintText>[ESC] Back</HintText>}
+      {showShortcuts && <HintText>{t('playback.playbackHud.escBack')}</HintText>}
     </div>
   );
 }
@@ -200,24 +210,24 @@ function TouchControls({
         onClick={() => setOpen((prev) => !prev)}
         className="pointer-events-auto rounded-sm border-2 border-white/70 bg-black/10 px-2.5 py-1 text-sm text-white/90 transition-colors hover:bg-black/20 active:bg-black/30"
       >
-        {open ? 'Hide controls' : 'Playback controls'}
+        {t(open ? 'playback.hud.hideControls' : 'playback.hud.showControls')}
       </button>
 
       {open && (
         <div className="grid w-full grid-cols-3 gap-2 text-center">
-          <TouchButton label="Pause" onClick={handlePause} />
+          <TouchButton label={t('common.actions.pause')} onClick={handlePause} />
           {guideAvailable && (
             <>
               <TouchButton
-                label={guideVolume === 0 ? 'Guide On' : 'Guide Off'}
+                label={t(guideVolume === 0 ? 'playback.hud.guideOn' : 'playback.hud.guideOff')}
                 onClick={() => setPersistedGuideVolume(guideVolume > 0 ? 0 : 0.3)}
               />
               <TouchButton
-                label="Guide +"
+                label={t('playback.playbackHud.guide')}
                 onClick={() => setPersistedGuideVolume(guideVolume + 0.1)}
               />
               <TouchButton
-                label="Guide -"
+                label={t('playback.playbackHud.guide2')}
                 onClick={() => setPersistedGuideVolume(guideVolume - 0.1)}
               />
             </>
@@ -225,18 +235,22 @@ function TouchControls({
           {!multiplayer && (
             <>
               <TouchButton
-                label={micUserEnabled ? 'Mic Off' : 'Mic On'}
+                label={t(micUserEnabled ? 'playback.hud.micOff' : 'playback.hud.micOn')}
                 onClick={handleToggleMic}
               />
-              <TouchButton label="Mic Select" onClick={handleCycleMic} />
+              <TouchButton label={t('playback.playbackHud.micSelect')} onClick={handleCycleMic} />
             </>
           )}
           <TouchButton
-            label={micMonitorUserEnabled ? 'Monitor Off' : 'Monitor On'}
+            label={t(micMonitorUserEnabled ? 'playback.hud.monitorOff' : 'playback.hud.monitorOn')}
             onClick={handleToggleMicMonitor}
           />
-          <TouchButton label="Theme" onClick={cycleTheme} />
-          <TouchButton label="Flavor" onClick={cycleFlavor} disabled={!isPixabayTheme(theme)} />
+          <TouchButton label={t('playback.playbackHud.theme')} onClick={cycleTheme} />
+          <TouchButton
+            label={t('playback.playbackHud.flavor')}
+            onClick={cycleFlavor}
+            disabled={!isPixabayTheme(theme)}
+          />
         </div>
       )}
     </div>
@@ -260,7 +274,7 @@ function Disclaimer({
   if (noStems && micActive) {
     return (
       <DisclaimerNote position={position}>
-        Original mix is used, so pitch scoring will likely be inaccurate
+        {t('playback.playbackHud.originalMixIsUsedSoDescription')}
       </DisclaimerNote>
     );
   }
@@ -317,7 +331,10 @@ const scoreTextClass = (score: number | null): string =>
 
 function MultiplayerScores({ players }: { players: PlaybackPlayerMicState[] }) {
   return (
-    <div className="grid justify-items-end gap-0.5" aria-label="Player scores">
+    <div
+      className="grid justify-items-end gap-0.5"
+      aria-label={t('playback.playbackHud.playerScores')}
+    >
       {players.map((player) => (
         <div
           key={player.id}
@@ -331,7 +348,11 @@ function MultiplayerScores({ players }: { players: PlaybackPlayerMicState[] }) {
             aria-hidden="true"
           />
           <span className="sr-only">
-            {player.micReady ? 'Microphone ready' : 'Microphone unavailable'}
+            {t(
+              player.micReady
+                ? 'playback.hud.microphoneReady'
+                : 'playback.hud.microphoneUnavailable',
+            )}
           </span>
         </div>
       ))}
@@ -354,6 +375,7 @@ function PlaybackHudImpl({
   position = 'top',
   windowControls = false,
 }: PlaybackHudProps) {
+  useTranslation();
   const { duration, guideVolume, guideAvailable } = usePlaybackTransportState();
   const { subscribe, getCurrentTime } = usePlaybackTransportActions();
   const { theme, videoFlavor } = usePlaybackThemeState();
@@ -433,8 +455,16 @@ function PlaybackHudImpl({
             style={{ display: 'none' }}
           />
           <div className={`flex gap-2 ${skipButtonsClass}`}>
-            <SkipButton ref={skipIntroRef} label="Skip Intro" onClick={handleSkipIntro} />
-            <SkipButton ref={skipOutroRef} label="Skip Outro" onClick={handleSkipOutro} />
+            <SkipButton
+              ref={skipIntroRef}
+              label={t('playback.playbackHud.skipIntro')}
+              onClick={handleSkipIntro}
+            />
+            <SkipButton
+              ref={skipOutroRef}
+              label={t('playback.playbackHud.skipOutro')}
+              onClick={handleSkipOutro}
+            />
           </div>
         </div>
 
@@ -443,7 +473,9 @@ function PlaybackHudImpl({
             {multiplayer ? (
               <MultiplayerScores players={players} />
             ) : (
-              <div className={scoreTextClass(pitchScore)}>Score: {pitchScore ?? '--'}</div>
+              <div className={scoreTextClass(pitchScore)}>
+                {t('playback.playbackHud.scoreValue1', { value1: pitchScore ?? '--' })}
+              </div>
             )}
             <div className="my-1.5 hidden h-px w-full bg-white/20 sm:block" aria-hidden="true" />
           </div>
@@ -468,7 +500,7 @@ function PlaybackHudImpl({
         <p
           className={`${NOTE_BASE_CLASS} ${creditPositionClass(position, windowControls)} right-4`}
         >
-          Videos by Pixabay
+          {t('playback.playbackHud.videosByPixabay')}
         </p>
       )}
 

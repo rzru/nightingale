@@ -1,14 +1,15 @@
 import { useCacheStats } from '@/features/library/queries/use-cache-stats';
 import { formatBytes, segmentPercent, totalUsedBytes } from '@/features/library/utils/stats';
+import { t } from '@/i18n';
 import { SegmentedProgress } from '@/shared/components/ui/segmented-progress';
 
 import { CacheActions } from './cache-actions';
 
 const rows = [
-  { label: 'Songs', color: 'bg-blue-500', key: 'songs_bytes' as const },
-  { label: 'Videos', color: 'bg-green-500', key: 'videos_bytes' as const },
-  { label: 'Models', color: 'bg-yellow-500', key: 'models_bytes' as const },
-  { label: 'Other', color: 'bg-gray-500', key: 'other_bytes' as const },
+  { label: 'menu.sidebar.stats.songs', color: 'bg-blue-500', key: 'songs_bytes' as const },
+  { label: 'menu.sidebar.stats.videos', color: 'bg-green-500', key: 'videos_bytes' as const },
+  { label: 'menu.sidebar.stats.models', color: 'bg-yellow-500', key: 'models_bytes' as const },
+  { label: 'menu.sidebar.stats.other', color: 'bg-gray-500', key: 'other_bytes' as const },
 ];
 
 type StatsProps = {
@@ -21,9 +22,9 @@ export const Stats = ({ cacheFocusedSidebarIndex, registerCacheCallback }: Stats
 
   const total = stats ? totalUsedBytes(stats) : 0n;
 
-  const noStatsLabel = isError ? 'Cache stats unavailable' : '…';
+  const noStatsLabel = isError ? t('menu.sidebar.stats.unavailable') : '…';
 
-  const label = !stats ? noStatsLabel : `${formatBytes(total)} used`;
+  const label = !stats ? noStatsLabel : t('menu.sidebar.stats.used', { size: formatBytes(total) });
 
   const renderHeader = () => (
     <div className="flex items-center justify-between gap-2">
@@ -58,7 +59,7 @@ export const Stats = ({ cacheFocusedSidebarIndex, registerCacheCallback }: Stats
           <div key={row.label} className="flex flex-col gap-0 py-0.5 text-xs">
             <div className="flex items-center gap-2">
               <div className={`size-2 shrink-0 rounded-full ${row.color}`} />
-              <span className="flex-1">{row.label}</span>
+              <span className="flex-1">{t(row.label)}</span>
               <span className="text-muted-foreground">{formatBytes(stats[row.key])}</span>
             </div>
           </div>

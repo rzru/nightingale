@@ -15,6 +15,7 @@ below.
 
 ### Features
 
+- Added an interface language selector with English and Russian, plus contributor-friendly translation catalogs for the whole app.
 - Quickly analyze, play, or queue songs from the song list and card menus.
 - Added a full-screen pitch graph with scrolling target notes, stable live pitch tracking, octave guidance, audio-reactive visuals, and color-coded multiplayer trails.
 - Added playback scrubbing and controls to jump by one second or one lyric line.

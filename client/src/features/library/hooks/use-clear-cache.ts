@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { clearAll, clearModels, clearVideos } from '@/bridge/cache';
+import { t } from '@/i18n';
 import { CACHE_STATS } from '@/shared/query-keys';
 
 export const useClearCache = () => {
@@ -14,10 +15,12 @@ export const useClearCache = () => {
 
         void queryClient.invalidateQueries({ queryKey: CACHE_STATS });
 
-        toast.info(`Cache was successfully cleared`);
+        toast.info(t('library.useClearCache.cacheWasSuccessfullyCleared'));
       } catch (error: unknown) {
         toast.error(
-          `Error while deleting cache: ${error instanceof Error ? error.message : 'unknown error'}`,
+          t('library.useClearCache.errorWhileDeletingCache', {
+            value1: error instanceof Error ? error.message : 'unknown error',
+          }),
         );
       }
     };

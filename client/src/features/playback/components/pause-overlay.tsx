@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
+import { t } from '@/i18n';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,9 +52,9 @@ export const PauseOverlay = ({ open, exitLabel, onExit, onContinue }: PauseOverl
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
           <AlertDialogHeader>
-            <AlertDialogTitle>Paused</AlertDialogTitle>
+            <AlertDialogTitle>{t('playback.pauseOverlay.paused')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Exiting now won&apos;t save your progress
+              {t('playback.pauseOverlay.exitingNowWonAposTDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -61,7 +62,7 @@ export const PauseOverlay = ({ open, exitLabel, onExit, onContinue }: PauseOverl
               onClick={onContinue}
               className={cn(NO_FOCUS_RING, open && focusedIndex === 0 && RING)}
             >
-              Continue
+              {t('common.actions.continue')}
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"

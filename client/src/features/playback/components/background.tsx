@@ -5,6 +5,7 @@ import { usePlaybackMicActions } from '@/features/playback/providers/playback-mi
 import { usePlaybackStartupActions } from '@/features/playback/providers/playback-startup-context';
 import { usePlaybackThemeState } from '@/features/playback/providers/playback-theme-context';
 import { usePlaybackTransportState } from '@/features/playback/providers/playback-transport-context';
+import { t, useTranslation } from '@/i18n';
 
 import { BackgroundLifecycleContext, useBackgroundLifecycle } from './background-lifecycle-context';
 import { CustomBackground } from './custom-background';
@@ -100,7 +101,7 @@ function ActiveBackground() {
       return;
     }
     failedRef.current = true;
-    toast.error(`Background error: ${message}`);
+    toast.error(t('playback.background.backgroundError', { value1: message }));
     setFallback(true);
   }, []);
 
@@ -109,7 +110,7 @@ function ActiveBackground() {
       return undefined;
     }
     const timeout = window.setTimeout(
-      () => failed('Loading timed out; using the default visual'),
+      () => failed(t('playback.background.timeout')),
       LOAD_TIMEOUT_MS,
     );
     return () => window.clearTimeout(timeout);
@@ -142,6 +143,7 @@ function ActiveBackground() {
 }
 
 function BackgroundImpl() {
+  useTranslation();
   const { theme } = usePlaybackThemeState();
   return <ActiveBackground key={themeKey(theme)} />;
 }

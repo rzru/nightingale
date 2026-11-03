@@ -1,6 +1,7 @@
 import { ExternalLinkIcon, InfoIcon, ServerIcon } from 'lucide-react';
 
 import type { UnsupportedChannel } from '@/features/updates/queries/use-update';
+import { t } from '@/i18n';
 
 import { CURRENT_VERSION, InfoLine, PairFooter, type FocusCtx, type ViewParts } from '../parts';
 
@@ -44,18 +45,17 @@ type LinuxArgs = {
 };
 
 const linuxTauriView = ({ ctx, onClose, onOpenReleases }: LinuxArgs): ViewParts => ({
-  description: 'Linux builds use manual updates from GitHub Releases.',
+  description: 'updates.unsupported.linuxBuildsUseManualUpdatesDescription',
   body: (
     <InfoLine icon={InfoIcon}>
-      Auto-update isn't supported on Linux. Download the latest release from GitHub to update
-      Nightingale (you're on v{CURRENT_VERSION}).
+      {t('updates.unsupported.autoUpdateIsnTSupportedDescription', { value1: CURRENT_VERSION })}
     </InfoLine>
   ),
   footer: (
     <PairFooter
       ctx={ctx}
       onClose={onClose}
-      primaryLabel="Open GitHub Releases"
+      primaryLabel="updates.actions.openReleases"
       primaryIcon={ExternalLinkIcon}
       onPrimary={onOpenReleases}
     />
@@ -69,13 +69,11 @@ type SelfHostedArgs = {
 };
 
 const selfHostedWebView = ({ ctx, onClose, onOpenSelfHostedDocs }: SelfHostedArgs): ViewParts => ({
-  description: 'Self-hosted instance — update by re-running the install script on the host.',
+  description: 'updates.unsupported.selfHostedInstanceUpdateByDescription',
   body: (
     <div className="flex flex-col gap-3">
       <InfoLine icon={ServerIcon}>
-        You're using a self-hosted Nightingale instance (v{CURRENT_VERSION}) running on a Linux box
-        on your LAN. The browser tab can't update the server — SSH into the host and re-run the
-        installer. Your data folder, library database, and config are preserved across upgrades.
+        {t('updates.unsupported.youReUsingASelfDescription', { value1: CURRENT_VERSION })}
       </InfoLine>
       <pre className="rounded-md bg-muted px-3 py-2 text-[0.7rem] font-mono leading-relaxed whitespace-pre-wrap break-all">
         curl -fsSL https://raw.githubusercontent.com/rzru/nightingale/main/scripts/install.sh | bash
@@ -86,7 +84,7 @@ const selfHostedWebView = ({ ctx, onClose, onOpenSelfHostedDocs }: SelfHostedArg
     <PairFooter
       ctx={ctx}
       onClose={onClose}
-      primaryLabel="Open self-hosted docs"
+      primaryLabel="updates.actions.openSelfHostedDocs"
       primaryIcon={ExternalLinkIcon}
       onPrimary={onOpenSelfHostedDocs}
     />

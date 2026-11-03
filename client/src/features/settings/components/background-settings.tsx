@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { Field, FieldDescription } from '@/shared/components/ui/field';
 import { Label } from '@/shared/components/ui/label';
@@ -36,15 +37,17 @@ export function BackgroundSettings({
   return (
     <>
       <Field>
-        <Label htmlFor="default-background">Default background</Label>
+        <Label htmlFor="default-background">
+          {t('settings.backgroundSettings.defaultBackground')}
+        </Label>
         <FieldDescription>
-          Used when playback starts; press T during playback to cycle
+          {t('settings.backgroundSettings.usedWhenPlaybackStartsPressDescription')}
         </FieldDescription>
         <div className="flex flex-col gap-2 sm:flex-row">
           <SettingsSelect
-            id="default-background"
-            label="Default background"
-            placeholder="Select background"
+            id="settings.backgroundSettings.defaultBackground2"
+            label={t('settings.backgroundSettings.defaultBackground')}
+            placeholder={t('settings.backgroundSettings.selectBackground')}
             value={selected}
             options={options}
             triggerClassName={selectClassName}
@@ -56,7 +59,7 @@ export function BackgroundSettings({
             }}
           />
           <Button variant="outline" className={manageClassName} onClick={() => updateOpen(true)}>
-            Manage
+            {t('settings.backgroundSettings.manage')}
           </Button>
         </div>
       </Field>

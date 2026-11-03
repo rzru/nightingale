@@ -10,6 +10,7 @@ import { MenuFocusProvider } from '@/features/menu/providers/menu-focus-context'
 import { Playback } from '@/features/playback/playback';
 import { SettingsPage } from '@/features/settings/settings';
 import { useUpdate } from '@/features/updates/queries/use-update';
+import { useTranslation } from '@/i18n';
 import { Toaster } from '@/shared/components/ui/sonner';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { TauriAppShell } from '@/shared/components/window/title-bar';
@@ -58,10 +59,14 @@ const ThemeWrapper = () => {
   );
 };
 
-export const App = () => (
-  <NavInputProvider>
-    <QueryClientProvider client={queryClient}>
-      <ThemeWrapper />
-    </QueryClientProvider>
-  </NavInputProvider>
-);
+export const App = () => {
+  useTranslation();
+
+  return (
+    <NavInputProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeWrapper />
+      </QueryClientProvider>
+    </NavInputProvider>
+  );
+};

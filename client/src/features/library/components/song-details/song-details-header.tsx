@@ -1,5 +1,6 @@
 import { XIcon } from 'lucide-react';
 
+import { t } from '@/i18n';
 import { Stars } from '@/shared/components/shared/stars';
 import { Button } from '@/shared/components/ui/button';
 import { formatSeconds } from '@/shared/utils/format-duration';
@@ -29,7 +30,7 @@ export const SongDetailsHeader = ({
       size="icon-sm"
       className="absolute right-2 top-2"
       onClick={onClose}
-      aria-label="Close song details"
+      aria-label={t('library.songDetails.songDetailsHeader.closeSongDetails')}
     >
       <XIcon />
     </Button>
@@ -47,10 +48,10 @@ export const SongDetailsHeader = ({
           {song.title}
         </h2>
         <p className="mt-1 truncate text-xs text-muted-foreground">
-          {song.artist || 'Unknown band'}
+          {song.artist || t('library.songDetails.unknownBand')}
         </p>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {song.album || 'Unknown album'}
+          {song.album || t('library.songDetails.unknownAlbum')}
         </p>
         {bestScore === undefined ? null : <Stars score={bestScore} size="sm" className="mt-1" />}
       </div>

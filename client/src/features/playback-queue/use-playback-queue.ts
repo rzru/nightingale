@@ -17,6 +17,7 @@ import {
   preparePlayback,
   type PreparePlaybackInput,
 } from '@/features/playback/mutations/use-prepare-playback-mutation';
+import { t } from '@/i18n';
 import { PLAYBACK_QUEUE } from '@/shared/query-keys';
 import type { Song } from '@/types/Song';
 
@@ -59,7 +60,10 @@ export function useAddPlaybackQueueEntry() {
     mutationFn: ({ song, tempo, keyOffset, position }: AddPlaybackQueueEntryInput) =>
       addPlaybackQueueEntry(song.file_hash, tempo, keyOffset, position === 'top'),
     onSuccess: (entries) => queryClient.setQueryData(PLAYBACK_QUEUE, entries),
-    onError: (error: Error) => toast.error(`Could not add song to queue: ${error.message}`),
+    onError: (error: Error) =>
+      toast.error(
+        t('playbackQueue.usePlaybackQueue.couldNotAddSongToQueue', { value1: error.message }),
+      ),
   });
 }
 
@@ -88,7 +92,9 @@ export function useMovePlaybackQueueEntry() {
       if (context?.previous !== undefined) {
         queryClient.setQueryData(PLAYBACK_QUEUE, context.previous);
       }
-      toast.error(`Could not reorder queue: ${error.message}`);
+      toast.error(
+        t('playbackQueue.usePlaybackQueue.couldNotReorderQueue', { value1: error.message }),
+      );
     },
   });
 }
@@ -99,7 +105,10 @@ export function useRemovePlaybackQueueEntry() {
   return useMutation({
     mutationFn: removePlaybackQueueEntry,
     onSuccess: (entries) => queryClient.setQueryData(PLAYBACK_QUEUE, entries),
-    onError: (error: Error) => toast.error(`Could not remove song from queue: ${error.message}`),
+    onError: (error: Error) =>
+      toast.error(
+        t('playbackQueue.usePlaybackQueue.couldNotRemoveSongFromQueue', { value1: error.message }),
+      ),
   });
 }
 
@@ -109,7 +118,10 @@ export function useClearPlaybackQueue() {
   return useMutation({
     mutationFn: clearPlaybackQueue,
     onSuccess: (entries) => queryClient.setQueryData(PLAYBACK_QUEUE, entries),
-    onError: (error: Error) => toast.error(`Could not clear queue: ${error.message}`),
+    onError: (error: Error) =>
+      toast.error(
+        t('playbackQueue.usePlaybackQueue.couldNotClearQueue', { value1: error.message }),
+      ),
   });
 }
 
@@ -154,7 +166,9 @@ export function useStartNextPlaybackQueueSong(entries: PlaybackQueueEntry[]) {
     },
     onError: (error: Error, { target }) => {
       target?.close();
-      toast.error(`Could not start queued song: ${error.message}`);
+      toast.error(
+        t('playbackQueue.usePlaybackQueue.couldNotStartQueuedSong', { value1: error.message }),
+      );
     },
   });
 

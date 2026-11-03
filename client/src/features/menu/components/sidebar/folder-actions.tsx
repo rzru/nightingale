@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 
 import { useMenuFocus } from '@/features/menu/providers/menu-focus-context';
 import { useSourceButtons } from '@/features/sources/hooks/use-source-buttons';
+import { t } from '@/i18n';
 import { SidebarGroup, SidebarMenu, SidebarMenuItem } from '@/shared/components/ui/sidebar';
 import { useLatestRef } from '@/shared/hooks/use-latest-ref';
 
@@ -55,7 +56,7 @@ export const FolderActions = ({ focusedSidebarIndex, registerCallback }: FolderA
           >
             <span className="flex items-center gap-2 text-sidebar-foreground/70">
               <LibraryBigIcon className="size-4 shrink-0" />
-              Library
+              {t('menu.sidebar.folderActions.library')}
             </span>
             <div className="flex items-center gap-0.5">
               {buttons.map((button, index) => (

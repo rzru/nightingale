@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { exit } from '@/bridge/exit';
 import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
+import { t } from '@/i18n';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,22 +46,22 @@ export const ExitDialog = () => {
     <AlertDialog open={open} onOpenChange={close}>
       <AlertDialogContent onEscapeKeyDown={(e) => e.preventDefault()}>
         <AlertDialogHeader>
-          <AlertDialogTitle>Exit</AlertDialogTitle>
-          <AlertDialogDescription>Are you sure you want to quit?</AlertDialogDescription>
+          <AlertDialogTitle>{t('menu.exit.exit')}</AlertDialogTitle>
+          <AlertDialogDescription>{t('menu.exit.areYouSureYouWantToQuit')}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel
             onClick={close}
             className={cn(NO_FOCUS_RING, open && focusedIndex === 0 && RING)}
           >
-            Cancel
+            {t('common.actions.cancel')}
           </AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             onClick={() => void exit()}
             className={cn(NO_FOCUS_RING, open && focusedIndex === 1 && RING)}
           >
-            Exit
+            {t('menu.exit.exit')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

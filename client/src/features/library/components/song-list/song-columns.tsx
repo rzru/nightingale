@@ -14,7 +14,8 @@ import type { SongListActions } from './types';
 
 export type SongColumn = {
   id: string;
-  header: ReactNode;
+  header: string;
+  headerClassName?: string;
   sortColumn?: SongSortColumn;
   thClassName: string;
   tdClassName: string;
@@ -29,7 +30,8 @@ export type SongColumn = {
 export const SONG_COLUMNS: SongColumn[] = [
   {
     id: 'thumbnail',
-    header: <span className="sr-only">Cover</span>,
+    header: 'library.songList.songColumns.cover',
+    headerClassName: 'sr-only',
     thClassName: 'song-table-thumbnail px-2 py-2 font-medium',
     tdClassName: 'song-table-thumbnail py-1.5 pr-2 pl-2',
     cell: (song) => (
@@ -43,7 +45,7 @@ export const SONG_COLUMNS: SongColumn[] = [
   },
   {
     id: 'song',
-    header: 'Song',
+    header: 'library.columns.song',
     sortColumn: 'title',
     thClassName: 'song-table-song px-2 py-2 font-medium',
     tdClassName: 'song-table-song px-2 py-2 align-middle font-medium',
@@ -60,7 +62,7 @@ export const SONG_COLUMNS: SongColumn[] = [
   },
   {
     id: 'band',
-    header: 'Artist',
+    header: 'library.columns.artist',
     sortColumn: 'artist',
     thClassName: 'song-table-band px-2 py-2 font-medium',
     tdClassName: 'song-table-band px-2 py-2 text-muted-foreground',
@@ -68,7 +70,7 @@ export const SONG_COLUMNS: SongColumn[] = [
   },
   {
     id: 'album',
-    header: 'Album',
+    header: 'library.columns.album',
     sortColumn: 'album',
     thClassName: 'song-table-album px-2 py-2 font-medium',
     tdClassName: 'song-table-album px-2 py-2 text-muted-foreground',
@@ -76,7 +78,7 @@ export const SONG_COLUMNS: SongColumn[] = [
   },
   {
     id: 'duration',
-    header: 'Duration',
+    header: 'library.columns.duration',
     sortColumn: 'duration',
     thClassName: 'song-table-duration px-2 py-2 font-medium',
     tdClassName:
@@ -85,7 +87,7 @@ export const SONG_COLUMNS: SongColumn[] = [
   },
   {
     id: 'status',
-    header: 'Analysis status',
+    header: 'library.columns.analysisStatus',
     sortColumn: 'status',
     thClassName: 'song-table-status px-2 py-2 text-right font-medium',
     tdClassName: 'song-table-status px-2 py-2 text-right',
@@ -93,7 +95,8 @@ export const SONG_COLUMNS: SongColumn[] = [
   },
   {
     id: 'actions',
-    header: <span className="sr-only">Actions</span>,
+    header: 'common.actions.label',
+    headerClassName: 'sr-only',
     thClassName: 'song-table-actions px-2 py-2',
     tdClassName: 'song-table-actions px-2 py-2 text-right',
     cell: (song, queueStatus, _bestScore, actions) =>

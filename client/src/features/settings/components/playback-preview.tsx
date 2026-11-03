@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react';
 
+import { t } from '@/i18n';
+
 type PlaybackPreviewProps = {
   lyricsVerticalPosition: string;
   lyricsHorizontalPosition: string;
@@ -45,7 +47,7 @@ export function PlaybackPreview({
 
   return (
     <figure
-      aria-label="Playback preview"
+      aria-label={t('settings.playbackPreview.playbackPreview')}
       className="relative aspect-video w-full overflow-hidden rounded-xl border border-white/10 shadow-xl shadow-black/20"
       style={gridBackground}
     >
@@ -59,7 +61,7 @@ export function PlaybackPreview({
             Nightingale
           </p>
           <p className="text-white/65" style={{ fontSize: '1.45cqh' }}>
-            Playback Preview
+            {t('settings.playbackPreview.playbackPreview2')}
           </p>
           <p className="text-white/65" style={{ fontSize: '1.45cqh' }}>
             1:24 / 3:42
@@ -69,13 +71,13 @@ export function PlaybackPreview({
           className={`flex items-end ${hudPosition === 'bottom' ? 'flex-col-reverse' : 'flex-col'}`}
         >
           <p className="text-white/80" style={{ fontSize: '1.65cqh' }}>
-            Score: 8420
+            {t('settings.playbackPreview.score8420')}
           </p>
           <p className="text-white/40" style={{ fontSize: '1.1cqh' }}>
-            Mic: Default [M/N]
+            {t('settings.playbackPreview.micDefaultMN')}
           </p>
           <p className="text-white/40" style={{ fontSize: '1.1cqh' }}>
-            Theme: Grid [T]
+            {t('settings.playbackPreview.themeGridT')}
           </p>
         </div>
       </div>
@@ -112,13 +114,13 @@ export function PlaybackPreview({
           className="max-w-[78%] rounded-[0.7cqh] bg-black/45 px-[1.1cqh] py-[0.7cqh] leading-tight font-bold text-white shadow-lg"
           style={{ fontSize: `${3.7037 * lyricsScale}cqh` }}
         >
-          Sing like nobody is listening
+          {t('settings.playbackPreview.singLikeNobodyIsListening')}
         </div>
         <div
           className="max-w-[78%] rounded-[0.5cqh] bg-black/30 px-[0.9cqh] py-[0.5cqh] leading-tight text-white/40"
           style={{ fontSize: `${2.2222 * lyricsScale}cqh` }}
         >
-          Let the music carry you home
+          {t('settings.playbackPreview.letTheMusicCarryYouHome')}
         </div>
       </div>
     </figure>

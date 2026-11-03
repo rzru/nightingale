@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { useAnalysis } from '@/features/library/hooks/use-analysis';
 import { useSongs } from '@/features/library/queries/use-songs';
 import { useMenuFocus } from '@/features/menu/providers/menu-focus-context';
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import {
   DropdownMenu,
@@ -37,7 +38,7 @@ const CancelAnalysisItem = ({ count, onClick }: CancelAnalysisItemProps) => {
   return (
     <DropdownMenuItem variant="destructive" onClick={onClick}>
       <XCircleIcon />
-      Cancel analysis ({count})
+      {t('library.bulkActionsMenu.cancelAnalysisCount', { count })}
     </DropdownMenuItem>
   );
 };
@@ -85,8 +86,8 @@ export const BulkActionsMenu = () => {
           variant="outline"
           size="icon"
           data-actions-index="1"
-          aria-label="Actions on filtered songs"
-          title="Actions"
+          aria-label={t('library.bulkActionsMenu.actionsOnFilteredSongs')}
+          title={t('common.actions.label')}
           className={cn(
             'border-input bg-input/20 focus-visible:border-transparent focus-visible:ring-0 dark:bg-input/30',
             isActionsFocused && 'ring-2 ring-primary',
@@ -96,39 +97,41 @@ export const BulkActionsMenu = () => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-56">
-        <DropdownMenuLabel>All songs</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('library.bulkActionsMenu.allSongs')}</DropdownMenuLabel>
         <DropdownMenuItem onClick={() => void enqueueAll()}>
           <AudioLinesIcon />
-          Analyze all
+          {t('library.bulkActionsMenu.analyzeAll')}
         </DropdownMenuItem>
         <CancelAnalysisItem count={analysisBusyCount} onClick={() => void cancelAnalysisAll()} />
         <DropdownMenuItem onClick={() => void refreshMetadataAll()}>
           <ImageIcon />
-          Refresh metadata
+          {t('library.bulkActionsMenu.refreshMetadata')}
         </DropdownMenuItem>
         {analyzedCount > 0 ? (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>Analyzed songs ({analyzedCount})</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              {t('library.bulkActionsMenu.analyzedSongsValue1', { value1: analyzedCount })}
+            </DropdownMenuLabel>
             <DropdownMenuItem onClick={() => void realignAll()}>
               <AlignLeftIcon />
-              Realign
+              {t('library.bulkActionsMenu.realign')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => void reanalyzeAllTranscript()}>
               <RefreshCwIcon />
-              Refetch lyrics & align
+              {t('library.bulkActionsMenu.refetchLyricsAlign')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => void reanalyzeAllForceTranscribe()}>
               <MicIcon />
-              Force transcribe
+              {t('library.bulkActionsMenu.forceTranscribe')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => void reanalyzeAllFull()}>
               <AudioLinesIcon />
-              Full reanalysis
+              {t('library.bulkActionsMenu.fullReanalysis')}
             </DropdownMenuItem>
             <DropdownMenuItem variant="destructive" onClick={() => void deleteSongCacheAll()}>
               <Trash2Icon />
-              Delete cache
+              {t('library.bulkActionsMenu.deleteCache')}
             </DropdownMenuItem>
           </>
         ) : null}

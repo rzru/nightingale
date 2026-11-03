@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { useLibraryFilter } from '@/features/menu/hooks/use-library-filter';
 import { useSearch } from '@/features/menu/hooks/use-search';
 import { useMenuFocus } from '@/features/menu/providers/menu-focus-context';
+import { t, tp } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import {
@@ -61,8 +62,8 @@ export const LibraryToolbar = ({
           defaultValue={search}
           onChange={({ target: { value } }) => handleChange(value)}
           className="min-w-0 flex-1"
-          placeholder="Search songs"
-          aria-label="Search songs"
+          placeholder={t('library.libraryToolbar.searchSongs')}
+          aria-label={t('library.libraryToolbar.searchSongs')}
         />
       </div>
       <Select
@@ -74,18 +75,21 @@ export const LibraryToolbar = ({
           }))
         }
       >
-        <SelectTrigger aria-label="Filter by analysis status" className="w-full min-w-0 2xl:w-32">
+        <SelectTrigger
+          aria-label={t('library.libraryToolbar.filterByAnalysisStatus')}
+          className="w-full min-w-0 2xl:w-32"
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
-            <SelectLabel>Status</SelectLabel>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="not_analyzed">Not analyzed</SelectItem>
-            <SelectItem value="queued">Queued</SelectItem>
-            <SelectItem value="analyzing">Analyzing</SelectItem>
-            <SelectItem value="analyzed">Analyzed</SelectItem>
-            <SelectItem value="failed">Failed</SelectItem>
+            <SelectLabel>{t('library.libraryToolbar.status')}</SelectLabel>
+            <SelectItem value="all">{t('library.libraryToolbar.allStatuses')}</SelectItem>
+            <SelectItem value="not_analyzed">{t('library.libraryToolbar.notAnalyzed')}</SelectItem>
+            <SelectItem value="queued">{t('library.libraryToolbar.queued')}</SelectItem>
+            <SelectItem value="analyzing">{t('library.libraryToolbar.analyzing')}</SelectItem>
+            <SelectItem value="analyzed">{t('library.libraryToolbar.analyzed')}</SelectItem>
+            <SelectItem value="failed">{t('library.libraryToolbar.failed')}</SelectItem>
           </SelectGroup>
         </SelectContent>
       </Select>
@@ -98,15 +102,18 @@ export const LibraryToolbar = ({
           }))
         }
       >
-        <SelectTrigger aria-label="Filter by transcript type" className="w-full min-w-0 2xl:w-32">
+        <SelectTrigger
+          aria-label={t('library.libraryToolbar.filterByTranscriptType')}
+          className="w-full min-w-0 2xl:w-32"
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
-            <SelectLabel>Type</SelectLabel>
-            <SelectItem value="all">All types</SelectItem>
-            <SelectItem value="generated">Generated</SelectItem>
-            <SelectItem value="lyrics">AI Aligned</SelectItem>
+            <SelectLabel>{t('library.libraryToolbar.type')}</SelectLabel>
+            <SelectItem value="all">{t('library.libraryToolbar.allTypes')}</SelectItem>
+            <SelectItem value="generated">{t('library.libraryToolbar.generated')}</SelectItem>
+            <SelectItem value="lyrics">{t('library.libraryToolbar.aiAligned')}</SelectItem>
             <SelectItem value="lrc">LRC</SelectItem>
           </SelectGroup>
         </SelectContent>
@@ -118,8 +125,12 @@ export const LibraryToolbar = ({
           className={cn('relative', isActionFocused(0) && 'ring-2 ring-primary')}
           data-actions-index="0"
           onClick={onOpenQueue}
-          aria-label={`Open playback queue, ${queueCount} ${queueCount === 1 ? 'song' : 'songs'}`}
-          title="Playback queue"
+          aria-label={tp(
+            'library.toolbar.openQueueOne',
+            'library.toolbar.openQueueOther',
+            queueCount,
+          )}
+          title={t('library.libraryToolbar.playbackQueue')}
         >
           <ListMusicIcon />
           {queueCount > 0 ? (
@@ -131,7 +142,7 @@ export const LibraryToolbar = ({
         <BulkActionsMenu />
         <fieldset
           className="flex shrink-0 rounded-md border bg-input/20 p-0.5"
-          aria-label="Song list view"
+          aria-label={t('library.libraryToolbar.songListView')}
         >
           <Button
             variant={view === 'table' ? 'secondary' : 'ghost'}
@@ -140,9 +151,9 @@ export const LibraryToolbar = ({
             data-actions-index="2"
             disabled={isSavingView}
             onClick={() => onViewChange('table')}
-            aria-label="Table view"
+            aria-label={t('library.libraryToolbar.tableView')}
             aria-pressed={view === 'table'}
-            title="Table view"
+            title={t('library.libraryToolbar.tableView')}
           >
             <ListIcon />
           </Button>
@@ -153,9 +164,9 @@ export const LibraryToolbar = ({
             data-actions-index="3"
             disabled={isSavingView}
             onClick={() => onViewChange('grid')}
-            aria-label="Card grid view"
+            aria-label={t('library.libraryToolbar.cardGridView')}
             aria-pressed={view === 'grid'}
-            title="Card grid view"
+            title={t('library.libraryToolbar.cardGridView')}
           >
             <Grid2X2Icon />
           </Button>

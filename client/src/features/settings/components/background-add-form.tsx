@@ -2,6 +2,7 @@ import { type Dispatch, type RefObject, type SetStateAction } from 'react';
 import { toast } from 'sonner';
 
 import { pickCustomBackgroundFile, usesNativeBackgroundPicker } from '@/bridge/backgrounds';
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { ButtonGroup } from '@/shared/components/ui/button-group';
 import { Field, FieldDescription, FieldGroup } from '@/shared/components/ui/field';
@@ -36,7 +37,9 @@ export function BackgroundAddForm({
         }));
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not choose background file');
+      toast.error(
+        error instanceof Error ? error.message : t('settings.backgrounds.chooseFileError'),
+      );
     }
   };
   const chooseFile = () => {
@@ -50,33 +53,35 @@ export function BackgroundAddForm({
   return (
     <FieldGroup>
       <Field>
-        <Label>Source</Label>
+        <Label>{t('settings.backgroundAddForm.source')}</Label>
         <ButtonGroup>
           <Button
             variant={draft.sourceType === 'upload' ? 'default' : 'outline'}
             className={getFocusClassName(0)}
             onClick={() => setDraft((current) => ({ ...current, sourceType: 'upload' }))}
           >
-            Upload
+            {t('settings.backgroundAddForm.upload')}
           </Button>
           <Button
             variant={draft.sourceType === 'url' ? 'default' : 'outline'}
             className={getFocusClassName(1)}
             onClick={() => setDraft((current) => ({ ...current, sourceType: 'url' }))}
           >
-            Link
+            {t('settings.backgroundAddForm.link')}
           </Button>
         </ButtonGroup>
-        <FieldDescription>Supported: {SUPPORTED_FORMATS}</FieldDescription>
+        <FieldDescription>
+          {t('settings.backgroundAddForm.supportedValue1', { value1: SUPPORTED_FORMATS })}
+        </FieldDescription>
       </Field>
 
       <Field>
-        <Label htmlFor="background-name">Name</Label>
+        <Label htmlFor="background-name">{t('settings.backgroundAddForm.name')}</Label>
         <Input
-          id="background-name"
+          id="settings.backgroundAddForm.backgroundName"
           value={draft.name}
           maxLength={80}
-          placeholder="My background"
+          placeholder={t('settings.backgroundAddForm.myBackground')}
           className={getFocusClassName(2)}
           onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
         />
@@ -84,9 +89,9 @@ export function BackgroundAddForm({
 
       {draft.sourceType === 'url' ? (
         <Field>
-          <Label htmlFor="background-url">HTTPS link</Label>
+          <Label htmlFor="background-url">{t('settings.backgroundAddForm.httpsLink')}</Label>
           <Input
-            id="background-url"
+            id="settings.backgroundAddForm.backgroundUrl"
             type="url"
             value={draft.url}
             maxLength={2048}
@@ -97,10 +102,10 @@ export function BackgroundAddForm({
         </Field>
       ) : (
         <Field>
-          <Label>File</Label>
+          <Label>{t('settings.backgroundAddForm.file')}</Label>
           <input
             ref={fileInputRef}
-            id="background-file"
+            id="settings.backgroundAddForm.backgroundFile"
             type="file"
             accept={BACKGROUND_ACCEPT}
             className="hidden"
@@ -123,10 +128,10 @@ export function BackgroundAddForm({
               className={getFocusClassName(3)}
               onClick={chooseFile}
             >
-              Choose file
+              {t('settings.backgroundAddForm.chooseFile')}
             </Button>
             <span className="truncate text-sm text-muted-foreground" aria-live="polite">
-              {draft.nativeFileName ?? draft.file?.name ?? 'No file selected'}
+              {draft.nativeFileName ?? draft.file?.name ?? t('settings.backgrounds.noFileSelected')}
             </span>
           </div>
         </Field>

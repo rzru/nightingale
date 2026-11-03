@@ -1,4 +1,5 @@
 import { composeCustomFragment, vertexShader } from '@/features/playback/components/shaders';
+import { t } from '@/i18n';
 
 const validationVertexShader = `
 attribute vec3 position;
@@ -17,14 +18,14 @@ function compileShader(
 ): WebGLShader | string {
   const shader = gl.createShader(type);
   if (shader === null) {
-    return 'Could not create WebGL shader';
+    return t('playback.shader.createError');
   }
   gl.shaderSource(shader, `precision highp float;\n${source}`);
   gl.compileShader(shader);
   if (gl.getShaderParameter(shader, gl.COMPILE_STATUS) !== true) {
     const log = gl.getShaderInfoLog(shader);
     gl.deleteShader(shader);
-    return typeof log === 'string' && log !== '' ? log : 'Shader compilation failed';
+    return typeof log === 'string' && log !== '' ? log : t('playback.shader.compileError');
   }
   return shader;
 }
@@ -33,7 +34,7 @@ export function validateCustomShader(source: string): string | undefined {
   const canvas = document.createElement('canvas');
   const gl = canvas.getContext('webgl');
   if (gl === null) {
-    return 'WebGL is unavailable';
+    return t('playback.shader.webglUnavailable');
   }
 
   const vertex = compileShader(gl, gl.VERTEX_SHADER, validationVertexShader);

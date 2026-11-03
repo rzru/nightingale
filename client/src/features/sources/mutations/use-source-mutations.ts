@@ -14,6 +14,7 @@ import {
 import { EMPTY_LIBRARY_FILTER } from '@/features/library/lib/library-menu-filter';
 import { libraryFilterAtom } from '@/features/menu/hooks/use-library-filter';
 import { searchAtom } from '@/features/menu/hooks/use-search';
+import { t, tp } from '@/i18n';
 import {
   ANALYSIS_QUEUE,
   CONFIG,
@@ -84,24 +85,26 @@ export const useSelectFolderSource = () => {
       invalidateLibrary();
     },
     onError: (error: Error) => {
-      toast.error(`Failed to select folder: ${error.message}`);
+      toast.error(t('sources.useSourceMutations.failedToSelectFolder', { value1: error.message }));
     },
   });
 };
 
-const songs = (count: number) => `${count} song${count === 1 ? '' : 's'}`;
+const songs = (count: number) =>
+  tp('sources.reconcile.songCountOne', 'sources.reconcile.songCountOther', count);
 
 const notifyReconcile = ({ updated, skipped }: CacheReconcileSummary) => {
   if (updated > 0) {
-    const detail = skipped > 0 ? `; ${songs(skipped)} still incomplete` : '';
-    toast.success(`Marked ${songs(updated)} ready from the cache${detail}`);
+    const detail =
+      skipped > 0 ? t('sources.reconcile.incompleteDetail', { songs: songs(skipped) }) : '';
+    toast.success(t('sources.reconcile.markedReady', { songs: songs(updated), detail }));
   } else if (skipped > 0) {
-    toast.warning(`${songs(skipped)} in the cache still incomplete; nothing marked ready`);
+    toast.warning(t('sources.reconcile.noneReady', { songs: songs(skipped) }));
   }
 };
 
 const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : 'unknown error';
+  error instanceof Error ? error.message : t('common.errors.unknown');
 
 /**
  * Re-run the scan against the currently configured source, then pick up any
@@ -118,7 +121,11 @@ export const useRescan = () => {
       try {
         return await reconcileCache();
       } catch (error: unknown) {
-        toast.warning(`Rescan started, but the cache could not be checked: ${errorMessage(error)}`);
+        toast.warning(
+          t('sources.useSourceMutations.rescanStartedButTheCacheMessage', {
+            value1: errorMessage(error),
+          }),
+        );
         return null;
       }
     },
@@ -129,7 +136,7 @@ export const useRescan = () => {
       }
     },
     onError: (error: Error) => {
-      toast.error(`Rescan failed: ${error.message}`);
+      toast.error(t('sources.useSourceMutations.rescanFailed', { value1: error.message }));
     },
   });
 };
@@ -148,7 +155,7 @@ export const useDisconnectSource = () => {
       invalidateLibrary();
     },
     onError: (error: Error) => {
-      toast.error(`Could not clear source: ${error.message}`);
+      toast.error(t('sources.useSourceMutations.couldNotClearSource', { value1: error.message }));
     },
   });
 };
@@ -276,7 +283,7 @@ export const useConnectPlex = () => {
   >({
     mutationFn: async ({ server, sectionIds }) => {
       if (sectionIds.length === 0) {
-        throw new Error('Select at least one music library');
+        throw new Error(t('sources.useSourceMutations.selectAtLeastOneLibrary'));
       }
       const config = await setLibrarySource({
         kind: 'plex',

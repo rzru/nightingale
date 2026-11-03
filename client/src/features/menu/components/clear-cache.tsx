@@ -7,6 +7,7 @@ import {
   type DialogMode,
 } from '@/features/menu/hooks/use-dialog';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
+import { t } from '@/i18n';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,19 +36,16 @@ const focusClass = (open: boolean, focusedIndex: number, index: number): string 
 
 const COPY: Record<ClearCacheTarget, { title: string; description: string }> = {
   all: {
-    title: 'Clear all cache?',
-    description:
-      'This will permanently delete every cached file (songs, videos, models, and anything else). This action cannot be undone.',
+    title: 'menu.clearCache.clearAllCache',
+    description: 'menu.clearCache.thisWillPermanentlyDeleteEveryDescription',
   },
   videos: {
-    title: 'Clear videos cache?',
-    description:
-      "This will permanently delete all cached background videos. They will be re-downloaded the next time they're needed.",
+    title: 'menu.clearCache.clearVideosCache',
+    description: 'menu.clearCache.thisWillPermanentlyDeleteAllDescription',
   },
   models: {
-    title: 'Clear models cache?',
-    description:
-      'This will permanently delete the cached analysis models. They will be re-downloaded the next time analysis runs.',
+    title: 'menu.clearCache.clearModelsCache',
+    description: 'menu.clearCache.thisWillPermanentlyDeleteTheDescription',
   },
 };
 
@@ -90,19 +88,21 @@ export const ClearCacheDialog = () => {
     <AlertDialog open={open} onOpenChange={close}>
       <AlertDialogContent onEscapeKeyDown={(e) => e.preventDefault()}>
         <AlertDialogHeader>
-          <AlertDialogTitle>{copy?.title ?? 'Clear cache?'}</AlertDialogTitle>
-          <AlertDialogDescription>{copy?.description ?? ''}</AlertDialogDescription>
+          <AlertDialogTitle>
+            {copy ? t(copy.title) : t('menu.clearCache.fallbackTitle')}
+          </AlertDialogTitle>
+          <AlertDialogDescription>{copy ? t(copy.description) : ''}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={close} className={focusClass(open, focusedIndex, 0)}>
-            Cancel
+            {t('common.actions.cancel')}
           </AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
             onClick={runClear}
             className={focusClass(open, focusedIndex, 1)}
           >
-            Clear cache
+            {t('menu.clearCache.clearCache')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

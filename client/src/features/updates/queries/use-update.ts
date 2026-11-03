@@ -3,6 +3,7 @@ import { type Update } from '@tauri-apps/plugin-updater';
 
 import { UPDATE_CHANNEL, UPDATES_SUPPORTED, type UpdateChannel } from '@/bridge/platform';
 import { checkForUpdate } from '@/bridge/updater';
+import { t } from '@/i18n';
 import { UPDATER } from '@/shared/query-keys';
 
 /**
@@ -60,7 +61,8 @@ const buildState = (query: {
   }
 
   if (query.isError) {
-    const error = query.error instanceof Error ? query.error : new Error('Unknown error');
+    const error =
+      query.error instanceof Error ? query.error : new Error(t('common.errors.unknown'));
 
     return { status: 'error', error, isOffline: isOfflineError(error) };
   }

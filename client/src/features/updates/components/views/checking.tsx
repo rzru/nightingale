@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { Spinner } from '@/shared/components/ui/spinner';
 
 import { GENERIC_DESCRIPTION, SoloFooter, type FocusCtx, type ViewParts } from '../parts';
@@ -12,8 +13,8 @@ export const checkingView = ({ ctx, onClose }: Args): ViewParts => ({
   body: (
     <p className="flex items-center gap-2 text-xs text-muted-foreground">
       <Spinner className="size-4" />
-      <span>Checking for updates…</span>
+      <span>{t('updates.checking.checkingForUpdates')}</span>
     </p>
   ),
-  footer: <SoloFooter ctx={ctx} label="Close" onClick={onClose} />,
+  footer: <SoloFooter ctx={ctx} label="common.actions.close" onClick={onClose} />,
 });

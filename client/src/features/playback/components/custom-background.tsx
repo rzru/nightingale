@@ -4,6 +4,7 @@ import { loadCustomShaderSource, resolveCustomBackgroundUrl } from '@/bridge/bac
 import type { MicReactiveRef } from '@/features/microphone/hooks/use-mic-reactive';
 import { useBackgroundLifecycle } from '@/features/playback/components/background-lifecycle-context';
 import { customFragmentShader, validateCustomShader } from '@/features/playback/lib/custom-shader';
+import { t } from '@/i18n';
 import type { CustomBackground as CustomBackgroundDefinition } from '@/types/CustomBackground';
 
 import { ShaderVisualizer } from './shader-visualizer';
@@ -163,7 +164,7 @@ export function CustomBackground({ background, isPlaying, reactiveRef }: CustomB
         const source = await loadCustomShaderSource(background, controller.signal);
         const shaderError = validateCustomShader(source);
         if (shaderError !== undefined) {
-          throw new Error(`Shader did not compile: ${shaderError}`);
+          throw new Error(t('playback.background.shaderCompileError', { error: shaderError }));
         }
         if (!controller.signal.aborted) {
           setShader(customFragmentShader(source));

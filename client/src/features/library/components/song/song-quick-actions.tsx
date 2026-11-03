@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { ContextMenu as ContextMenuPrimitive } from 'radix-ui';
 
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import type { QueuedStatus } from '@/types/QueuedStatus';
 import type { Song } from '@/types/Song';
@@ -49,7 +50,9 @@ export function SongQuickActions({
   if (!song.is_analyzed) {
     return (
       <fieldset className="inline-flex items-center rounded-sm ring-1 ring-border">
-        <legend className="sr-only">Actions for {song.title}</legend>
+        <legend className="sr-only">
+          {t('library.song.songQuickActions.actionsForValue1', { value1: song.title })}
+        </legend>
         <ContextMenuPrimitive.Root>
           <ContextMenuPrimitive.Trigger asChild>
             <Button
@@ -63,8 +66,8 @@ export function SongQuickActions({
                 onAnalyze(song);
               }}
               aria-haspopup="menu"
-              aria-label={`Analyze ${song.title}. Right-click for analysis options.`}
-              title="Analyze · Right-click for options"
+              aria-label={t('library.quickActions.analyzeLabel', { title: song.title })}
+              title={t('library.song.songQuickActions.analyzeRightClickForOptions')}
             >
               <AudioLinesIcon />
             </Button>
@@ -78,14 +81,16 @@ export function SongQuickActions({
                 className={menuItemClassName}
                 onSelect={() => onAnalyze(song)}
               >
-                <AudioLinesIcon /> Analyze song
+                <AudioLinesIcon />
+                {t('library.song.songQuickActions.analyzeSong')}
               </ContextMenuPrimitive.Item>
               {song.transcript_source !== 'Usdx' ? (
                 <ContextMenuPrimitive.Item
                   className={menuItemClassName}
                   onSelect={() => onProvideLyrics(song)}
                 >
-                  <PencilLineIcon /> Provide lyrics
+                  <PencilLineIcon />
+                  {t('library.song.songQuickActions.provideLyrics')}
                 </ContextMenuPrimitive.Item>
               ) : null}
             </ContextMenuPrimitive.Content>
@@ -97,7 +102,9 @@ export function SongQuickActions({
 
   return (
     <fieldset className="inline-flex items-center rounded-md ring-1 ring-border">
-      <legend className="sr-only">Actions for {song.title}</legend>
+      <legend className="sr-only">
+        {t('library.song.songQuickActions.actionsForValue1', { value1: song.title })}
+      </legend>
       <ContextMenuPrimitive.Root>
         <ContextMenuPrimitive.Trigger asChild>
           <Button
@@ -110,8 +117,8 @@ export function SongQuickActions({
               onAddToQueue(song, 'bottom');
             }}
             aria-haspopup="menu"
-            aria-label={`Add ${song.title} to queue. Right-click to choose top or bottom.`}
-            title="Add to queue · Right-click for position"
+            aria-label={t('library.quickActions.queueLabel', { title: song.title })}
+            title={t('library.song.songQuickActions.addToQueueRightClickForPosition')}
           >
             <ListPlusIcon />
           </Button>
@@ -125,13 +132,15 @@ export function SongQuickActions({
               className={menuItemClassName}
               onSelect={() => onAddToQueue(song, 'top')}
             >
-              <ArrowUpToLineIcon /> Add to top
+              <ArrowUpToLineIcon />
+              {t('library.song.songQuickActions.addToTop')}
             </ContextMenuPrimitive.Item>
             <ContextMenuPrimitive.Item
               className={menuItemClassName}
               onSelect={() => onAddToQueue(song, 'bottom')}
             >
-              <ArrowDownToLineIcon /> Add to bottom
+              <ArrowDownToLineIcon />
+              {t('library.song.songQuickActions.addToBottom')}
             </ContextMenuPrimitive.Item>
           </ContextMenuPrimitive.Content>
         </ContextMenuPrimitive.Portal>
@@ -148,8 +157,8 @@ export function SongQuickActions({
               onPlay(song);
             }}
             aria-haspopup="menu"
-            aria-label={`Play ${song.title}. Right-click to choose singleplayer or multiplayer.`}
-            title="Play · Right-click for mode"
+            aria-label={t('library.quickActions.playLabel', { title: song.title })}
+            title={t('library.song.songQuickActions.playRightClickForMode')}
           >
             <PlayIcon />
           </Button>
@@ -160,13 +169,15 @@ export function SongQuickActions({
             onClick={(event) => event.stopPropagation()}
           >
             <ContextMenuPrimitive.Item className={menuItemClassName} onSelect={() => onPlay(song)}>
-              <UserIcon /> Singleplayer
+              <UserIcon />
+              {t('library.song.songQuickActions.singleplayer')}
             </ContextMenuPrimitive.Item>
             <ContextMenuPrimitive.Item
               className={menuItemClassName}
               onSelect={() => onPlayMultiplayer(song)}
             >
-              <UsersIcon /> Multiplayer
+              <UsersIcon />
+              {t('library.song.songQuickActions.multiplayer')}
             </ContextMenuPrimitive.Item>
           </ContextMenuPrimitive.Content>
         </ContextMenuPrimitive.Portal>

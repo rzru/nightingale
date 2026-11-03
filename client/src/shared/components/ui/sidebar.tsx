@@ -5,6 +5,7 @@ import { PanelLeftIcon, XIcon } from 'lucide-react';
 import { Slot } from 'radix-ui';
 import * as React from 'react';
 
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Separator } from '@/shared/components/ui/separator';
@@ -203,7 +204,7 @@ function Sidebar({
         >
           <button
             type="button"
-            aria-label="Close sidebar"
+            aria-label={t('shared.ui.sidebar.closeSidebar')}
             className={cn(
               'absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-200',
               mobileOpacity(open),
@@ -226,7 +227,7 @@ function Sidebar({
               onClick={() => setOpen(false)}
             >
               <XIcon />
-              <span className="sr-only">Close Sidebar</span>
+              <span className="sr-only">{t('shared.ui.sidebar.closeSidebar2')}</span>
             </Button>
             {children}
           </div>
@@ -293,7 +294,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
       {...props}
     >
       <PanelLeftIcon />
-      <span className="sr-only">Toggle Sidebar</span>
+      <span className="sr-only">{t('shared.ui.sidebar.toggleSidebar')}</span>
     </Button>
   );
 }
@@ -306,10 +307,10 @@ function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
       type="button"
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label="Toggle Sidebar"
+      aria-label={t('shared.ui.sidebar.toggleSidebar')}
       tabIndex={-1}
       onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      title={t('shared.ui.sidebar.toggleSidebar')}
       className={cn(
         'absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:start-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2',
         'in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize',

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 
 import { onShiftKeyDone, onShiftTempoDone, shiftKey, shiftTempo } from '@/bridge/analysis';
 import { calculateKeyShift } from '@/features/library/utils/shift-key';
+import { t } from '@/i18n';
 import { SONGS } from '@/shared/query-keys';
 import type { ShiftDone } from '@/types/ShiftDone';
 import type { Song } from '@/types/Song';
@@ -82,7 +83,9 @@ export const usePreparePlaybackMutation = () => {
   return useMutation({
     mutationFn: preparePlayback,
     onError: (error: Error) => {
-      toast.error(`Couldn't prepare playback: ${error.message}`);
+      toast.error(
+        t('playback.usePreparePlaybackMutation.couldnTPreparePlayback', { value1: error.message }),
+      );
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: SONGS });

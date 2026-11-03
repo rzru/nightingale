@@ -3,6 +3,7 @@ import { useRef } from 'react';
 import { openUrl } from '@/bridge/opener';
 import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import {
   Dialog,
@@ -30,15 +31,24 @@ const DiscordIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 const attributions = [
-  { name: 'Video backgrounds', value: 'Pixabay (pixabay.com)' },
-  { name: 'Lyrics data', value: 'LRCLIB (lrclib.net)' },
+  { name: 'menu.info.attributions.videoBackgrounds', value: 'Pixabay (pixabay.com)' },
+  { name: 'menu.info.attributions.lyricsData', value: 'LRCLIB (lrclib.net)' },
   {
-    name: 'Stem separation',
+    name: 'menu.info.attributions.stemSeparation',
     value: 'UVR — MIT / Demucs by Meta Research — MIT',
   },
-  { name: 'Speech recognition', value: 'WhisperX / OpenAI Whisper, NVIDIA Parakeet' },
-  { name: 'Forced alignment', value: 'WhisperX, torchaudio, Qwen3-ForcedAligner' },
-  { name: 'CJK romanization', value: 'fugashi, pypinyin, hangul-romanize, ToJyutping' },
+  {
+    name: 'menu.info.attributions.speechRecognition',
+    value: 'WhisperX / OpenAI Whisper, NVIDIA Parakeet',
+  },
+  {
+    name: 'menu.info.attributions.forcedAlignment',
+    value: 'WhisperX, torchaudio, Qwen3-ForcedAligner',
+  },
+  {
+    name: 'menu.info.attributions.cjkRomanization',
+    value: 'fugashi, pypinyin, hangul-romanize, ToJyutping',
+  },
 ];
 
 export const InfoDialog = () => {
@@ -61,7 +71,9 @@ export const InfoDialog = () => {
         <div ref={containerRef} className="contents">
           <DialogHeader>
             <DialogTitle className="text-2xl">Nightingale</DialogTitle>
-            <p className="text-sm text-muted-foreground">Karaoke from your music library.</p>
+            <p className="text-sm text-muted-foreground">
+              {t('menu.info.karaokeFromYourMusicLibrary')}
+            </p>
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -87,20 +99,20 @@ export const InfoDialog = () => {
               </Button>
             </div>
             <div className="text-sm text-muted-foreground">
-              <p>Version {version}</p>
-              <p>License: GPL-3.0-or-later</p>
+              <p>{t('menu.info.versionValue1', { value1: version })}</p>
+              <p>{t('menu.info.licenseGpl30OrLater')}</p>
             </div>
           </DialogHeader>
           <Separator />
           <div className="space-y-2">
             <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Attributions
+              {t('menu.info.attributions')}
             </h4>
             <Table>
               <TableBody>
                 {attributions.map((attr) => (
                   <TableRow key={attr.name}>
-                    <TableCell className="text-muted-foreground">{attr.name}</TableCell>
+                    <TableCell className="text-muted-foreground">{t(attr.name)}</TableCell>
                     <TableCell className="font-medium">{attr.value}</TableCell>
                   </TableRow>
                 ))}
@@ -116,7 +128,7 @@ export const InfoDialog = () => {
                 focusedIndex === 2 && 'ring-2 ring-primary',
               )}
             >
-              Close
+              {t('common.actions.close')}
             </Button>
           </DialogFooter>
         </div>

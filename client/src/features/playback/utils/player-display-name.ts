@@ -1,3 +1,5 @@
+import { t } from '@/i18n';
+
 type DisplayPlayer = {
   id: string;
   profile: string | null;
@@ -15,8 +17,10 @@ export function playerDisplayName(
     .filter(({ profile }) => profile === null)
     .toSorted((left, right) => left.id.localeCompare(right.id, undefined, { numeric: true }));
   if (guests.length === 1) {
-    return 'Guest';
+    return t('playback.players.guest');
   }
 
-  return `Guest ${guests.findIndex(({ id }) => id === player.id) + 1}`;
+  return t('playback.players.numberedGuest', {
+    number: guests.findIndex(({ id }) => id === player.id) + 1,
+  });
 }

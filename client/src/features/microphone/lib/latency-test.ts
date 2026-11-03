@@ -3,6 +3,7 @@ import {
   MAX_MIC_LATENCY_COMPENSATION_SEC,
   MIN_MIC_LATENCY_COMPENSATION_SEC,
 } from '@/features/playback/lib/pitch/constants';
+import { t } from '@/i18n';
 
 const BASELINE_MS = 300;
 const TEST_TIMEOUT_MS = 2200;
@@ -108,13 +109,7 @@ export async function measureMicLatencySec(
       };
 
       const timer = window.setTimeout(() => {
-        finish(() =>
-          reject(
-            new Error(
-              'The selected mic did not detect the test tone. Confirm it with the mic test, then increase speaker volume or move the mic closer.',
-            ),
-          ),
-        );
+        finish(() => reject(new Error(t('settings.microphone.latencyToneNotDetected'))));
       }, TEST_TIMEOUT_MS);
 
       adapter

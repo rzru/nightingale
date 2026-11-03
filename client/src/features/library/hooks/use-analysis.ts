@@ -16,6 +16,7 @@ import {
 } from '@/bridge/analysis';
 import { useLibraryFilter } from '@/features/menu/hooks/use-library-filter';
 import { useSearch } from '@/features/menu/hooks/use-search';
+import { t, tp } from '@/i18n';
 import { ANALYSIS_QUEUE, MENU, SONGS, SONGS_META } from '@/shared/query-keys';
 import type { LibraryMenuFilters } from '@/types/LibraryMenuFilters';
 import type { Song } from '@/types/Song';
@@ -87,7 +88,9 @@ export const useAnalysis = () => {
         return await handler();
       } catch (error: unknown) {
         toast.error(
-          `Error while running an analysis action: ${error instanceof Error ? error.message : 'unknown error'}`,
+          t('library.useAnalysis.errorWhileRunningAnAnalysisAction', {
+            value1: error instanceof Error ? error.message : 'unknown error',
+          }),
         );
         return undefined;
       } finally {
@@ -115,15 +118,16 @@ export const useAnalysis = () => {
         }
 
         if (count > 0) {
+          const action = t(label);
           toast.success(
             kind === BulkActionKind.Queued
-              ? `Queued ${count} song${count === 1 ? '' : 's'} for ${label}`
-              : `${label} for ${count} song${count === 1 ? '' : 's'}`,
+              ? tp('library.analysis.queuedOne', 'library.analysis.queuedOther', count, { action })
+              : tp('library.analysis.completedOne', 'library.analysis.completedOther', count, {
+                  action,
+                }),
           );
         } else {
-          toast.info(
-            `No eligible songs for ${kind === BulkActionKind.Queued ? label : label.toLowerCase()} in the current filter`,
-          );
+          toast.info(t('library.analysis.noneEligible', { action: t(label) }));
         }
       };
 
@@ -136,7 +140,7 @@ export const useAnalysis = () => {
       cancelAnalysisOne: wrap((fileHash: string) => cancelAnalysis(one(fileHash)), invalidateSongs),
       cancelAnalysisAll: wrapBulk(
         BulkActionKind.Immediate,
-        'Analysis cancelled',
+        'library.analysis.actions.cancelled',
         () => cancelAnalysis(filtered()),
         invalidateSongs,
       ),
@@ -146,7 +150,7 @@ export const useAnalysis = () => {
       }, invalidateSongs),
       deleteSongCacheAll: wrapBulk(
         BulkActionKind.Immediate,
-        'Cache deleted',
+        'library.analysis.actions.cacheDeleted',
         () => deleteSongCache(filtered()),
         invalidateSongs,
       ),
@@ -161,7 +165,7 @@ export const useAnalysis = () => {
       ),
       realignAll: wrapBulk(
         BulkActionKind.Queued,
-        'realigning',
+        'library.analysis.actions.realigning',
         () => realign(filtered()),
         invalidateSongs,
       ),
@@ -173,25 +177,25 @@ export const useAnalysis = () => {
         run(async () => (await refreshMetadata(one(fileHash))) > 0, invalidateSongs),
       refreshMetadataAll: wrapBulk(
         BulkActionKind.Immediate,
-        'Metadata refreshed',
+        'library.analysis.actions.metadataRefreshed',
         () => refreshMetadata(filtered()),
         invalidateSongs,
       ),
       reanalyzeAllFull: wrapBulk(
         BulkActionKind.Queued,
-        'full reanalysis',
+        'library.analysis.actions.fullReanalysis',
         () => reanalyzeFull(filtered()),
         invalidateSongs,
       ),
       reanalyzeAllTranscript: wrapBulk(
         BulkActionKind.Queued,
-        'refetching lyrics & aligning',
+        'library.analysis.actions.refetchingLyrics',
         (language?: string) => reanalyzeTranscript(filtered(), language),
         invalidateSongs,
       ),
       reanalyzeAllForceTranscribe: wrapBulk(
         BulkActionKind.Queued,
-        'force transcribing',
+        'library.analysis.actions.forceTranscribing',
         () => reanalyzeForceTranscribe(filtered()),
         invalidateSongs,
       ),

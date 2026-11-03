@@ -5,6 +5,7 @@ import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
 import { useCurrentProfile } from '@/features/profiles/hooks/use-current-profile';
 import { useProfileMutations } from '@/features/profiles/mutations/use-profile-mutations';
 import { useProfiles } from '@/features/profiles/queries/use-profiles';
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import {
   Dialog,
@@ -74,27 +75,27 @@ export const SelectProfileDialog = () => {
       <DialogContent className="sm:max-w-sm">
         <div ref={containerRef} className="contents">
           <DialogHeader>
-            <DialogTitle>Select Profile</DialogTitle>
+            <DialogTitle>{t('profiles.select.selectProfile')}</DialogTitle>
           </DialogHeader>
           <FieldGroup>
             <Field>
-              <Label htmlFor="model-1">Profile</Label>
+              <Label htmlFor="model-1">{t('profiles.select.profile')}</Label>
               <Select
                 onValueChange={(profile) => setNewProfile(profile)}
                 defaultValue={currentProfile}
               >
                 <SelectTrigger
-                  id="model-1"
+                  id="profiles.select.model1"
                   className={cn(
                     'focus-visible:ring-0 focus-visible:border-transparent',
                     focusedIndex === 0 && 'ring-2 ring-primary',
                   )}
                 >
-                  <SelectValue placeholder="Select a profile" />
+                  <SelectValue placeholder={t('profiles.select.selectAProfile')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectLabel>Profile</SelectLabel>
+                    <SelectLabel>{t('profiles.select.profile')}</SelectLabel>
                     {profiles.map((profile) => (
                       <SelectItem key={profile} value={profile}>
                         {profile}
@@ -115,7 +116,7 @@ export const SelectProfileDialog = () => {
                   focusedIndex === 1 && 'ring-2 ring-primary',
                 )}
               >
-                Cancel
+                {t('common.actions.cancel')}
               </Button>
             </DialogClose>
             <Button
@@ -126,7 +127,7 @@ export const SelectProfileDialog = () => {
                 focusedIndex === 2 && 'ring-2 ring-primary',
               )}
             >
-              Create New
+              {t('profiles.select.createNew')}
             </Button>
             <Popover open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
               <PopoverTrigger asChild>
@@ -138,12 +139,12 @@ export const SelectProfileDialog = () => {
                     focusedIndex === 3 && 'ring-2 ring-primary',
                   )}
                 >
-                  Delete
+                  {t('common.actions.delete')}
                 </Button>
               </PopoverTrigger>
 
               <PopoverContent side="bottom" align="start" className="w-48">
-                <p className="text-sm">Are you sure?</p>
+                <p className="text-sm">{t('profiles.select.areYouSure')}</p>
 
                 <div className="flex gap-2 justify-end">
                   <Button
@@ -151,10 +152,10 @@ export const SelectProfileDialog = () => {
                     variant="outline"
                     onClick={() => setDeleteConfirmationOpen(false)}
                   >
-                    No
+                    {t('profiles.select.no')}
                   </Button>
                   <Button size="sm" variant="destructive" onClick={() => void deleteProfile()}>
-                    Yes
+                    {t('profiles.select.yes')}
                   </Button>
                 </div>
               </PopoverContent>
@@ -167,7 +168,7 @@ export const SelectProfileDialog = () => {
                 focusedIndex === 4 && 'ring-2 ring-primary',
               )}
             >
-              Select
+              {t('profiles.select.select')}
             </Button>
           </DialogFooter>
         </div>

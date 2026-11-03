@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import {
   Table,
@@ -10,7 +11,11 @@ import {
 import type { CustomBackground } from '@/types/CustomBackground';
 
 function sourceLabel(background: CustomBackground): string {
-  return background.source.kind === 'url' ? 'Link' : 'Uploaded file';
+  return t(
+    background.source.kind === 'url'
+      ? 'settings.backgrounds.linkSource'
+      : 'settings.backgrounds.uploadedSource',
+  );
 }
 
 export function BackgroundTable({
@@ -29,7 +34,9 @@ export function BackgroundTable({
   if (backgrounds.length === 0) {
     return (
       <div className="flex min-h-32 items-center justify-center rounded-lg border">
-        <p className="text-sm text-muted-foreground">No custom backgrounds yet.</p>
+        <p className="text-sm text-muted-foreground">
+          {t('settings.backgroundTable.noCustomBackgroundsYet')}
+        </p>
       </div>
     );
   }
@@ -39,10 +46,10 @@ export function BackgroundTable({
       <Table>
         <TableHeader className="sticky top-0 z-10 bg-background">
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Source</TableHead>
-            <TableHead className="text-right">Action</TableHead>
+            <TableHead>{t('settings.backgroundTable.name')}</TableHead>
+            <TableHead>{t('settings.backgroundTable.type')}</TableHead>
+            <TableHead>{t('settings.backgroundTable.source')}</TableHead>
+            <TableHead className="text-right">{t('settings.backgroundTable.action')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -59,7 +66,11 @@ export function BackgroundTable({
                   className={getFocusClassName(index)}
                   onClick={() => onRemove(background.id)}
                 >
-                  {pendingRemoval === background.id ? 'Confirm remove' : 'Remove'}
+                  {t(
+                    pendingRemoval === background.id
+                      ? 'settings.backgrounds.confirmRemove'
+                      : 'common.actions.remove',
+                  )}
                 </Button>
               </TableCell>
             </TableRow>

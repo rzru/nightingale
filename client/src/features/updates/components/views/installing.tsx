@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { Spinner } from '@/shared/components/ui/spinner';
 
 import { GENERIC_DESCRIPTION, type ViewParts } from '../parts';
@@ -7,7 +8,7 @@ export const installingView = (): ViewParts => ({
   body: (
     <p className="flex items-center gap-2 text-xs text-muted-foreground">
       <Spinner className="size-4" />
-      <span>Installing update… The app will restart shortly.</span>
+      <span>{t('updates.installing.installingUpdateTheAppWillRestartShortly')}</span>
     </p>
   ),
   footer: null,

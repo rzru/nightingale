@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef } from 'react';
 
 import { usePlaybackTransportActions } from '@/features/playback/providers';
 import { findCurrentSegment } from '@/features/playback/utils/lyrics-gap';
+import { t } from '@/i18n';
 import { formatSeconds } from '@/shared/utils/format-duration';
 import type { Segment } from '@/types/Transcript';
 
@@ -121,7 +122,10 @@ export function PlaybackTransportControls({
   };
 
   return (
-    <div className="mt-1.5 w-full max-w-[340px]" aria-label="Playback position">
+    <div
+      className="mt-1.5 w-full max-w-[340px]"
+      aria-label={t('playback.playbackTransportControls.playbackPosition')}
+    >
       <div className="flex h-[28px] items-center justify-between gap-3 [@media(any-pointer:coarse)]:h-[44px]">
         <p ref={timerRef} className="text-[16px] text-white/60 tabular-nums">
           0:00 / {formatSeconds(duration)}
@@ -129,24 +133,24 @@ export function PlaybackTransportControls({
         <div className="flex shrink-0 items-center gap-0.5">
           <TransportButton
             icon={SkipBackIcon}
-            label="Previous lyric line"
+            label={t('playback.playbackTransportControls.previousLyricLine')}
             disabled={segments.length === 0}
             buttonRef={previousLineRef}
             onClick={() => seekLine(-1)}
           />
           <TransportButton
             icon={RotateCcwIcon}
-            label="Jump 1 second back"
+            label={t('playback.playbackTransportControls.jump1SecondBack')}
             onClick={() => seekRelative(-1)}
           />
           <TransportButton
             icon={RotateCwIcon}
-            label="Jump 1 second forward"
+            label={t('playback.playbackTransportControls.jump1SecondForward')}
             onClick={() => seekRelative(1)}
           />
           <TransportButton
             icon={SkipForwardIcon}
-            label="Next lyric line"
+            label={t('playback.playbackTransportControls.nextLyricLine')}
             disabled={segments.length === 0}
             buttonRef={nextLineRef}
             onClick={() => seekLine(1)}
@@ -160,7 +164,7 @@ export function PlaybackTransportControls({
         max={duration}
         step={0.1}
         defaultValue={0}
-        aria-label="Seek through track"
+        aria-label={t('playback.playbackTransportControls.seekThroughTrack')}
         onInput={previewSeek}
         onPointerUp={commitSeek}
         onPointerCancel={commitSeek}

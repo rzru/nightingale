@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import {
   Dialog,
@@ -91,9 +92,15 @@ export function BackgroundManagerDialog({
             <DialogHeader>
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <DialogTitle>Custom backgrounds ({backgrounds.length})</DialogTitle>
+                  <DialogTitle>
+                    {t('settings.backgroundManagerDialog.customBackgroundsValue1', {
+                      value1: backgrounds.length,
+                    })}
+                  </DialogTitle>
                   <DialogDescription>
-                    Images, Nightingale GLSL shaders, and silent looping videos.
+                    {t(
+                      'settings.backgroundManagerDialog.imagesNightingaleGlslShadersAndDescription',
+                    )}
                   </DialogDescription>
                 </div>
                 <Button
@@ -103,7 +110,7 @@ export function BackgroundManagerDialog({
                     setView('add');
                   }}
                 >
-                  Add background
+                  {t('settings.backgroundManagerDialog.addBackground')}
                 </Button>
               </div>
             </DialogHeader>
@@ -123,16 +130,16 @@ export function BackgroundManagerDialog({
                 className={getFocusClassName(footerFocusIndex)}
                 onClick={closeDialog}
               >
-                Close
+                {t('common.actions.close')}
               </Button>
             </DialogFooter>
           </>
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Add background</DialogTitle>
+              <DialogTitle>{t('settings.backgroundManagerDialog.addBackground')}</DialogTitle>
               <DialogDescription>
-                Add an image, Nightingale GLSL shader, or silent looping video.
+                {t('settings.backgroundManagerDialog.addAnImageNightingaleGlslDescription')}
               </DialogDescription>
             </DialogHeader>
 
@@ -152,14 +159,18 @@ export function BackgroundManagerDialog({
                 className={getFocusClassName(footerFocusIndex)}
                 onClick={() => setView('list')}
               >
-                Cancel
+                {t('common.actions.cancel')}
               </Button>
               <Button
                 disabled={!canSubmitBackground(draft, busy)}
                 className={getFocusClassName(footerFocusIndex + 1)}
                 onClick={() => addMutation.mutate(draft)}
               >
-                {addMutation.isLoading ? 'Adding…' : 'Add background'}
+                {t(
+                  addMutation.isLoading
+                    ? 'settings.backgrounds.adding'
+                    : 'settings.backgrounds.add',
+                )}
               </Button>
             </DialogFooter>
           </>

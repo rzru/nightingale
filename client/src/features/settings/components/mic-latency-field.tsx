@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { measureMicLatencySec } from '@/features/microphone/lib/latency-test';
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { Field } from '@/shared/components/ui/field';
 import { Label } from '@/shared/components/ui/label';
@@ -42,10 +43,12 @@ export function MicLatencyField({
     try {
       const measured = await measureMicLatencySec(selectedMicId);
       onLatencyChange(measured);
-      toast.success(`Mic latency measured: ${Math.round(measured * 1000)} ms`);
+      toast.success(
+        t('settings.micLatencyField.micLatencyMeasuredMs', { value1: Math.round(measured * 1000) }),
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      toast.error(`Mic latency test failed: ${message}`);
+      toast.error(t('settings.micLatencyField.micLatencyTestFailed', { value1: message }));
     } finally {
       setMeasuring(false);
       onMeasuringChange?.(false);
@@ -54,8 +57,10 @@ export function MicLatencyField({
 
   return (
     <Field>
-      <Label>Mic latency compensation</Label>
-      <Hint>Aligns mic pitch with guide vocals for scoring. Current value: {latencyMs} ms</Hint>
+      <Label>{t('settings.micLatencyField.micLatencyCompensation')}</Label>
+      <Hint>
+        {t('settings.micLatencyField.alignsMicPitchWithGuideDescription', { value1: latencyMs })}
+      </Hint>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Slider
           min={0}
@@ -73,12 +78,15 @@ export function MicLatencyField({
               disabled={disabled || measuring}
               className={buttonClassName}
             >
-              {measuring ? 'Measuring...' : 'Measure latency'}
+              {t(
+                measuring
+                  ? 'settings.microphone.measuringLatency'
+                  : 'settings.microphone.measureLatency',
+              )}
             </Button>
           </TooltipTrigger>
           <TooltipContent align="end">
-            Plays a short beep, listens for it through the selected mic, then saves the delay used
-            for scoring. Use speakers, or hold one headphone close to the mic.
+            {t('settings.micLatencyField.playsAShortBeepListensDescription')}
           </TooltipContent>
         </Tooltip>
       </div>

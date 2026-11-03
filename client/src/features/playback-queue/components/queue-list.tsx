@@ -18,6 +18,7 @@ import { GripVerticalIcon, Trash2Icon } from 'lucide-react';
 
 import type { PlaybackQueueEntry } from '@/bridge/playback-queue';
 import { AlbumArt } from '@/features/library/components/song/album-art';
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/utils/cn';
 
@@ -54,8 +55,8 @@ function QueueItem({ entry, index, disabled, onRemove }: QueueItemProps) {
         type="button"
         disabled={disabled}
         className="-ml-1 grid size-6 shrink-0 touch-none cursor-grab place-items-center rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
-        aria-label={`Reorder ${entry.song.title}`}
-        title="Drag to reorder"
+        aria-label={t('playbackQueue.reorderLabel', { title: entry.song.title })}
+        title={t('playbackQueue.queueList.dragToReorder')}
         {...attributes}
         {...listeners}
       >
@@ -66,7 +67,9 @@ function QueueItem({ entry, index, disabled, onRemove }: QueueItemProps) {
         <div className="flex min-w-0 items-center text-sm font-medium">
           <p className="truncate">{entry.song.title}</p>
           {index === 0 ? (
-            <span className="shrink-0 text-xs font-medium text-primary"> · Next up</span>
+            <span className="shrink-0 text-xs font-medium text-primary">
+              {t('playbackQueue.queueList.nextUp')}
+            </span>
           ) : null}
         </div>
         <p className="truncate text-xs text-muted-foreground">{entry.song.artist || '—'}</p>
@@ -76,7 +79,7 @@ function QueueItem({ entry, index, disabled, onRemove }: QueueItemProps) {
         size="icon-sm"
         disabled={disabled}
         onClick={() => onRemove(entry.id)}
-        aria-label={`Remove ${entry.song.title} from queue`}
+        aria-label={t('playbackQueue.removeLabel', { title: entry.song.title })}
       >
         <Trash2Icon />
       </Button>
@@ -100,7 +103,11 @@ export function QueueList({ entries, disabled, onMove, onRemove }: QueueListProp
   };
 
   if (entries.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">Queue is empty</p>;
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        {t('playbackQueue.queueList.queueIsEmpty')}
+      </p>
+    );
   }
 
   return (

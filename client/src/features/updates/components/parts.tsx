@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { DialogFooter } from '@/shared/components/ui/dialog';
 import { cn } from '@/shared/utils/cn';
@@ -38,7 +39,7 @@ type SoloFooterProps = {
 export const SoloFooter = ({ ctx, label, onClick }: SoloFooterProps) => (
   <DialogFooter>
     <Button onClick={onClick} className={ringFor(ctx, 0)}>
-      {label}
+      {t(label)}
     </Button>
   </DialogFooter>
 );
@@ -54,7 +55,7 @@ type PairFooterProps = {
 
 export const PairFooter = ({
   ctx,
-  closeLabel = 'Close',
+  closeLabel = 'common.actions.close',
   onClose,
   primaryLabel,
   primaryIcon: Icon,
@@ -62,11 +63,11 @@ export const PairFooter = ({
 }: PairFooterProps) => (
   <DialogFooter>
     <Button variant="outline" onClick={onClose} className={ringFor(ctx, 0)}>
-      {closeLabel}
+      {t(closeLabel)}
     </Button>
     <Button onClick={onPrimary} className={ringFor(ctx, 1)}>
       {Icon && <Icon />}
-      {primaryLabel}
+      {t(primaryLabel)}
     </Button>
   </DialogFooter>
 );

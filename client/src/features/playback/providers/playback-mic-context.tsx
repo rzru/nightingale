@@ -21,6 +21,7 @@ import {
 import { usePlaybackConfigPersist } from '@/features/playback/hooks/use-playback-config-persist';
 import { DEFAULT_MIC_LATENCY_COMPENSATION_SEC } from '@/features/playback/lib/pitch/constants';
 import type { PitchSeries } from '@/features/playback/lib/pitch/state';
+import { t } from '@/i18n';
 import { defaultPlayerColor, type PlayerColor } from '@/shared/player-colors';
 import type { AppConfig } from '@/types/AppConfig';
 
@@ -217,7 +218,7 @@ function namePlayer(player: InternalPlayerMicState, devices: readonly MicDevice[
     profile: player.profile,
     microphoneId: player.microphoneId,
     color: player.color,
-    micName: device?.label ?? player.microphoneId ?? 'Default',
+    micName: device?.label ?? player.microphoneId ?? t('settings.microphone.default'),
     pitchScore: player.pitchScore,
     rawScore: player.rawScore,
     series: player.series,
@@ -229,7 +230,9 @@ function namePlayer(player: InternalPlayerMicState, devices: readonly MicDevice[
 }
 
 function errorPrefix(multiplayer: boolean, index: number): string {
-  return multiplayer ? `Player ${index + 1}` : 'Microphone';
+  return multiplayer
+    ? t('playback.players.playerNumber', { number: index + 1 })
+    : t('settings.microphone.label');
 }
 
 type MicStateInput = {
@@ -328,7 +331,12 @@ export function PlaybackMicProvider({ config, players, children }: PlaybackMicPr
       }
       if (!shownErrors.current.has(player.id)) {
         shownErrors.current.add(player.id);
-        toast.error(`${errorPrefix(multiplayer, index)}: ${player.error}`);
+        toast.error(
+          t('playback.playbackMicContext.message', {
+            value1: errorPrefix(multiplayer, index),
+            value2: player.error,
+          }),
+        );
       }
     }
   }, [multiplayer, namedPlayers]);

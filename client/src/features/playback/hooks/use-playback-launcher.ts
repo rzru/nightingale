@@ -9,6 +9,7 @@ import {
   type PlaybackSession,
   type PlaybackTarget,
 } from '@/bridge/playback-session';
+import { t } from '@/i18n';
 import { useConfig } from '@/shared/config/use-config';
 
 export function usePlaybackLauncher() {
@@ -19,7 +20,7 @@ export function usePlaybackLauncher() {
   const reserveTarget = useCallback((): PlaybackTarget => {
     const target = sessionMode ? reservePlaybackTarget() : null;
     if (target === undefined) {
-      toast.error('Allow pop-ups to open the playback tab');
+      toast.error(t('playback.hooks.usePlaybackLauncher.allowPopUpsToOpenDescription'));
     }
     return target;
   }, [sessionMode]);
@@ -37,7 +38,9 @@ export function usePlaybackLauncher() {
       } catch (error) {
         target?.close();
         toast.error(
-          `Could not start playback: ${error instanceof Error ? error.message : String(error)}`,
+          t('playback.usePlaybackLauncher.couldNotStartPlayback', {
+            value1: error instanceof Error ? error.message : String(error),
+          }),
         );
       }
     },

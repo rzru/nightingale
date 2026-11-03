@@ -6,6 +6,7 @@ import { exportSongNge } from '@/bridge/playback';
 import { useAnalysis } from '@/features/library/hooks/use-analysis';
 import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useProfiles } from '@/features/profiles/queries/use-profiles';
+import { t } from '@/i18n';
 import { Separator } from '@/shared/components/ui/separator';
 import type { Song } from '@/types/Song';
 
@@ -48,12 +49,18 @@ export const ActionsSection = ({
     try {
       const result = await exportSongNge(song.file_hash);
       if (result?.delivery === 'filesystem') {
-        toast.success(`Exported "${song.title}"`, { description: result.path });
+        toast.success(t('library.songActions.exported', { title: song.title }), {
+          description: result.path,
+        });
       } else if (result !== undefined) {
-        toast.success(`Exported "${song.title}"`);
+        toast.success(t('library.songActions.exported', { title: song.title }));
       }
     } catch (error) {
-      toast.error(`Export failed: ${error instanceof Error ? error.message : String(error)}`);
+      toast.error(
+        t('library.songActions.exportFailed', {
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
     }
   };
 
@@ -76,8 +83,8 @@ export const ActionsSection = ({
     groups.unshift([
       {
         icon: TrophyIcon,
-        title: 'Leaderboard',
-        description: 'View the best score from each profile.',
+        title: 'library.songDetails.actionsSection.leaderboard',
+        description: 'library.songDetails.actionsSection.viewTheBestScoreFromEachProfile',
         onClick: () => setMode({ mode: 'song-leaderboard', song }),
       },
     ]);
@@ -85,8 +92,11 @@ export const ActionsSection = ({
 
   return (
     <section className="px-2 py-4" aria-labelledby="song-actions-heading">
-      <h3 id="song-actions-heading" className="mb-2 px-2 text-xs font-semibold">
-        Actions
+      <h3
+        id="library.songDetails.actionsSection.songActionsHeading"
+        className="mb-2 px-2 text-xs font-semibold"
+      >
+        {t('common.actions.label')}
       </h3>
       <div className="flex flex-col gap-1">
         {groups.map((group, groupIndex) => (

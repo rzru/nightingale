@@ -6,6 +6,7 @@ import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
 import { useInstallFlow, type InstallFlow } from '@/features/updates/hooks';
 import { useUpdate, type UpdateState } from '@/features/updates/queries/use-update';
+import { t } from '@/i18n';
 import {
   Dialog,
   DialogContent,
@@ -176,15 +177,15 @@ export const UpdateDialog = () => {
 
   const openReleases = useCallback(() => {
     void openUrl(RELEASES_URL).catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Couldn't open releases page: ${message}`);
+      const message = error instanceof Error ? error.message : t('common.errors.unknown');
+      toast.error(t('updates.index.couldnTOpenReleasesPage', { value1: message }));
     });
   }, []);
 
   const openSelfHostedDocs = useCallback(() => {
     void openUrl(SELF_HOSTED_DOCS_URL).catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Couldn't open docs: ${message}`);
+      const message = error instanceof Error ? error.message : t('common.errors.unknown');
+      toast.error(t('updates.index.couldnTOpenDocs', { value1: message }));
     });
   }, []);
 
@@ -222,8 +223,8 @@ export const UpdateDialog = () => {
       >
         <div ref={containerRef} className="contents">
           <DialogHeader>
-            <DialogTitle>Update</DialogTitle>
-            <DialogDescription>{view.description}</DialogDescription>
+            <DialogTitle>{t('updates.main.update')}</DialogTitle>
+            <DialogDescription>{t(view.description)}</DialogDescription>
           </DialogHeader>
           {view.body}
           {view.footer}

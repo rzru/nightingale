@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import type { Segment } from '@/types/Transcript';
 
 // Small timing leads keep lyric transitions visually in sync with the audio.
@@ -60,5 +61,5 @@ export function computeLyricGapCaption(
     return null;
   }
 
-  return `Next lyrics in ${Math.ceil(timeUntil)}s`;
+  return t('playback.lyrics.nextIn', { seconds: Math.ceil(timeUntil) });
 }

@@ -1,4 +1,5 @@
 import { BUILT_IN_BACKGROUND_OPTIONS, selectionKey } from '@/features/playback/components/theme';
+import { t } from '@/i18n';
 import type { AppConfig } from '@/types/AppConfig';
 import type { BackgroundSelection } from '@/types/BackgroundSelection';
 import type { CustomBackground } from '@/types/CustomBackground';
@@ -17,7 +18,7 @@ export function backgroundOptions(
     ...BUILT_IN_BACKGROUND_OPTIONS.map((option) => ({
       value: selectionKey(option.selection),
       label: option.label,
-      description: 'Built in',
+      description: 'settings.lib.backgroundOptions.builtIn',
       selection: option.selection,
     })),
     ...customBackgrounds.map((background) => {
@@ -25,7 +26,9 @@ export function backgroundOptions(
       return {
         value: selectionKey(selection),
         label: background.name,
-        description: `Custom ${background.background_type}`,
+        description: t('settings.backgrounds.customType', {
+          type: background.background_type,
+        }),
         selection,
       };
     }),

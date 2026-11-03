@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 
 import { loadTranscript } from '@/bridge/playback';
 import { splitLongSegments } from '@/features/playback/utils/transcript-segments';
+import { t } from '@/i18n';
 import type { Segment, Transcript } from '@/types/Transcript';
 
 export function usePlaybackTranscript(fileHash: string) {
@@ -29,7 +30,9 @@ export function usePlaybackTranscript(fileHash: string) {
       .catch((reason: unknown) => {
         if (!cancelled) {
           setError(
-            `Failed to load lyrics: ${reason instanceof Error ? reason.message : String(reason)}`,
+            t('playback.lyrics.loadError', {
+              error: reason instanceof Error ? reason.message : String(reason),
+            }),
           );
         }
       });

@@ -3,6 +3,7 @@ import {
   useConnectNavidrome,
   useNavidromeLogin,
 } from '@/features/sources/mutations/use-source-mutations';
+import { t } from '@/i18n';
 
 export const NavidromeConnectDialog = () => {
   const loginMutation = useNavidromeLogin();
@@ -11,14 +12,8 @@ export const NavidromeConnectDialog = () => {
   return (
     <RemoteSourceConnectDialog
       mode="navidrome-connect"
-      title="Connect to Navidrome"
-      description={
-        <>
-          Point Nightingale at a Navidrome (Subsonic-compatible) server. Audio is downloaded to your
-          local cache on first analysis so the rest of the karaoke pipeline keeps working exactly
-          like a folder library.
-        </>
-      }
+      title={t('sources.navidromeConnect.connectToNavidrome')}
+      description={<>{t('sources.navidromeConnect.pointNightingaleAtANavidromeDescription')}</>}
       urlInputId="navi-url"
       urlPlaceholder="https://navidrome.example.com"
       usernameInputId="navi-user"

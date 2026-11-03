@@ -1,6 +1,7 @@
 import { open } from '@tauri-apps/plugin-dialog';
 import { z } from 'zod';
 
+import { t } from '@/i18n';
 import type { AppConfig } from '@/types/AppConfig';
 import type { CacheReconcileSummary } from '@/types/CacheReconcileSummary';
 import type { JellyfinHealth } from '@/types/JellyfinHealth';
@@ -23,7 +24,7 @@ export const selectFolderPath = async (): Promise<string | undefined> => {
   if (!isTauri) {
     // Browsers don't expose absolute filesystem paths via file pickers, so the
     // server-hosted build asks the user to type a path the server can see.
-    const input = window.prompt('Songs folder path (visible to the server)', '/songs');
+    const input = window.prompt(t('sources.folder.serverPathPrompt'), '/songs');
 
     if (typeof input !== 'string' || input === '') {
       return undefined;

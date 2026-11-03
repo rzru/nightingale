@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
 import { useSelectFolderSource } from '@/features/sources/mutations/use-source-mutations';
+import { t } from '@/i18n';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +32,7 @@ export const SourceChangeWarning = () => {
     <div className="grid grid-cols-[auto_1fr] gap-x-2 border-y py-2 text-left text-xs/relaxed">
       <TriangleAlertIcon className="mt-0.5 size-3.5 text-destructive" />
       <div>
-        <p className="font-bold">Current library will be cleared</p>
+        <p className="font-bold">{t('sources.sourceChangeWarning.currentLibraryWillBeCleared')}</p>
         <p className="text-muted-foreground">{warningCopy}</p>
       </div>
     </div>
@@ -59,12 +60,12 @@ export const FolderSourceConfirmDialog = () => {
     <AlertDialog open={open} onOpenChange={close}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Change data source?</AlertDialogTitle>
+          <AlertDialogTitle>{t('sources.sourceChangeWarning.changeDataSource')}</AlertDialogTitle>
           <AlertDialogDescription>{warningCopy}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter ref={containerRef}>
           <AlertDialogCancel onClick={close} className={focusClass(0)}>
-            Cancel
+            {t('common.actions.cancel')}
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={() => {
@@ -73,7 +74,7 @@ export const FolderSourceConfirmDialog = () => {
             }}
             className={focusClass(1)}
           >
-            Choose folder
+            {t('sources.sourceChangeWarning.chooseFolder')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

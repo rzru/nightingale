@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
 import { SourceChangeWarning } from '@/features/sources/components/source-change-warning';
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
@@ -82,9 +83,11 @@ const SelectionList = ({
   onToggle,
 }: SelectionListProps) => (
   <div className="space-y-2">
-    <Label>{label}</Label>
+    <Label>{t(label)}</Label>
     {items.length === 0 ? (
-      <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+      <p className="text-sm text-muted-foreground">
+        {typeof emptyMessage === 'string' ? t(emptyMessage) : emptyMessage}
+      </p>
     ) : (
       <div className="flex max-h-48 flex-wrap content-start gap-x-4 gap-y-2 overflow-y-auto overscroll-contain">
         {items.map((item) => (
@@ -186,7 +189,7 @@ export const RemoteSourceConnectDialog = <TLogin extends RemoteLoginResult>({
       return;
     }
     testMutation.mutate(credentials(), {
-      onError: (e) => toast.error(`Could not reach server: ${e.message}`),
+      onError: (e) => toast.error(t('sources.connect.couldNotReachServer', { value1: e.message })),
     });
   };
 
@@ -205,10 +208,14 @@ export const RemoteSourceConnectDialog = <TLogin extends RemoteLoginResult>({
       { ...credentials(), selectedIds },
       {
         onSuccess: ({ login }) => {
-          toast.success(`Library now reads from ${login.server_name ?? login.server_url}`);
+          toast.success(
+            t('sources.connect.libraryNowReadsFrom', {
+              value1: login.server_name ?? login.server_url,
+            }),
+          );
           close();
         },
-        onError: (e) => toast.error(`Login failed: ${e.message}`),
+        onError: (e) => toast.error(t('sources.connect.loginFailed', { value1: e.message })),
       },
     );
   };
@@ -227,22 +234,22 @@ export const RemoteSourceConnectDialog = <TLogin extends RemoteLoginResult>({
     if (testMutation.isPending) {
       return {
         icon: <Loader2Icon className="size-4 animate-spin" />,
-        tooltip: 'Testing connection…',
+        tooltip: t('sources.connection.testing'),
       };
     }
     if (testMutation.isError) {
       return {
         icon: <XCircleIcon className="size-4 text-destructive" />,
-        tooltip: `Could not reach server: ${testMutation.error.message}`,
+        tooltip: t('sources.connection.reachError', { error: testMutation.error.message }),
       };
     }
     if (testMutation.isSuccess && typeof reachedHost === 'string' && reachedHost !== '') {
       return {
         icon: <CheckCircle2Icon className="size-4 text-chart-3" />,
-        tooltip: `Reached: ${reachedHost}`,
+        tooltip: t('sources.connection.reached', { host: reachedHost }),
       };
     }
-    return { icon: null, tooltip: 'Test connection' };
+    return { icon: null, tooltip: t('sources.connection.test') };
   })();
 
   return (
@@ -256,7 +263,7 @@ export const RemoteSourceConnectDialog = <TLogin extends RemoteLoginResult>({
           <SourceChangeWarning />
           <FieldGroup>
             <Field>
-              <Label htmlFor={urlInputId}>Server URL</Label>
+              <Label htmlFor={urlInputId}>{t('sources.connect.serverUrl')}</Label>
               <Input
                 id={urlInputId}
                 placeholder={urlPlaceholder}
@@ -266,7 +273,7 @@ export const RemoteSourceConnectDialog = <TLogin extends RemoteLoginResult>({
               />
             </Field>
             <Field>
-              <Label htmlFor={usernameInputId}>Username</Label>
+              <Label htmlFor={usernameInputId}>{t('sources.connect.username')}</Label>
               <Input
                 id={usernameInputId}
                 autoComplete="username"
@@ -276,7 +283,7 @@ export const RemoteSourceConnectDialog = <TLogin extends RemoteLoginResult>({
               />
             </Field>
             <Field>
-              <Label htmlFor={passwordInputId}>Password</Label>
+              <Label htmlFor={passwordInputId}>{t('sources.connect.password')}</Label>
               <Input
                 id={passwordInputId}
                 type="password"
@@ -309,7 +316,7 @@ export const RemoteSourceConnectDialog = <TLogin extends RemoteLoginResult>({
                   disabled={isBusy}
                   className={focusRing(focusedIndex, 0)}
                 >
-                  Cancel
+                  {t('common.actions.cancel')}
                 </Button>
               </DialogClose>
               <Tooltip>
@@ -322,7 +329,7 @@ export const RemoteSourceConnectDialog = <TLogin extends RemoteLoginResult>({
                     className={focusRing(focusedIndex, 1)}
                   >
                     {testState.icon}
-                    Test connection
+                    {t('sources.connect.testConnection')}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>{testState.tooltip}</TooltipContent>
@@ -332,7 +339,7 @@ export const RemoteSourceConnectDialog = <TLogin extends RemoteLoginResult>({
                 onClick={handleConnect}
                 className={focusRing(focusedIndex, 2)}
               >
-                Connect
+                {t('sources.connect.connect')}
               </Button>
             </div>
           </DialogFooter>

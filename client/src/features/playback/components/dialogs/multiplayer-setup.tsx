@@ -8,6 +8,7 @@ import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
 import { useMicDevicesQuery, type MicDevice } from '@/features/microphone/queries/use-mic-devices';
 import { multiplayerPlayersAtom } from '@/features/playback/atoms/multiplayer-players';
 import { useProfiles } from '@/features/profiles/queries/use-profiles';
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
@@ -138,11 +139,14 @@ type SetupErrorInput = {
 };
 
 const setupDescription = (queuePlayback: boolean | undefined): string =>
-  queuePlayback === true
-    ? 'Choose one microphone per singer. This lineup stays active for every queued song.'
-    : 'Choose one microphone per singer.';
+  t(
+    queuePlayback === true
+      ? 'playback.players.queueSetupDescription'
+      : 'playback.players.setupDescription',
+  );
 
-const setupSubmitLabel = (label: string | undefined): string => label ?? 'Start multiplayer';
+const setupSubmitLabel = (label: string | undefined): string =>
+  label ?? t('playback.players.startMultiplayer');
 
 const setupNavOpen = (open: boolean, colorDialogOpen: boolean): boolean => open && !colorDialogOpen;
 
@@ -160,19 +164,19 @@ const shouldLoadCombinedCapabilities = (open: boolean, combineChannels: boolean)
 
 function setupError(input: SetupErrorInput): string | null {
   if (input.microphonesError) {
-    return 'Could not load microphones. Check microphone permission and try again.';
+    return t('playback.players.microphonesError');
   }
   if (input.microphoneCount < 2) {
-    return 'Connect at least two microphones to start multiplayer.';
+    return t('playback.players.minimumMicrophonesError');
   }
   if (input.duplicateMicrophone) {
-    return 'Each player needs a different microphone.';
+    return t('playback.players.duplicateMicrophoneError');
   }
   if (input.duplicateProfile) {
-    return 'A saved profile can only be used once.';
+    return t('playback.players.duplicateProfileError');
   }
   if (!input.validMicrophones) {
-    return 'Select a connected microphone for every player.';
+    return t('playback.players.missingMicrophoneError');
   }
   return null;
 }
@@ -296,13 +300,15 @@ function PlayerRows({
             onFocus={() => focusSegment(segment, slots.color)}
             onMouseEnter={() => focusSegment(segment, slots.color)}
             onClick={() => openColorDialog(player.id)}
-            aria-label={`Choose color for Player ${index + 1}`}
+            aria-label={t('playback.players.chooseColorLabel', { number: index + 1 })}
           >
             <span
               className={`size-2.5 rounded-full ${playerColorOption(player.color).className}`}
             />
           </Button>
-          <h3 className="text-sm font-semibold">Player {index + 1}</h3>
+          <h3 className="text-sm font-semibold">
+            {t('playback.dialogs.multiplayerSetup.playerValue1', { value1: index + 1 })}
+          </h3>
           {index >= 2 ? (
             <Button
               type="button"
@@ -312,7 +318,7 @@ function PlayerRows({
               onFocus={() => focusSegment(segment, slots.remove)}
               onMouseEnter={() => focusSegment(segment, slots.remove)}
               onClick={() => removePlayer(player.id)}
-              aria-label={`Remove player ${index + 1}`}
+              aria-label={t('playback.players.removeLabel', { number: index + 1 })}
             >
               <XIcon />
             </Button>
@@ -321,7 +327,7 @@ function PlayerRows({
 
         <Field className="min-w-0">
           <Label htmlFor={`${player.id}-profile`} className="sm:sr-only">
-            Profile
+            {t('playback.dialogs.multiplayerSetup.profile')}
           </Label>
           <Select
             value={profileValue(player.profile)}
@@ -340,8 +346,10 @@ function PlayerRows({
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectLabel>Profile</SelectLabel>
-                <SelectItem value={GUEST_VALUE}>Guest</SelectItem>
+                <SelectLabel>{t('playback.dialogs.multiplayerSetup.profile')}</SelectLabel>
+                <SelectItem value={GUEST_VALUE}>
+                  {t('playback.dialogs.multiplayerSetup.guest')}
+                </SelectItem>
                 {profiles.map((profile) => (
                   <SelectItem key={profile} value={`${PROFILE_PREFIX}${profile}`}>
                     {profile}
@@ -354,7 +362,7 @@ function PlayerRows({
 
         <Field className="min-w-0">
           <Label htmlFor={`${player.id}-microphone`} className="sm:sr-only">
-            Microphone
+            {t('playback.dialogs.multiplayerSetup.microphone')}
           </Label>
           <Select
             value={player.microphoneId || undefined}
@@ -369,11 +377,11 @@ function PlayerRows({
               onFocus={() => focusSegment(segment, slots.microphone)}
               onMouseEnter={() => focusSegment(segment, slots.microphone)}
             >
-              <SelectValue placeholder="Select microphone" />
+              <SelectValue placeholder={t('playback.dialogs.multiplayerSetup.selectMicrophone')} />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                <SelectLabel>Microphone</SelectLabel>
+                <SelectLabel>{t('playback.dialogs.multiplayerSetup.microphone')}</SelectLabel>
                 {microphones.map((microphone) => (
                   <SelectItem key={microphone.deviceId} value={microphone.deviceId}>
                     {microphone.label}
@@ -384,7 +392,9 @@ function PlayerRows({
                     (microphone) => microphone.deviceId === player.microphoneId,
                   ) && (
                     <SelectItem value={player.microphoneId}>
-                      Selected microphone: {player.microphoneId}
+                      {t('playback.dialogs.multiplayerSetup.selectedMicrophoneValue1', {
+                        value1: player.microphoneId,
+                      })}
                     </SelectItem>
                   )}
               </SelectGroup>
@@ -424,7 +434,7 @@ function CombineChannelsField({
         onMouseEnter={onFocus}
         onCheckedChange={(value) => onCheckedChange(value === true)}
       />
-      Combine multi-channel
+      {t('playback.dialogs.multiplayerSetup.combineMultiChannel')}
     </Label>
   );
 }
@@ -450,9 +460,9 @@ function PlayerColorDialog({ player, onColorChange, onOpenChange }: PlayerColorD
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent ref={containerRef} showCloseButton={false} className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Choose player color</DialogTitle>
+          <DialogTitle>{t('playback.dialogs.multiplayerSetup.choosePlayerColor')}</DialogTitle>
           <DialogDescription>
-            Choose the color used for this player during playback.
+            {t('playback.dialogs.multiplayerSetup.chooseTheColorUsedForDescription')}
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-2">
@@ -467,7 +477,7 @@ function PlayerColorDialog({ player, onColorChange, onOpenChange }: PlayerColorD
               onClick={() => onColorChange(option.value)}
             >
               <span className={`size-3 rounded-full ${option.className}`} aria-hidden="true" />
-              {option.label}
+              {t(option.label)}
             </Button>
           ))}
         </div>
@@ -641,7 +651,8 @@ export function MultiplayerSetupDialog({
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UsersIcon className="size-5" /> Set up players
+            <UsersIcon className="size-5" />
+            {t('playback.dialogs.multiplayerSetup.setUpPlayers')}
           </DialogTitle>
           <DialogDescription>{setupDescription(queuePlayback)}</DialogDescription>
         </DialogHeader>
@@ -658,9 +669,9 @@ export function MultiplayerSetupDialog({
 
         <div>
           <div className="hidden grid-cols-[7rem_minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 border-b px-1 pb-2 text-xs font-medium text-muted-foreground sm:grid">
-            <span>Player</span>
-            <span>Profile</span>
-            <span>Microphone</span>
+            <span>{t('playback.dialogs.multiplayerSetup.player')}</span>
+            <span>{t('playback.dialogs.multiplayerSetup.profile')}</span>
+            <span>{t('playback.dialogs.multiplayerSetup.microphone')}</span>
           </div>
           <div className="divide-y border-b">
             <PlayerRows
@@ -686,7 +697,8 @@ export function MultiplayerSetupDialog({
               onMouseEnter={() => focusSegment(addPlayerSegment)}
               onClick={addPlayer}
             >
-              <PlusIcon /> Add player
+              <PlusIcon />
+              {t('playback.dialogs.multiplayerSetup.addPlayer')}
             </Button>
             {error !== null ? (
               <p role="alert" className="text-right text-sm text-destructive">
@@ -705,7 +717,7 @@ export function MultiplayerSetupDialog({
             onMouseEnter={() => focusSegment(footerSegment, 0)}
             onClick={closeDialog}
           >
-            Cancel
+            {t('common.actions.cancel')}
           </Button>
           <Button
             type="button"

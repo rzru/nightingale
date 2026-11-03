@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { useMicDevicesQuery, type MicDevice } from '@/features/microphone/queries/use-mic-devices';
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Field } from '@/shared/components/ui/field';
@@ -29,11 +30,14 @@ type MicrophoneSettingsProps = {
 
 const microphoneOptions = (devices: MicDevice[], preferred: string | null) => {
   const options = [
-    { value: DEFAULT_MIC_ID, label: 'Default' },
+    { value: DEFAULT_MIC_ID, label: 'settings.microphoneSettings.default' },
     ...devices.map(({ deviceId, label }) => ({ value: deviceId, label })),
   ];
   if (preferred !== null && !options.some((option) => option.value === preferred)) {
-    options.push({ value: preferred, label: `Selected microphone: ${preferred}` });
+    options.push({
+      value: preferred,
+      label: t('settings.microphone.selected', { id: preferred }),
+    });
   }
   return options;
 };
@@ -43,12 +47,12 @@ type MicDevicesQuery = ReturnType<typeof useMicDevicesQuery>;
 const microphoneDiscoveryHint = (query: MicDevicesQuery): string => {
   if (query.isError) {
     const detail = query.error instanceof Error ? query.error.message : String(query.error);
-    return `Could not list microphones: ${detail}`;
+    return t('settings.microphone.listError', { error: detail });
   }
   if (query.isFetching) {
-    return 'Looking for available microphones…';
+    return t('settings.microphone.searching');
   }
-  return 'Select which microphone to use for pitch scoring';
+  return t('settings.microphone.description');
 };
 
 const MicrophoneRetryButton = ({ query }: { query: MicDevicesQuery }) => {
@@ -57,7 +61,7 @@ const MicrophoneRetryButton = ({ query }: { query: MicDevicesQuery }) => {
   }
   return (
     <Button variant="outline" size="sm" onClick={() => void query.refetch()}>
-      Retry microphone discovery
+      {t('settings.microphoneSettings.retryMicrophoneDiscovery')}
     </Button>
   );
 };
@@ -115,7 +119,7 @@ export function MicrophoneSettings({
   return (
     <>
       <Field>
-        <Label>Microphone</Label>
+        <Label>{t('settings.microphoneSettings.microphone')}</Label>
         {hasMultiChannelInput ? (
           <Label className="gap-1.5 text-xs/relaxed font-normal text-muted-foreground">
             <Checkbox
@@ -123,13 +127,13 @@ export function MicrophoneSettings({
               className={getFocusClassName(NAV.general.microphone, 0)}
               onCheckedChange={(checked) => mutate({ combine_multi_channel: checked === true })}
             />
-            Combine multi-channel
+            {t('settings.microphoneSettings.combineMultiChannel')}
           </Label>
         ) : null}
         <Hint>{microphoneDiscoveryHint(micDevicesQuery)}</Hint>
         <SettingsSelect
-          label="Microphone"
-          placeholder="Default microphone"
+          label={t('settings.microphoneSettings.microphone')}
+          placeholder={t('settings.microphoneSettings.defaultMicrophone')}
           value={preferredMic ?? DEFAULT_MIC_ID}
           options={micOptions}
           disabled={controlsDisabled}
@@ -144,10 +148,11 @@ export function MicrophoneSettings({
       </Field>
 
       <Field>
-        <Label>Mic monitor gain</Label>
+        <Label>{t('settings.microphoneSettings.micMonitorGain')}</Label>
         <Hint>
-          Volume of your microphone played back through the speakers while monitoring (
-          {monitorGainPct}%)
+          {t('settings.microphoneSettings.volumeOfYourMicrophonePlayedDescription', {
+            value1: monitorGainPct,
+          })}
         </Hint>
         <Slider
           min={0}

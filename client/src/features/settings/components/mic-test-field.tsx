@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { microphoneAdapter, type StopListening } from '@/bridge/microphone';
+import { t, tp } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { ButtonGroup } from '@/shared/components/ui/button-group';
 import { Field } from '@/shared/components/ui/field';
@@ -92,7 +93,7 @@ export function MicTestField({
     const sampleRate = sampleRateRef.current;
     const sampleCount = sampleCountRef.current;
     if (sampleRate === 0 || sampleCount === 0) {
-      toast.error('Microphone test did not receive any audio.');
+      toast.error(t('settings.micTestField.microphoneTestDidNotReceiveAnyAudio'));
       return;
     }
 
@@ -154,7 +155,7 @@ export function MicTestField({
       stopListeningRef.current = null;
       await microphoneAdapter.stopCapture(CAPTURE_ID).catch(() => {});
       const message = error instanceof Error ? error.message : String(error);
-      toast.error(`Microphone test failed: ${message}`);
+      toast.error(t('settings.micTestField.microphoneTestFailed', { value1: message }));
     }
   }, [finishRecording, onCaptureStarted, selectedMicId, stopPlayback]);
 
@@ -186,7 +187,7 @@ export function MicTestField({
       source.start();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      toast.error(`Could not play microphone test: ${message}`);
+      toast.error(t('settings.micTestField.couldNotPlayMicrophoneTest', { value1: message }));
       stopPlayback();
     }
   }, [recording, stopPlayback]);
@@ -225,11 +226,15 @@ export function MicTestField({
 
   return (
     <Field>
-      <Label>Microphone test</Label>
+      <Label>{t('settings.micTestField.microphoneTest')}</Label>
       <Hint>
         {isRecording
-          ? `Microphone recording for ${recordingSeconds} seconds…`
-          : 'Record the selected microphone for up to five seconds, then play it back.'}
+          ? tp(
+              'settings.microphone.recordingOne',
+              'settings.microphone.recordingOther',
+              recordingSeconds,
+            )
+          : t('settings.microphone.testDescription')}
       </Hint>
       <ButtonGroup>
         <Button
@@ -238,7 +243,7 @@ export function MicTestField({
           onClick={() => void (isRecording ? finishRecording() : startRecording())}
           className={startButtonClassName}
         >
-          {isRecording ? 'Stop test' : 'Start test'}
+          {t(isRecording ? 'settings.microphone.stopTest' : 'settings.microphone.startTest')}
         </Button>
         <Button
           variant="outline"
@@ -246,7 +251,7 @@ export function MicTestField({
           onClick={() => void playRecording()}
           className={playButtonClassName}
         >
-          Play
+          {t('common.actions.play')}
         </Button>
       </ButtonGroup>
     </Field>

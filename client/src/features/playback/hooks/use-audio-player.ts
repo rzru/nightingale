@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PlaybackAdapter } from '@/bridge/playback';
 import { playbackAdapter } from '@/bridge/playback';
+import { t } from '@/i18n';
 
 export type TimeSubscriber = (time: number) => void;
 
@@ -102,9 +103,9 @@ export function useAudioPlayer(
     };
   }, []);
 
-  const notifySubscribers = useCallback((t: number) => {
+  const notifySubscribers = useCallback((currentTime: number) => {
     for (const fn of subscribersRef.current) {
-      fn(t);
+      fn(currentTime);
     }
   }, []);
 
@@ -226,7 +227,7 @@ export function useAudioPlayer(
         const [instData, vocData] = await Promise.all([
           fetch(paths.instrumental).then((r) => {
             if (!r.ok) {
-              throw new Error(`Failed to fetch instrumental: ${r.status}`);
+              throw new Error(t('playback.audio.instrumentalFetchError', { status: r.status }));
             }
 
             return r.arrayBuffer();
@@ -236,7 +237,7 @@ export function useAudioPlayer(
             ? Promise.resolve(null)
             : fetch(vocalsUrl).then((r) => {
                 if (!r.ok) {
-                  throw new Error(`Failed to fetch vocals: ${r.status}`);
+                  throw new Error(t('playback.audio.vocalsFetchError', { status: r.status }));
                 }
 
                 return r.arrayBuffer();
@@ -269,7 +270,11 @@ export function useAudioPlayer(
       })
       .catch((e: unknown) => {
         if (!isCancelled()) {
-          setError(`Failed to load audio: ${e instanceof Error ? e.message : String(e)}`);
+          setError(
+            t('playback.audio.loadError', {
+              error: e instanceof Error ? e.message : String(e),
+            }),
+          );
         }
       });
 
@@ -283,14 +288,14 @@ export function useAudioPlayer(
 
       if (playingRef.current && ctxRef.current) {
         const now = performance.now();
-        const t =
+        const currentTime =
           startOffsetRef.current + (ctxRef.current.currentTime - startContextTimeRef.current);
-        currentTimeRef.current = t;
+        currentTimeRef.current = currentTime;
 
         if (now - lastNotify >= NOTIFY_INTERVAL) {
           lastNotify = now;
           for (const fn of subscribersRef.current) {
-            fn(t);
+            fn(currentTime);
           }
         }
       }

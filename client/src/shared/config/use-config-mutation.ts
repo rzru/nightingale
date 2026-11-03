@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { loadConfig, saveConfig } from '@/bridge/config';
+import { t } from '@/i18n';
 import { useConfig } from '@/shared/config/use-config';
 import { CONFIG } from '@/shared/query-keys';
 import type { AppConfig } from '@/types/AppConfig';
@@ -20,7 +21,9 @@ export const useConfigMutation = () => {
       void queryClient.invalidateQueries({ queryKey: CONFIG });
     },
     onError: (error: Error) => {
-      toast.error(`Error updating the local config: ${error.message}`);
+      toast.error(
+        t('shared.config.useConfigMutation.errorUpdatingTheLocalConfig', { value1: error.message }),
+      );
     },
   });
 };

@@ -12,6 +12,7 @@ import {
   XCircleIcon,
 } from 'lucide-react';
 
+import { t } from '@/i18n';
 import type { Song } from '@/types/Song';
 
 import type { SongStatusInfo } from '../song/song-status';
@@ -81,17 +82,17 @@ export function buildActionGroups({
       analysisBusy
         ? {
             icon: XCircleIcon,
-            title: 'Cancel analysis',
-            description: 'Stop analysis and remove this song from the queue.',
+            title: 'library.songDetails.songActions.cancelAnalysis',
+            description: 'library.songDetails.songActions.stopAnalysisAndRemoveThisDescription',
             destructive: true,
-            onClick: run(`Cancelled analysis for "${song.title}"`, () =>
+            onClick: run(t('library.songActions.analysisCancelled', { title: song.title }), () =>
               analysis.cancelAnalysisOne(song.file_hash),
             ),
           }
         : {
             icon: AudioLinesIcon,
-            title: 'Analyze song',
-            description: 'Prepare lyrics, timing, key, tempo, and stems.',
+            title: 'library.songDetails.songActions.analyzeSong',
+            description: 'library.songDetails.songActions.prepareLyricsTimingKeyTempoAndStems',
             onClick: () => analysis.enqueueOne(song.file_hash),
           },
     ];
@@ -99,8 +100,8 @@ export function buildActionGroups({
     if (supportsProvideLyrics) {
       notReadyGroup.push({
         icon: PencilLineIcon,
-        title: 'Provide lyrics',
-        description: 'Paste timed LRC, or lyrics to align.',
+        title: 'library.songDetails.songActions.provideLyrics',
+        description: 'library.songDetails.songActions.pasteTimedLrcOrLyricsToAlign',
         disabled: analysisBusy,
         onClick: onEditLyrics,
       });
@@ -113,8 +114,8 @@ export function buildActionGroups({
     groups.push([
       {
         icon: ScrollTextIcon,
-        title: 'View lyrics',
-        description: 'Show the lyrics for this song (read-only).',
+        title: 'library.songDetails.songActions.viewLyrics',
+        description: 'library.songDetails.songActions.showTheLyricsForThisDescription',
         onClick: onViewLyrics,
       },
     ]);
@@ -128,15 +129,15 @@ export function buildActionGroups({
       groups.push([
         {
           icon: PencilLineIcon,
-          title: 'Edit lyrics (LRC)',
-          description: 'Replace or re-time the provided LRC.',
+          title: 'library.songDetails.songActions.editLyricsLrc',
+          description: 'library.songDetails.songActions.replaceOrReTimeTheProvidedLrc',
           onClick: onEditLyrics,
         },
         {
           icon: AudioLinesIcon,
-          title: 'Analyze with AI',
-          description: 'Replace the LRC with AI stems, lyrics, timing, and key.',
-          onClick: run(`Analyzing "${song.title}" with AI`, () =>
+          title: 'library.songDetails.songActions.analyzeWithAi',
+          description: 'library.songDetails.songActions.replaceTheLrcWithAiDescription',
+          onClick: run(t('library.songActions.analyzingWithAi', { title: song.title }), () =>
             analysis.reanalyzeFull(song.file_hash),
           ),
         },
@@ -145,31 +146,33 @@ export function buildActionGroups({
       groups.push([
         {
           icon: AlignLeftIcon,
-          title: 'Realign',
-          description: 'Rebuild timing from the current lyrics.',
-          onClick: run(`Realigning "${song.title}"`, () => analysis.realign(song.file_hash)),
+          title: 'library.songDetails.songActions.realign',
+          description: 'library.songDetails.songActions.rebuildTimingFromTheCurrentLyrics',
+          onClick: run(t('library.songActions.realigning', { title: song.title }), () =>
+            analysis.realign(song.file_hash),
+          ),
         },
         {
           icon: RefreshCwIcon,
-          title: 'Refetch lyrics & align',
-          description: 'Fetch fresh lyrics, then rebuild timing.',
-          onClick: run(`Refetching lyrics & aligning "${song.title}"`, () =>
+          title: 'library.songDetails.songActions.refetchLyricsAlign',
+          description: 'library.songDetails.songActions.fetchFreshLyricsThenRebuildTiming',
+          onClick: run(t('library.songActions.refetchingLyrics', { title: song.title }), () =>
             analysis.reanalyzeTranscript(song.file_hash),
           ),
         },
         {
           icon: MicIcon,
-          title: 'Force transcribe',
-          description: 'Ignore online lyrics and transcribe the vocals.',
-          onClick: run(`Force transcribing "${song.title}"`, () =>
+          title: 'library.songDetails.songActions.forceTranscribe',
+          description: 'library.songDetails.songActions.ignoreOnlineLyricsAndTranscribeTheVocals',
+          onClick: run(t('library.songActions.forceTranscribing', { title: song.title }), () =>
             analysis.reanalyzeForceTranscribe(song.file_hash),
           ),
         },
         {
           icon: AudioLinesIcon,
-          title: 'Full reanalysis',
-          description: 'Recreate stems, lyrics, timing, key, and tempo.',
-          onClick: run(`Full reanalysis (w/ stems) for "${song.title}"`, () =>
+          title: 'library.songDetails.songActions.fullReanalysis',
+          description: 'library.songDetails.songActions.recreateStemsLyricsTimingKeyAndTempo',
+          onClick: run(t('library.songActions.fullReanalysis', { title: song.title }), () =>
             analysis.reanalyzeFull(song.file_hash),
           ),
         },
@@ -178,14 +181,14 @@ export function buildActionGroups({
       groups.push([
         {
           icon: PencilLineIcon,
-          title: 'Edit lyrics',
-          description: 'Correct the words and rebuild their timing.',
+          title: 'library.songDetails.songActions.editLyrics',
+          description: 'library.songDetails.songActions.correctTheWordsAndRebuildTheirTiming',
           onClick: onEditLyrics,
         },
         {
           icon: LanguagesIcon,
-          title: 'Change language',
-          description: 'Set the language and choose how to reprocess.',
+          title: 'library.songDetails.songActions.changeLanguage',
+          description: 'library.songDetails.songActions.setTheLanguageAndChooseDescription',
           onClick: onChangeLanguage,
         },
       ]);
@@ -195,13 +198,12 @@ export function buildActionGroups({
       groups.push([
         {
           icon: ImageIcon,
-          title: 'Refresh metadata',
-          description:
-            'Reload title, artist, album, duration, and cover art from the library source.',
+          title: 'library.songDetails.songActions.refreshMetadata',
+          description: 'library.songDetails.songActions.reloadTitleArtistAlbumDurationDescription',
           onClick: run(
-            `Refreshed metadata for "${song.title}"`,
+            t('library.songActions.metadataRefreshed', { title: song.title }),
             () => analysis.refreshMetadata(song.file_hash),
-            `Nothing to refresh for "${song.title}"`,
+            t('library.songActions.nothingToRefresh', { title: song.title }),
           ),
         },
       ]);
@@ -210,10 +212,10 @@ export function buildActionGroups({
     groups.push([
       {
         icon: Trash2Icon,
-        title: 'Delete cache',
-        description: 'Remove every generated file for this song.',
+        title: 'library.songDetails.songActions.deleteCache',
+        description: 'library.songDetails.songActions.removeEveryGeneratedFileForThisSong',
         destructive: true,
-        onClick: run(`Cache deleted for "${song.title}"`, () =>
+        onClick: run(t('library.songActions.cacheDeleted', { title: song.title }), () =>
           analysis.deleteSongCache(song.file_hash),
         ),
       },
@@ -224,8 +226,8 @@ export function buildActionGroups({
     groups.push([
       {
         icon: PackageIcon,
-        title: 'Export (.nge)',
-        description: 'Create a single-file bundle of this song.',
+        title: 'library.songDetails.songActions.exportNge',
+        description: 'library.songDetails.songActions.createASingleFileBundleDescription',
         onClick: onExport,
       },
     ]);

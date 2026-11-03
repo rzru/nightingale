@@ -30,6 +30,7 @@ import {
   useSidebarRowFocus,
   type SidebarNavRow,
 } from '@/features/menu/providers/sidebar-nav-context';
+import { t } from '@/i18n';
 import { Badge } from '@/shared/components/ui/badge';
 import {
   Collapsible,
@@ -63,12 +64,31 @@ type NavSectionConfig = {
 };
 
 const NAV_SECTIONS: NavSectionConfig[] = [
-  { section: 'hot', label: 'Quick Filters', icon: Flame },
-  { section: 'no_metadata', label: 'No Metadata', icon: FileQuestionMark },
-  { section: 'artists', label: 'Artists', icon: UserIcon },
-  { section: 'playlists', label: 'Playlists', icon: ListMusicIcon },
-  { section: 'folders', label: 'Folders', icon: FolderIcon },
+  { section: 'hot', label: 'menu.sidebar.mainNavigation.quickFilters', icon: Flame },
+  {
+    section: 'no_metadata',
+    label: 'menu.sidebar.mainNavigation.noMetadata',
+    icon: FileQuestionMark,
+  },
+  { section: 'artists', label: 'menu.sidebar.mainNavigation.artists', icon: UserIcon },
+  { section: 'playlists', label: 'menu.sidebar.mainNavigation.playlists', icon: ListMusicIcon },
+  { section: 'folders', label: 'menu.sidebar.mainNavigation.folders', icon: FolderIcon },
 ];
+
+const MENU_ITEM_LABEL_KEYS: Partial<Record<string, string>> = {
+  all: 'library.bulkActionsMenu.allSongs',
+  queued: 'library.songStatus.queued',
+  analysed: 'library.libraryToolbar.analyzed',
+  videos: 'menu.sidebar.stats.videos',
+  unknown_artist: 'profiles.leaderboards.unknownArtist',
+  unknown_album: 'library.songDetails.unknownAlbum',
+};
+
+// Artists, albums, folders, and playlists carry their own data label from the backend.
+const menuItemLabel = (item: LibraryMenuItem): string => {
+  const key = MENU_ITEM_LABEL_KEYS[item.value];
+  return key === undefined ? item.label : t(key);
+};
 
 type MenuItemCountsProps = {
   item: LibraryMenuItem;
@@ -77,12 +97,18 @@ type MenuItemCountsProps = {
 function MenuItemCounts({ item }: MenuItemCountsProps) {
   const segments = [
     ...(item.count > 0n
-      ? [{ label: 'total', value: item.count, className: 'bg-muted text-muted-foreground' }]
+      ? [
+          {
+            label: 'menu.sidebar.mainNavigation.total',
+            value: item.count,
+            className: 'bg-muted text-muted-foreground',
+          },
+        ]
       : []),
     ...(item.queuedCount > 0n
       ? [
           {
-            label: 'queued',
+            label: 'menu.sidebar.mainNavigation.queued',
             value: item.queuedCount,
             className: ANALYSIS_STATUS_STYLES.queued,
           },
@@ -91,7 +117,7 @@ function MenuItemCounts({ item }: MenuItemCountsProps) {
     ...(item.analysingCount > 0n
       ? [
           {
-            label: 'analysing',
+            label: 'menu.sidebar.mainNavigation.analysing',
             value: item.analysingCount,
             className: ANALYSIS_STATUS_STYLES.analysing,
           },
@@ -100,7 +126,7 @@ function MenuItemCounts({ item }: MenuItemCountsProps) {
     ...(item.analysedCount > 0n
       ? [
           {
-            label: 'analysed',
+            label: 'menu.sidebar.mainNavigation.analysed',
             value: item.analysedCount,
             className: ANALYSIS_STATUS_STYLES.analysed,
           },
@@ -115,7 +141,7 @@ function MenuItemCounts({ item }: MenuItemCountsProps) {
   return (
     <Badge
       className="h-[1.125rem] shrink-0 gap-0 overflow-hidden border border-foreground/15 bg-transparent p-0 text-[0.55rem] font-medium leading-none"
-      title={segments.map(({ label, value }) => `${value} ${label}`).join(', ')}
+      title={segments.map(({ label, value }) => `${value} ${t(label)}`).join(', ')}
     >
       {segments.map(({ label, value, className }, index) => (
         <Fragment key={label}>
@@ -164,7 +190,10 @@ function TreeToggle({ node, label }: TreeToggleProps) {
   return (
     <button
       type="button"
-      aria-label={`${node.expanded ? 'Collapse' : 'Expand'} ${label}`}
+      aria-label={t(
+        node.expanded ? 'menu.mainNavigation.collapseLabel' : 'menu.mainNavigation.expandLabel',
+        { label },
+      )}
       aria-expanded={node.expanded}
       onClick={node.onToggle}
       className="flex size-5 shrink-0 items-center justify-center rounded-sm text-sidebar-foreground/70 hover:bg-sidebar-accent"
@@ -193,7 +222,7 @@ function LibraryNavSubItem({
       className={cn(treeNode && 'flex items-center gap-0.5')}
       style={depth > 0 ? { paddingInlineStart: `${depth * 0.75}rem` } : undefined}
     >
-      {treeNode && <TreeToggle node={treeNode} label={item.label} />}
+      {treeNode && <TreeToggle node={treeNode} label={menuItemLabel(item)} />}
       <SidebarMenuButton
         data-sidebar-nav-index={itemIndex}
         isActive={isLibraryMenuItemActive(section, item, filter)}
@@ -204,7 +233,7 @@ function LibraryNavSubItem({
         )}
         onClick={() => onSelectItem(section, item)}
       >
-        {item.label}
+        {menuItemLabel(item)}
         <MenuItemCounts item={item} />
       </SidebarMenuButton>
     </SidebarMenuSubItem>
@@ -245,7 +274,7 @@ function LibraryNavSection({
           >
             <span className="flex items-center gap-2">
               <Icon className="size-4 shrink-0" />
-              {label}
+              {t(label)}
             </span>
             <ChevronDown className="transition-transform group-data-[state=open]/collapsible:rotate-180" />
           </SidebarMenuButton>

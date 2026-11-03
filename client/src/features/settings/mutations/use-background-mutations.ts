@@ -8,6 +8,7 @@ import {
   removeCustomBackground,
 } from '@/bridge/backgrounds';
 import { validateCustomShader } from '@/features/playback/lib/custom-shader';
+import { t } from '@/i18n';
 import { CONFIG } from '@/shared/query-keys';
 import type { AppConfig } from '@/types/AppConfig';
 import type { CustomBackground } from '@/types/CustomBackground';
@@ -72,20 +73,20 @@ export function useBackgroundMutations({
       }
       cacheConfig(saved);
       onAdded();
-      toast.success('Background added');
+      toast.success(t('settings.mutations.useBackgroundMutations.backgroundAdded'));
     },
     onError: (error) =>
-      toast.error(error instanceof Error ? error.message : 'Could not add background'),
+      toast.error(error instanceof Error ? error.message : t('settings.backgrounds.addError')),
   });
   const removeMutation = useMutation({
     mutationFn: removeCustomBackground,
     onSuccess: (saved) => {
       cacheConfig(saved);
       onRemoved();
-      toast.success('Background removed');
+      toast.success(t('settings.mutations.useBackgroundMutations.backgroundRemoved'));
     },
     onError: (error) =>
-      toast.error(error instanceof Error ? error.message : 'Could not remove background'),
+      toast.error(error instanceof Error ? error.message : t('settings.backgrounds.removeError')),
   });
 
   return { addMutation, removeMutation };

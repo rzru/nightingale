@@ -26,6 +26,7 @@ import {
   usePlaybackTransportState,
 } from '@/features/playback/providers';
 import { usePlaybackStartupState } from '@/features/playback/providers/playback-startup-context';
+import { t } from '@/i18n';
 import type { AppConfig } from '@/types/AppConfig';
 import type { Song } from '@/types/Song';
 
@@ -100,7 +101,9 @@ function PlaybackLayout({
 
       <PauseOverlay
         open={paused && !result.open}
-        exitLabel={sessionPlayback ? 'Exit Playback' : 'Exit to Menu'}
+        exitLabel={t(
+          sessionPlayback ? 'playback.actions.exitPlayback' : 'playback.actions.exitToMenu',
+        )}
         onContinue={handleContinue}
         onExit={handleExit}
       />
@@ -111,7 +114,9 @@ function PlaybackLayout({
         song={song}
         scores={result.scores}
         nextPending={result.nextPending}
-        exitLabel={sessionPlayback ? 'Exit Playback' : 'Back to Menu'}
+        exitLabel={t(
+          sessionPlayback ? 'playback.actions.exitPlayback' : 'playback.actions.backToMenu',
+        )}
         onBack={result.onBack}
         onNext={result.onNext}
       />

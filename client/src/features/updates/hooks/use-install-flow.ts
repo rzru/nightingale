@@ -3,6 +3,7 @@ import { useCallback, useReducer } from 'react';
 import { toast } from 'sonner';
 
 import { downloadAndInstallUpdate, relaunchApp } from '@/bridge/updater';
+import { t } from '@/i18n';
 
 export type InstallState =
   | { stage: 'idle' }
@@ -70,9 +71,9 @@ export const useInstallFlow = (update: Update | null) => {
       });
       dispatch({ type: 'finished' });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
+      const message = err instanceof Error ? err.message : t('common.errors.unknown');
       dispatch({ type: 'error', message });
-      toast.error(`Update failed: ${message}`);
+      toast.error(t('updates.useInstallFlow.updateFailed', { value1: message }));
     }
   }, [update]);
 
@@ -80,8 +81,8 @@ export const useInstallFlow = (update: Update | null) => {
     try {
       await relaunchApp();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      toast.error(`Restart failed: ${message}`);
+      const message = err instanceof Error ? err.message : t('common.errors.unknown');
+      toast.error(t('updates.useInstallFlow.restartFailed', { value1: message }));
     }
   }, []);
 

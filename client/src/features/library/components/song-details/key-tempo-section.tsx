@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import type { Song } from '@/types/Song';
 
 import { Shifts } from './shifts';
@@ -25,8 +26,11 @@ export const KeyTempoSection = ({
 
   return (
     <section className={sectionClass} aria-labelledby="song-adjustments-heading">
-      <h3 id="song-adjustments-heading" className="mb-2 text-xs font-semibold">
-        Key & tempo
+      <h3
+        id="library.songDetails.keyTempoSection.songAdjustmentsHeading"
+        className="mb-2 text-xs font-semibold"
+      >
+        {t('library.songDetails.keyTempoSection.keyTempo')}
       </h3>
       {supportsShifts ? (
         <Shifts
@@ -39,7 +43,7 @@ export const KeyTempoSection = ({
         />
       ) : (
         <p className="max-w-72 text-xs leading-relaxed text-muted-foreground">
-          Key and tempo controls become available after compatible analysis.
+          {t('library.songDetails.keyTempoSection.keyAndTempoControlsBecomeDescription')}
         </p>
       )}
     </section>

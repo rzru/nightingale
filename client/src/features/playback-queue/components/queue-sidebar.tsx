@@ -14,6 +14,7 @@ import {
   useStartNextPlaybackQueueSong,
 } from '@/features/playback-queue/use-playback-queue';
 import { MultiplayerSetupDialog } from '@/features/playback/components/dialogs/multiplayer-setup';
+import { t, tp } from '@/i18n';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,12 +73,19 @@ export function QueueSidebar({ entries, onClose }: QueueSidebarProps) {
     <aside
       ref={detailsRef}
       className="flex min-h-0 min-w-0 flex-1 flex-col border-l bg-background [&_[data-song-details-focused=true]]:z-10 [&_[data-song-details-focused=true]]:ring-2 [&_[data-song-details-focused=true]]:ring-primary xl:w-96 xl:flex-none"
-      aria-label="Playback queue"
+      aria-label={t('playbackQueue.queueSidebar.playbackQueue')}
     >
       <header className="flex items-center gap-3 border-b p-3">
         <ListMusicIcon className="size-5" />
-        <h2 className="min-w-0 flex-1 text-sm font-semibold">Playback Queue</h2>
-        <Button variant="ghost" size="icon-sm" onClick={closeDetails} aria-label="Close queue">
+        <h2 className="min-w-0 flex-1 text-sm font-semibold">
+          {t('playbackQueue.queueSidebar.playbackQueue2')}
+        </h2>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={closeDetails}
+          aria-label={t('playbackQueue.queueSidebar.closeQueue')}
+        >
           <XIcon />
         </Button>
       </header>
@@ -104,11 +112,13 @@ export function QueueSidebar({ entries, onClose }: QueueSidebarProps) {
         >
           {isPreparing ? (
             <>
-              <Spinner className="size-4" /> Preparing playback…
+              <Spinner className="size-4" />
+              {t('playbackQueue.queueSidebar.preparingPlayback')}
             </>
           ) : (
             <>
-              <PlayIcon /> Play Queue
+              <PlayIcon />
+              {t('playbackQueue.queueSidebar.playQueue')}
             </>
           )}
         </Button>
@@ -117,8 +127,8 @@ export function QueueSidebar({ entries, onClose }: QueueSidebarProps) {
           size="icon-lg"
           disabled={playbackDisabled}
           onClick={() => setMultiplayerOpen(true)}
-          aria-label="Play queue in multiplayer"
-          title="Play multiplayer"
+          aria-label={t('playbackQueue.queueSidebar.playQueueInMultiplayer')}
+          title={t('playbackQueue.queueSidebar.playMultiplayer')}
         >
           <UsersIcon />
         </Button>
@@ -131,18 +141,23 @@ export function QueueSidebar({ entries, onClose }: QueueSidebarProps) {
               variant="destructive"
               size="icon-lg"
               disabled={entries.length === 0 || clearing || removing || reordering || isPreparing}
-              aria-label="Clear playback queue"
-              title="Clear queue"
+              aria-label={t('playbackQueue.queueSidebar.clearPlaybackQueue')}
+              title={t('playbackQueue.queueSidebar.clearQueue')}
             >
               <Trash2Icon />
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent onEscapeKeyDown={(event) => event.preventDefault()}>
             <AlertDialogHeader>
-              <AlertDialogTitle>Clear playback queue?</AlertDialogTitle>
+              <AlertDialogTitle>
+                {t('playbackQueue.queueSidebar.clearPlaybackQueue2')}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                This removes all {entries.length} {entries.length === 1 ? 'song' : 'songs'} from the
-                queue.
+                {tp(
+                  'playbackQueue.clearDescriptionOne',
+                  'playbackQueue.clearDescriptionOther',
+                  entries.length,
+                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -150,14 +165,14 @@ export function QueueSidebar({ entries, onClose }: QueueSidebarProps) {
                 className={dialogFocusClass(confirmOpen, focusedIndex, 0)}
                 onClick={closeDialog}
               >
-                Cancel
+                {t('common.actions.cancel')}
               </AlertDialogCancel>
               <AlertDialogAction
                 variant="destructive"
                 className={dialogFocusClass(confirmOpen, focusedIndex, 1)}
                 onClick={confirmClear}
               >
-                Clear queue
+                {t('playbackQueue.queueSidebar.clearQueue')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

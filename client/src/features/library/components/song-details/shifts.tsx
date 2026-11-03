@@ -62,8 +62,8 @@ export const Shifts = ({
   const controls: ShiftControl[] = [
     {
       shiftType: 'tempo',
-      title: 'Tempo',
-      description: 'Adjust playback speed in 0.1× steps.',
+      title: 'library.songDetails.shifts.tempo',
+      description: 'library.songDetails.shifts.adjustPlaybackSpeedIn01Steps',
       value: `${tempo.toFixed(1)}×`,
       onPlus: () => onTempoChange(Number((tempo + 0.1).toFixed(1))),
       onMinus: () => onTempoChange(Number((tempo - 0.1).toFixed(1))),
@@ -71,7 +71,7 @@ export const Shifts = ({
     },
     {
       shiftType: 'key',
-      title: 'Key',
+      title: 'library.songDetails.shifts.key',
       description: hasKey ? `Original key: ${song.key}` : 'Analyze again to detect the key.',
       value: shiftedKey,
       onPlus: () => onKeyOffsetChange(keyOffset + 1),

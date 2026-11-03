@@ -28,6 +28,7 @@ import {
   type TimeSubscriber,
   useAudioPlayer,
 } from '@/features/playback/hooks/use-audio-player';
+import { t } from '@/i18n';
 
 export type PlaybackTransportState = {
   isReady: boolean;
@@ -97,7 +98,9 @@ export function PlaybackTransportProvider({
         return;
       }
       if (typeof event.error === 'string' && event.error !== '') {
-        toast.error(`Stem conversion failed: ${event.error}`);
+        toast.error(
+          t('playback.playbackTransportContext.stemConversionFailed', { value1: event.error }),
+        );
         void navigate('/', { replace: true });
       } else {
         setStemsReady(true);

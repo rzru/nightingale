@@ -2,6 +2,8 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { PhysicalSize } from '@tauri-apps/api/window';
 import { z } from 'zod';
 
+import { t } from '@/i18n';
+
 import { invoke, isTauri, listen, type UnlistenFn } from './runtime';
 import { playbackLocationStateSchema, type playbackPlayerSchema } from './schemas';
 
@@ -52,7 +54,7 @@ export const reservePlaybackTarget = (): PlaybackTarget => {
 export const showPlaybackTarget = async (target: PlaybackTarget): Promise<void> => {
   if (!isTauri) {
     if (!target) {
-      throw new Error('Browser blocked playback tab');
+      throw new Error(t('playback.usePlaybackLauncher.browserBlockedPlaybackTab'));
     }
     target.focus();
     return;
@@ -68,7 +70,7 @@ export const showPlaybackTarget = async (target: PlaybackTarget): Promise<void> 
   const state = await invoke<WindowState>('load_window_state', { label: 'playback' });
   const playbackWindow = new WebviewWindow('playback', {
     url: SESSION_PLAYBACK_URL,
-    title: 'Nightingale Playback',
+    title: t('playback.windowTitle'),
     width: 1280,
     height: 720,
     decorations: false,

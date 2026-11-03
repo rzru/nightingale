@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
 import { useProfileMutations } from '@/features/profiles/mutations/use-profile-mutations';
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import {
   Dialog,
@@ -50,16 +51,16 @@ export const CreateProfileDialog = () => {
       <DialogContent className="sm:max-w-sm">
         <div className="contents">
           <DialogHeader>
-            <DialogTitle>Create Profile</DialogTitle>
+            <DialogTitle>{t('profiles.create.createProfile')}</DialogTitle>
             <DialogDescription>
-              Just enter your profile name and you're ready to go
+              {t('profiles.create.justEnterYourProfileNameDescription')}
             </DialogDescription>
           </DialogHeader>
           <FieldGroup>
             <Field>
-              <Label htmlFor="name-1">Name</Label>
+              <Label htmlFor="name-1">{t('profiles.create.name')}</Label>
               <Input
-                id="name-1"
+                id="profiles.create.name1"
                 name="name"
                 onChange={({ target: { value } }) => setName(value)}
                 className={cn(
@@ -82,7 +83,7 @@ export const CreateProfileDialog = () => {
                     focusedIndex === 0 && 'ring-2 ring-primary',
                   )}
                 >
-                  Cancel
+                  {t('common.actions.cancel')}
                 </Button>
               </DialogClose>
               <Button
@@ -94,7 +95,7 @@ export const CreateProfileDialog = () => {
                   focusedIndex === 1 && 'ring-2 ring-primary',
                 )}
               >
-                Create
+                {t('profiles.create.create')}
               </Button>
             </div>
           </DialogFooter>

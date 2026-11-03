@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { DialogFooter } from '@/shared/components/ui/dialog';
 import { cn } from '@/shared/utils/cn';
@@ -41,7 +42,7 @@ export const EditLyricsFooter = ({
         aria-disabled={saving}
         className={cn(ARIA_DISABLED_CLASS, ringFor(cancelFocused))}
       >
-        Cancel
+        {t('common.actions.cancel')}
       </Button>
       <Button
         onClick={() => {
@@ -53,7 +54,7 @@ export const EditLyricsFooter = ({
         aria-disabled={!canSave}
         className={cn(ARIA_DISABLED_CLASS, ringFor(saveFocused))}
       >
-        {saving ? 'Saving…' : saveLabel}
+        {saving ? t('lyrics.editor.saving') : saveLabel}
       </Button>
     </DialogFooter>
   );
