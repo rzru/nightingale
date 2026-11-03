@@ -15,7 +15,7 @@ below.
 
 ### Features
 
-- Added an interface language selector with English and Russian, plus contributor-friendly translation catalogs for the whole app.
+- Added an interface language selector with English and Russian, plus contributor-friendly translation catalogs for the whole app. Switching language updates every surface, including the separate playback window and later system changes, and counted text follows each language's own plural rules.
 - Quickly analyze, play, or queue songs from the song list and card menus.
 - Added a full-screen pitch graph with scrolling target notes, stable live pitch tracking, octave guidance, audio-reactive visuals, and color-coded multiplayer trails.
 - Added playback scrubbing and controls to jump by one second or one lyric line.
@@ -24,10 +24,7 @@ below.
 
 ### Fixes
 
-- Changing the interface language now updates every surface at once, including the separate playback window and later system language changes.
-- Russian interface text now uses correct plural forms for counts instead of wordings built around English grammar.
-- The key and tempo controls in song details now show readable labels instead of internal key names.
-- Remaining English-only text is translated: the data source change warning, the AI timing disclaimer, playback queue counts, and microphone or background error messages.
+- The analysis status badge now names the lyrics source on its own instead of appending it in parentheses, so long labels no longer spill over the actions column in the song list.
 - Session mode now opens browser playback directly so audio can start, and desktop playback windows show cover art while loading.
 - Playback now waits for the background, lyrics, and HUD to finish loading before the music starts, with a smooth loading backdrop that stays responsive while playback prepares.
 - Multiplayer guest names now number only guest singers, while a single guest is simply labeled **Guest**.
