@@ -1,8 +1,16 @@
 import { Fragment, type ReactNode } from 'react';
 
-import { translationTemplate } from './index';
+import { translationTemplate, useLocale, type TranslationKey } from './index';
 
-export const Trans = ({ id, values }: { id: string; values: Record<string, ReactNode> }) => {
+export const Trans = ({
+  id,
+  values,
+}: {
+  id: TranslationKey;
+  values: Record<string, ReactNode>;
+}) => {
+  useLocale();
+
   const occurrences = new Map<string, number>();
 
   return translationTemplate(id)
@@ -16,6 +24,7 @@ export const Trans = ({ id, values }: { id: string; values: Record<string, React
 
       const occurrence = occurrences.get(name) ?? 0;
       occurrences.set(name, occurrence + 1);
+
       return (
         <Fragment key={`${name}-${occurrence}`}>
           {Object.hasOwn(values, name) ? values[name] : part}

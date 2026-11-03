@@ -3,14 +3,19 @@ import {
   DEFAULT_MIC_LATENCY_COMPENSATION_SEC,
   MAX_MIC_LATENCY_COMPENSATION_SEC,
 } from '@/features/playback/lib/pitch/constants';
+import type { TranslationKey } from '@/i18n';
 import type { AppConfig } from '@/types/AppConfig';
 
 export { PLAYBACK_SCALE_MAX, PLAYBACK_SCALE_MIN } from '@/features/playback/lib/display-scale';
 
 export type SettingsTab = 'general' | 'playback' | 'analysis';
-export type SettingsOption = { value: string; label: string; description?: string };
+export type SettingsOption = {
+  value: string;
+  label: TranslationKey;
+  description?: TranslationKey;
+};
 
-export const SETTINGS_TABS: { value: SettingsTab; label: string }[] = [
+export const SETTINGS_TABS: { value: SettingsTab; label: TranslationKey }[] = [
   { value: 'general', label: 'settings.constants.general' },
   { value: 'playback', label: 'settings.constants.playback' },
   { value: 'analysis', label: 'settings.constants.analysis' },

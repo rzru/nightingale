@@ -1,13 +1,13 @@
 import type { LucideIcon } from 'lucide-react';
 
-import { t } from '@/i18n';
+import { t, type TranslationKey } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/utils/cn';
 
 export type ActionItemProps = {
   icon: LucideIcon;
-  title: string;
-  description: string;
+  title: TranslationKey;
+  description: TranslationKey;
   onClick: () => void | Promise<void>;
   disabled?: boolean;
   destructive?: boolean;

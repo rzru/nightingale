@@ -1,4 +1,5 @@
 import { calculateKeyShift } from '@/features/library/utils/shift-key';
+import { t } from '@/i18n';
 import type { Song } from '@/types/Song';
 
 import { Stepper } from './stepper';
@@ -62,8 +63,8 @@ export const Shifts = ({
   const controls: ShiftControl[] = [
     {
       shiftType: 'tempo',
-      title: 'library.songDetails.shifts.tempo',
-      description: 'library.songDetails.shifts.adjustPlaybackSpeedIn01Steps',
+      title: t('library.songDetails.shifts.tempo'),
+      description: t('library.songDetails.shifts.adjustPlaybackSpeedIn01Steps'),
       value: `${tempo.toFixed(1)}×`,
       onPlus: () => onTempoChange(Number((tempo + 0.1).toFixed(1))),
       onMinus: () => onTempoChange(Number((tempo - 0.1).toFixed(1))),
@@ -71,8 +72,10 @@ export const Shifts = ({
     },
     {
       shiftType: 'key',
-      title: 'library.songDetails.shifts.key',
-      description: hasKey ? `Original key: ${song.key}` : 'Analyze again to detect the key.',
+      title: t('library.songDetails.shifts.key'),
+      description: hasKey
+        ? t('library.songDetails.shifts.originalKey', { key: song.key })
+        : t('library.songDetails.shifts.analyzeToDetectKey'),
       value: shiftedKey,
       onPlus: () => onKeyOffsetChange(keyOffset + 1),
       onMinus: () => onKeyOffsetChange(keyOffset - 1),

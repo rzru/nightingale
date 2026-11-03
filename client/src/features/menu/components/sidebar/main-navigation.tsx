@@ -30,7 +30,7 @@ import {
   useSidebarRowFocus,
   type SidebarNavRow,
 } from '@/features/menu/providers/sidebar-nav-context';
-import { t } from '@/i18n';
+import { t, type TranslationKey } from '@/i18n';
 import { Badge } from '@/shared/components/ui/badge';
 import {
   Collapsible,
@@ -59,7 +59,7 @@ import { FolderActions } from './folder-actions';
 
 type NavSectionConfig = {
   section: LibraryMenuSection;
-  label: string;
+  label: TranslationKey;
   icon: LucideIcon;
 };
 
@@ -75,7 +75,7 @@ const NAV_SECTIONS: NavSectionConfig[] = [
   { section: 'folders', label: 'menu.sidebar.mainNavigation.folders', icon: FolderIcon },
 ];
 
-const MENU_ITEM_LABEL_KEYS: Partial<Record<string, string>> = {
+const MENU_ITEM_LABEL_KEYS: Partial<Record<string, TranslationKey>> = {
   all: 'library.bulkActionsMenu.allSongs',
   queued: 'library.songStatus.queued',
   analysed: 'library.libraryToolbar.analyzed',
@@ -95,11 +95,11 @@ type MenuItemCountsProps = {
 };
 
 function MenuItemCounts({ item }: MenuItemCountsProps) {
-  const segments = [
+  const segments: { label: TranslationKey; value: bigint; className: string }[] = [
     ...(item.count > 0n
       ? [
           {
-            label: 'menu.sidebar.mainNavigation.total',
+            label: 'menu.sidebar.mainNavigation.total' as const,
             value: item.count,
             className: 'bg-muted text-muted-foreground',
           },
@@ -108,7 +108,7 @@ function MenuItemCounts({ item }: MenuItemCountsProps) {
     ...(item.queuedCount > 0n
       ? [
           {
-            label: 'menu.sidebar.mainNavigation.queued',
+            label: 'menu.sidebar.mainNavigation.queued' as const,
             value: item.queuedCount,
             className: ANALYSIS_STATUS_STYLES.queued,
           },
@@ -117,7 +117,7 @@ function MenuItemCounts({ item }: MenuItemCountsProps) {
     ...(item.analysingCount > 0n
       ? [
           {
-            label: 'menu.sidebar.mainNavigation.analysing',
+            label: 'menu.sidebar.mainNavigation.analysing' as const,
             value: item.analysingCount,
             className: ANALYSIS_STATUS_STYLES.analysing,
           },
@@ -126,7 +126,7 @@ function MenuItemCounts({ item }: MenuItemCountsProps) {
     ...(item.analysedCount > 0n
       ? [
           {
-            label: 'menu.sidebar.mainNavigation.analysed',
+            label: 'menu.sidebar.mainNavigation.analysed' as const,
             value: item.analysedCount,
             className: ANALYSIS_STATUS_STYLES.analysed,
           },

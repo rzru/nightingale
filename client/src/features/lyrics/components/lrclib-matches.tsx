@@ -33,7 +33,7 @@ const Candidate = ({ candidate, onSelect, onUseLrc, isFocused }: CandidateProps)
           {candidate.artist_name}
           {candidate.album_name ? ` • ${candidate.album_name}` : ''} •{' '}
           {formatSeconds(candidate.duration_secs)} •{' '}
-          {tp('lyrics.lrclib.lineCountOne', 'lyrics.lrclib.lineCountOther', candidate.lines.length)}
+          {tp('lyrics.lrclib.lineCount', candidate.lines.length)}
           {hasLrc && <span className="text-primary">{t('lyrics.lrclibMatches.lrcAvailable')}</span>}
         </span>
         <div className="mt-1.5 flex items-center gap-2">

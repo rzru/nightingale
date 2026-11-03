@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
@@ -23,10 +23,7 @@ export function BackgroundSettings({
   const { data: config } = useConfig();
   const { mutate } = useConfigMutation();
   const [open, setOpen] = useState(false);
-  const options = useMemo(
-    () => backgroundOptions(config?.custom_backgrounds ?? []),
-    [config?.custom_backgrounds],
-  );
+  const options = backgroundOptions(config?.custom_backgrounds ?? []);
   const selected =
     config === undefined ? options[0].value : initialBackgroundSelection(config, options);
   const updateOpen = (next: boolean) => {

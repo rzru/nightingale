@@ -1,10 +1,12 @@
+import type { TranslationKey } from '@/i18n';
+
 export const PLAYER_COLOR_VALUES = ['rose', 'fuchsia', 'amber', 'emerald'] as const;
 
 export type PlayerColor = (typeof PLAYER_COLOR_VALUES)[number];
 
 export type PlayerColorOption = {
   value: PlayerColor;
-  label: string;
+  label: TranslationKey;
   className: string;
   rgb: { r: number; g: number; b: number };
 };

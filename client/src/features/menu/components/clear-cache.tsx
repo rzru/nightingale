@@ -7,7 +7,7 @@ import {
   type DialogMode,
 } from '@/features/menu/hooks/use-dialog';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
-import { t } from '@/i18n';
+import { t, type TranslationKey } from '@/i18n';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +34,7 @@ const clearCacheTarget = (mode: DialogMode): ClearCacheTarget | null => {
 const focusClass = (open: boolean, focusedIndex: number, index: number): string =>
   cn(NO_FOCUS_RING, open && focusedIndex === index && RING);
 
-const COPY: Record<ClearCacheTarget, { title: string; description: string }> = {
+const COPY: Record<ClearCacheTarget, { title: TranslationKey; description: TranslationKey }> = {
   all: {
     title: 'menu.clearCache.clearAllCache',
     description: 'menu.clearCache.thisWillPermanentlyDeleteEveryDescription',

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { t } from '@/i18n';
+import { t, translateText, type TranslationKey } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { ButtonGroup } from '@/shared/components/ui/button-group';
 import { FieldDescription } from '@/shared/components/ui/field';
@@ -15,14 +15,16 @@ import {
 } from '@/shared/components/ui/select';
 import { cn } from '@/shared/utils/cn';
 
-import { NUMBER_PICKER_SIZE, type SettingsOption } from './constants';
+import { NUMBER_PICKER_SIZE } from './constants';
+
+type SettingsSelectOption = { value: string; label: string; description?: string };
 
 type SettingsSelectProps = {
   id?: string;
   label: string;
   placeholder: string;
   value: string;
-  options: SettingsOption[];
+  options: readonly SettingsSelectOption[];
   disabled?: boolean;
   triggerClassName?: string;
   onValueChange: (value: string) => void;
@@ -50,9 +52,11 @@ export function SettingsSelect({
             <SelectItem
               key={option.value}
               value={option.value}
-              description={option.description !== undefined ? t(option.description) : undefined}
+              description={
+                option.description !== undefined ? translateText(option.description) : undefined
+              }
             >
-              {t(option.label)}
+              {translateText(option.label)}
             </SelectItem>
           ))}
         </SelectGroup>
@@ -63,7 +67,7 @@ export function SettingsSelect({
 
 type SettingsButtonGroupOption<T> = {
   value: T;
-  label: string;
+  label: TranslationKey;
 };
 
 type SettingsButtonGroupProps<T> = {

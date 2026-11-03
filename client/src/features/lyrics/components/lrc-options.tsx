@@ -1,14 +1,14 @@
 import type { TimingChoice } from '@/features/lyrics/lib/timing-choice';
 import type { LrcLevel } from '@/features/lyrics/utils/edit-lyrics';
-import { t } from '@/i18n';
+import { t, type TranslationKey } from '@/i18n';
 import { cn } from '@/shared/utils/cn';
 
 import { ringFor } from './parts';
 
 type RadioOption<T extends string> = {
   value: T;
-  title: string;
-  description: string;
+  title: TranslationKey;
+  description: TranslationKey;
 };
 
 type RadioRowProps<T extends string> = {

@@ -179,7 +179,8 @@ export function CustomBackground({ background, isPlaying, reactiveRef }: CustomB
 
     void load().catch((error: unknown) => {
       if (!controller.signal.aborted) {
-        const message = error instanceof Error ? error.message : 'Background could not be loaded';
+        const message =
+          error instanceof Error ? error.message : t('playback.customBackground.couldNotLoad');
         failed(message);
       }
     });

@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-import { t } from '@/i18n';
+import { t, type TranslationKey } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { DialogFooter } from '@/shared/components/ui/dialog';
 import { cn } from '@/shared/utils/cn';
@@ -11,7 +11,7 @@ import { version as currentVersion } from '../../../../package.json';
 export const CURRENT_VERSION = currentVersion;
 export const RELEASES_URL = 'https://github.com/rzru/nightingale/releases/latest';
 export const SELF_HOSTED_DOCS_URL = 'https://nightingale.cafe/docs/self-hosted.html#updating';
-export const GENERIC_DESCRIPTION = 'Keep Nightingale up to date with the latest improvements.';
+export const GENERIC_DESCRIPTION: TranslationKey = 'updates.main.description';
 
 const RING = 'ring-2 ring-primary';
 const NO_FOCUS_RING = 'focus-visible:ring-0 focus-visible:border-transparent';
@@ -22,7 +22,7 @@ export type FocusCtx = {
 };
 
 export type ViewParts = {
-  description: string;
+  description: TranslationKey;
   body: ReactNode;
   footer: ReactNode | null;
 };
@@ -32,7 +32,7 @@ export const ringFor = (ctx: FocusCtx, idx: number) =>
 
 type SoloFooterProps = {
   ctx: FocusCtx;
-  label: string;
+  label: TranslationKey;
   onClick: () => void;
 };
 
@@ -46,9 +46,9 @@ export const SoloFooter = ({ ctx, label, onClick }: SoloFooterProps) => (
 
 type PairFooterProps = {
   ctx: FocusCtx;
-  closeLabel?: string;
+  closeLabel?: TranslationKey;
   onClose: () => void;
-  primaryLabel: string;
+  primaryLabel: TranslationKey;
   primaryIcon?: LucideIcon;
   onPrimary: () => void;
 };

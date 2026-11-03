@@ -153,11 +153,7 @@ export function QueueSidebar({ entries, onClose }: QueueSidebarProps) {
                 {t('playbackQueue.queueSidebar.clearPlaybackQueue2')}
               </AlertDialogTitle>
               <AlertDialogDescription>
-                {tp(
-                  'playbackQueue.clearDescriptionOne',
-                  'playbackQueue.clearDescriptionOther',
-                  entries.length,
-                )}
+                {tp('playbackQueue.clearDescription', entries.length)}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

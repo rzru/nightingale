@@ -18,9 +18,6 @@ import {
 import { useConfig } from '@/shared/config/use-config';
 import { cn } from '@/shared/utils/cn';
 
-const warningCopy =
-  'Nightingale cannot preserve analysis when the data source changes. All songs in the current library — including analyzed songs and their analysis results — will be dropped from Nightingale. Your source files will not be deleted.';
-
 export const SourceChangeWarning = () => {
   const { data: config } = useConfig();
 
@@ -33,7 +30,9 @@ export const SourceChangeWarning = () => {
       <TriangleAlertIcon className="mt-0.5 size-3.5 text-destructive" />
       <div>
         <p className="font-bold">{t('sources.sourceChangeWarning.currentLibraryWillBeCleared')}</p>
-        <p className="text-muted-foreground">{warningCopy}</p>
+        <p className="text-muted-foreground">
+          {t('sources.sourceChangeWarning.dataSourceChangeClearsLibrary')}
+        </p>
       </div>
     </div>
   );
@@ -61,7 +60,9 @@ export const FolderSourceConfirmDialog = () => {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{t('sources.sourceChangeWarning.changeDataSource')}</AlertDialogTitle>
-          <AlertDialogDescription>{warningCopy}</AlertDialogDescription>
+          <AlertDialogDescription>
+            {t('sources.sourceChangeWarning.dataSourceChangeClearsLibrary')}
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter ref={containerRef}>
           <AlertDialogCancel onClick={close} className={focusClass(0)}>

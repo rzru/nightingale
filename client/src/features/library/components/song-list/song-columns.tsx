@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { type TranslationKey } from '@/i18n';
 import { Stars } from '@/shared/components/shared/stars';
 import { formatSeconds } from '@/shared/utils/format-duration';
 import type { QueuedStatus } from '@/types/QueuedStatus';
@@ -14,7 +15,7 @@ import type { SongListActions } from './types';
 
 export type SongColumn = {
   id: string;
-  header: string;
+  header: TranslationKey;
   headerClassName?: string;
   sortColumn?: SongSortColumn;
   thClassName: string;

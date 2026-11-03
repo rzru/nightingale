@@ -229,11 +229,7 @@ export function MicTestField({
       <Label>{t('settings.micTestField.microphoneTest')}</Label>
       <Hint>
         {isRecording
-          ? tp(
-              'settings.microphone.recordingOne',
-              'settings.microphone.recordingOther',
-              recordingSeconds,
-            )
+          ? tp('settings.microphone.recording', recordingSeconds)
           : t('settings.microphone.testDescription')}
       </Hint>
       <ButtonGroup>

@@ -8,7 +8,7 @@ import { onSetupError, onSetupProgress, triggerSetup } from '@/bridge/setup';
 import { selectFolderPath } from '@/bridge/source';
 import { useNavInput } from '@/features/menu/hooks/use-nav-input';
 import { useShouldRunSetup } from '@/features/setup/hooks/use-should-run-setup';
-import { t } from '@/i18n';
+import { t, type TranslationKey } from '@/i18n';
 import { Trans } from '@/i18n/trans';
 import {
   AlertDialog,
@@ -100,7 +100,7 @@ type ChangeDataStepProps = {
   setCacheFolder: (key: CachePathKey, folder?: string) => void;
 };
 
-const cacheFolderLabels: Array<[CachePathKey, string, string]> = [
+const cacheFolderLabels: Array<[CachePathKey, TranslationKey, TranslationKey]> = [
   ['songs', 'setup.cacheFolders.songs', 'setup.cacheFolders.songsDescription'],
   ['videos', 'setup.cacheFolders.videos', 'setup.cacheFolders.videosDescription'],
   ['models', 'setup.cacheFolders.models', 'setup.cacheFolders.modelsDescription'],

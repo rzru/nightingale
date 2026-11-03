@@ -1,3 +1,4 @@
+import { t } from '@/i18n';
 import type { MicCaptureOptions } from '@/types/MicCaptureOptions';
 import type { MicrophoneInfo } from '@/types/MicrophoneInfo';
 import type { MicSampleFrame } from '@/types/MicSampleFrame';
@@ -161,9 +162,7 @@ const ensureMicrophoneAccess = async (mediaDevices: MediaDevices): Promise<void>
 const listDevices = async (_combineChannels: boolean): Promise<MicrophoneInfo[]> => {
   const mediaDevices = browserMediaDevices();
   if (!mediaDevices) {
-    throw new Error(
-      'Microphone discovery is unavailable. Open Nightingale over HTTPS or localhost.',
-    );
+    throw new Error(t('settings.microphone.discoveryUnavailable'));
   }
 
   await ensureMicrophoneAccess(mediaDevices);

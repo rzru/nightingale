@@ -60,7 +60,7 @@ export const LyricsEditor = ({
         spellCheck={false}
       />
       <p className="mt-2 text-[11px] text-muted-foreground">
-        {tp('lyrics.editor.lineCountOne', 'lyrics.editor.lineCountOther', lineCount)}
+        {tp('lyrics.editor.lineCount', lineCount)}
         {isDirty ? t('lyrics.editor.unsavedChanges') : ''}
       </p>
       {!hasLrc && (

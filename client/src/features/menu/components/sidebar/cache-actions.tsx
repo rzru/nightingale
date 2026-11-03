@@ -3,7 +3,7 @@ import { useEffect, useMemo } from 'react';
 
 import { useDialog, type ClearCacheTarget } from '@/features/menu/hooks/use-dialog';
 import { useMenuFocus } from '@/features/menu/providers/menu-focus-context';
-import { t } from '@/i18n';
+import { t, type TranslationKey } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { useLatestRef } from '@/shared/hooks/use-latest-ref';
@@ -11,7 +11,7 @@ import { cn } from '@/shared/utils/cn';
 
 type CacheButton = {
   icon: LucideIcon;
-  label: string;
+  label: TranslationKey;
   target: ClearCacheTarget;
 };
 

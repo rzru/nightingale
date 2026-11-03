@@ -125,11 +125,7 @@ export const LibraryToolbar = ({
           className={cn('relative', isActionFocused(0) && 'ring-2 ring-primary')}
           data-actions-index="0"
           onClick={onOpenQueue}
-          aria-label={tp(
-            'library.toolbar.openQueueOne',
-            'library.toolbar.openQueueOther',
-            queueCount,
-          )}
+          aria-label={tp('library.toolbar.openQueue', queueCount)}
           title={t('library.libraryToolbar.playbackQueue')}
         >
           <ListMusicIcon />

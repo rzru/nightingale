@@ -286,8 +286,8 @@ function Disclaimer({
 
   const text =
     source === 'lyrics'
-      ? 'Timing is AI-generated and may not be perfectly accurate'
-      : 'Lyrics and timing are AI-generated and may not be perfectly accurate';
+      ? t('playback.hud.aiTimingDisclaimer')
+      : t('playback.hud.aiLyricsTimingDisclaimer');
 
   return <DisclaimerNote position={position}>{text}</DisclaimerNote>;
 }

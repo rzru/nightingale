@@ -49,7 +49,7 @@ const attributions = [
     name: 'menu.info.attributions.cjkRomanization',
     value: 'fugashi, pypinyin, hangul-romanize, ToJyutping',
   },
-];
+] as const;
 
 export const InfoDialog = () => {
   const { mode, close } = useDialog();

@@ -16,7 +16,7 @@ import {
 } from '@/bridge/analysis';
 import { useLibraryFilter } from '@/features/menu/hooks/use-library-filter';
 import { useSearch } from '@/features/menu/hooks/use-search';
-import { t, tp } from '@/i18n';
+import { t, tp, type TranslationKey } from '@/i18n';
 import { ANALYSIS_QUEUE, MENU, SONGS, SONGS_META } from '@/shared/query-keys';
 import type { LibraryMenuFilters } from '@/types/LibraryMenuFilters';
 import type { Song } from '@/types/Song';
@@ -89,7 +89,7 @@ export const useAnalysis = () => {
       } catch (error: unknown) {
         toast.error(
           t('library.useAnalysis.errorWhileRunningAnAnalysisAction', {
-            value1: error instanceof Error ? error.message : 'unknown error',
+            value1: error instanceof Error ? error.message : t('common.errors.unknown'),
           }),
         );
         return undefined;
@@ -107,7 +107,7 @@ export const useAnalysis = () => {
     const wrapBulk =
       <A extends unknown[]>(
         kind: BulkActionKind,
-        label: string,
+        label: TranslationKey,
         handler: (...args: A) => Promise<number>,
         invalidate: () => void,
       ) =>
@@ -121,10 +121,8 @@ export const useAnalysis = () => {
           const action = t(label);
           toast.success(
             kind === BulkActionKind.Queued
-              ? tp('library.analysis.queuedOne', 'library.analysis.queuedOther', count, { action })
-              : tp('library.analysis.completedOne', 'library.analysis.completedOther', count, {
-                  action,
-                }),
+              ? tp('library.analysis.queued', count, { action })
+              : tp('library.analysis.completed', count, { action }),
           );
         } else {
           toast.info(t('library.analysis.noneEligible', { action: t(label) }));

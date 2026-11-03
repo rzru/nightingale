@@ -26,8 +26,8 @@ export const ThemeToggle = ({
 
   const { Icon, label } = useMemo(() => {
     return theme === 'dark'
-      ? { Icon: SunIcon, label: 'menu.sidebar.themeToggle.lightMode' }
-      : { Icon: MoonIcon, label: 'menu.sidebar.themeToggle.darkMode' };
+      ? { Icon: SunIcon, label: 'menu.sidebar.themeToggle.lightMode' as const }
+      : { Icon: MoonIcon, label: 'menu.sidebar.themeToggle.darkMode' as const };
   }, [theme]);
 
   const handleToggle = useCallback(() => {

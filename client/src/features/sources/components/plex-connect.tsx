@@ -8,7 +8,7 @@ import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
 import { SourceChangeWarning } from '@/features/sources/components/source-change-warning';
 import { useConnectPlex } from '@/features/sources/mutations/use-source-mutations';
-import { t } from '@/i18n';
+import { t, type TranslationKey } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
@@ -62,7 +62,10 @@ const plexCanConnect = (
   pending: boolean,
 ): boolean => Boolean(server) && sectionIds.length > 0 && !pending;
 
-const signInCopy = (phase: 'waiting' | 'discovering', pin: PlexPinStart) =>
+const signInCopy = (
+  phase: 'waiting' | 'discovering',
+  pin: PlexPinStart,
+): { title: TranslationKey; detail: string } =>
   phase === 'waiting'
     ? {
         title: 'sources.plexConnect.waitingForApprovalInPlex',

@@ -10,7 +10,7 @@ const rows = [
   { label: 'menu.sidebar.stats.videos', color: 'bg-green-500', key: 'videos_bytes' as const },
   { label: 'menu.sidebar.stats.models', color: 'bg-yellow-500', key: 'models_bytes' as const },
   { label: 'menu.sidebar.stats.other', color: 'bg-gray-500', key: 'other_bytes' as const },
-];
+] as const;
 
 type StatsProps = {
   cacheFocusedSidebarIndex: number;

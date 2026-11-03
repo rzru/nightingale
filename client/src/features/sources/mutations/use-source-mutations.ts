@@ -90,8 +90,7 @@ export const useSelectFolderSource = () => {
   });
 };
 
-const songs = (count: number) =>
-  tp('sources.reconcile.songCountOne', 'sources.reconcile.songCountOther', count);
+const songs = (count: number) => tp('sources.reconcile.songCount', count);
 
 const notifyReconcile = ({ updated, skipped }: CacheReconcileSummary) => {
   if (updated > 0) {

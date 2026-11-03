@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
 import { SourceChangeWarning } from '@/features/sources/components/source-change-warning';
-import { t } from '@/i18n';
+import { t, type TranslationKey } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
@@ -66,8 +66,8 @@ const connectReady = (
 ): boolean => canSubmit && !busy && tested && selectionReady;
 
 type SelectionListProps = {
-  label: string;
-  emptyMessage: ReactNode;
+  label: TranslationKey;
+  emptyMessage: TranslationKey;
   items: SelectableItem[];
   selectedIds: string[];
   busy: boolean;
@@ -85,9 +85,7 @@ const SelectionList = ({
   <div className="space-y-2">
     <Label>{t(label)}</Label>
     {items.length === 0 ? (
-      <p className="text-sm text-muted-foreground">
-        {typeof emptyMessage === 'string' ? t(emptyMessage) : emptyMessage}
-      </p>
+      <p className="text-sm text-muted-foreground">{t(emptyMessage)}</p>
     ) : (
       <div className="flex max-h-48 flex-wrap content-start gap-x-4 gap-y-2 overflow-y-auto overscroll-contain">
         {items.map((item) => (
@@ -122,8 +120,8 @@ type RemoteSourceConnectDialogProps<TLogin extends RemoteLoginResult> = {
    * least one item is picked. The chosen ids are forwarded to `useConnect`.
    */
   selection?: {
-    label: string;
-    emptyMessage: ReactNode;
+    label: TranslationKey;
+    emptyMessage: TranslationKey;
     getItems: (login: TLogin) => SelectableItem[];
   };
 };

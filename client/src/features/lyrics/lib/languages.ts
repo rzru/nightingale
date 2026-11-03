@@ -1,4 +1,4 @@
-import { t } from '@/i18n';
+import { t, type TranslationKey } from '@/i18n';
 
 export const LANGUAGES = [
   ['en', 'languages.english'],
@@ -24,7 +24,7 @@ export const LANGUAGES = [
   ['hu', 'languages.hungarian'],
 ] as const;
 
-const LANGUAGE_NAMES = new Map<string, string>(LANGUAGES);
+const LANGUAGE_NAMES = new Map<string, TranslationKey>(LANGUAGES);
 
 export function getLanguageName(language: string): string {
   const key = LANGUAGE_NAMES.get(language.toLowerCase());

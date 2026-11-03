@@ -35,6 +35,14 @@ globs:
 - Playback and audio-reactive interfaces must honor reduced motion and remain understandable without animation, color, audio, hover, or precise pointer input.
 - Represent loading, empty, offline, denied-permission, unavailable-device, and error states explicitly when possible.
 
+## Localization
+
+- Every user-visible string lives in `client/src/i18n/translations/en.json` and is rendered through `t`, `tp`, or `Trans`. Do not hardcode interface copy in components, bridge errors, toasts, or dialogs.
+- Translated text is read at render time. A memoized component that renders translated text must subscribe with `useTranslation` or `useLocale`, otherwise its copy freezes on the previous language.
+- Counted or pluralized copy uses `tp` with per-form catalog keys, never string concatenation or `if (count === 1)`. Languages that need `few`/`many`/`zero` forms declare them in their own catalog.
+- Translation keys are stable identifiers. Never derive them from English copy, never rename a key to match new wording, and reuse an existing key when the meaning is identical.
+- Backend, analyzer, and media-server error text is external data, not copy. Translate the surrounding interface text and pass the external message as a placeholder value.
+
 Do not add automated TypeScript or React tests. Validate with strict type checking, Oxlint, Stylelint, production builds, and focused manual behavior checks.
 
 Do not put agent instructions, policy, architectural mandates, or repository rules in source code or comments. Do not add lint suppressions or TypeScript error directives without approval. If a tool is wrong, narrow suppression to one expression and explain the concrete limitation.
