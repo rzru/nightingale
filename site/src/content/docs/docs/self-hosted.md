@@ -12,6 +12,8 @@ http://<hostname>.local
 
 Use plain HTTP for browsing, playback, queues, and most features. Use HTTPS if you want browser features like microphone capture, fullscreen, and clipboard (unless they work via http).
 
+Guests can also manage the queue from their phones. See [Queue From Your Phone](/docs/queue-from-phone/).
+
 ## Quick install
 
 On the Linux host:

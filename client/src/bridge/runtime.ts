@@ -38,6 +38,7 @@ const nativeCommands = new Set([
   'track_window_state',
   'import_custom_background',
   'get_media_endpoint',
+  'remote_control_info',
   'list_microphones',
   'start_mic_capture',
   'set_mic_monitoring',

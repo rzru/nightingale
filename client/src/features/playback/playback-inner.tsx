@@ -6,7 +6,10 @@
  * presentational tree that consumes the playback contexts via hooks.
  */
 
+import { useCallback } from 'react';
+
 import type { PlaybackPlayer } from '@/bridge/playback-session';
+import type { PlaybackCommand, PlaybackStatus } from '@/bridge/playback-status';
 import { isTauri } from '@/bridge/runtime';
 import { Background } from '@/features/playback/components/background';
 import { ResultDialog } from '@/features/playback/components/dialogs/result';
@@ -17,6 +20,8 @@ import { PitchGraph } from '@/features/playback/components/pitch-graph';
 import { PlaybackHud } from '@/features/playback/components/playback-hud';
 import { isPitchGuideTheme } from '@/features/playback/components/theme';
 import { usePlaybackInput, usePlaybackResult } from '@/features/playback/hooks';
+import { usePlaybackRemote } from '@/features/playback/hooks/use-playback-remote';
+import { playbackActions, playbackExitLabelKey } from '@/features/playback/lib/playback-actions';
 import {
   PlaybackProviders,
   usePlaybackMicState,
@@ -58,7 +63,7 @@ function PlaybackLayout({
   players,
 }: PlaybackLayoutProps) {
   const { paused } = usePlaybackTransportState();
-  const { handleContinue, handleExit } = usePlaybackTransportActions();
+  const { handlePause, handleContinue, handleExit } = usePlaybackTransportActions();
   const { segments } = usePlaybackTranscriptState();
   const { started } = usePlaybackStartupState();
   const { theme } = usePlaybackThemeState();
@@ -75,6 +80,42 @@ function PlaybackLayout({
 
   const result = usePlaybackResult(song, queuePlayback, players ?? []);
   usePlaybackInput(config, !result.open);
+
+  // One state object feeds the host modals and the phone remote, so both offer
+  // exactly the same actions.
+  const status: PlaybackStatus = {
+    active: true,
+    paused,
+    finished: result.open,
+    hasNext: result.onNext !== undefined,
+    sessionPlayback,
+  };
+  const actions = playbackActions(status);
+  const runCommand = useCallback(
+    (command: PlaybackCommand) => {
+      switch (command) {
+        case 'pause':
+          handlePause();
+          return;
+        case 'resume':
+          handleContinue();
+          return;
+        case 'next':
+          result.onNext?.();
+          return;
+        case 'exit':
+          handleExit();
+      }
+    },
+    [handleContinue, handleExit, handlePause, result],
+  );
+
+  usePlaybackRemote(status, {
+    pause: handlePause,
+    resume: handleContinue,
+    next: () => result.onNext?.(),
+    exit: handleExit,
+  });
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-black" style={{ contain: 'strict' }}>
@@ -99,14 +140,7 @@ function PlaybackLayout({
 
       {!started && <LoadingScreen song={song} />}
 
-      <PauseOverlay
-        open={paused && !result.open}
-        exitLabel={t(
-          sessionPlayback ? 'playback.actions.exitPlayback' : 'playback.actions.exitToMenu',
-        )}
-        onContinue={handleContinue}
-        onExit={handleExit}
-      />
+      <PauseOverlay open={paused && !result.open} actions={actions} onCommand={runCommand} />
 
       <ResultDialog
         open={result.open}
@@ -114,9 +148,7 @@ function PlaybackLayout({
         song={song}
         scores={result.scores}
         nextPending={result.nextPending}
-        exitLabel={t(
-          sessionPlayback ? 'playback.actions.exitPlayback' : 'playback.actions.backToMenu',
-        )}
+        exitLabel={t(playbackExitLabelKey(status))}
         onBack={result.onBack}
         onNext={result.onNext}
       />

@@ -9,6 +9,7 @@ import { LibraryPage } from '@/features/library/library-page';
 import { MenuLayout } from '@/features/menu/menu';
 import { MenuFocusProvider } from '@/features/menu/providers/menu-focus-context';
 import { Playback } from '@/features/playback/playback';
+import { RemoteQueuePage } from '@/features/remote/remote-queue';
 import { SettingsPage } from '@/features/settings/settings';
 import { useUpdate } from '@/features/updates/queries/use-update';
 import { syncLanguagePreference, useTranslation } from '@/i18n';
@@ -21,6 +22,12 @@ import { NavInputProvider } from './providers/nav-input-context';
 import { ThemeProvider } from './providers/theme-context';
 
 const queryClient = new QueryClient();
+
+/**
+ * The phone page skips the desktop shell: it has no host config, no window
+ * chrome, and no business loading library or playback state.
+ */
+const isRemoteQueue = (): boolean => window.location.pathname === '/q';
 
 const UpdateAutoCheck = () => {
   useUpdate();
@@ -44,6 +51,19 @@ const InnerWrapper = () => (
     <Toaster />
     {UPDATES_SUPPORTED && <UpdateAutoCheck />}
   </>
+);
+
+const RemoteShell = () => (
+  <ThemeProvider defaultTheme="dark">
+    <TooltipProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/q" element={<RemoteQueuePage />} />
+        </Routes>
+      </BrowserRouter>
+      <Toaster />
+    </TooltipProvider>
+  </ThemeProvider>
 );
 
 const ThemeWrapper = () => {
@@ -72,7 +92,7 @@ export const App = () => {
   return (
     <NavInputProvider>
       <QueryClientProvider client={queryClient}>
-        <ThemeWrapper />
+        {isRemoteQueue() ? <RemoteShell /> : <ThemeWrapper />}
       </QueryClientProvider>
     </NavInputProvider>
   );

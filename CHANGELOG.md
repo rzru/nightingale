@@ -21,6 +21,7 @@ below.
 - Added playback scrubbing and controls to jump by one second or one lyric line.
 - Added `.nge` song bundles that play directly without unpacking, with clear read-only actions.
 - Added `.nge` export for analyzed local songs on desktop and self-hosted web.
+- Added a phone queue link: scan a QR code from the queue and manage the night's playlist from a phone on the same network, while the desktop or host browser keeps playing. Phones can search the library, add songs, reorder or remove entries, or clear the whole queue, and the remote mirrors the host's queue and playback buttons: start the queue, start it in multiplayer with singers picked on the phone, pause or resume, skip to the next queued song, or end the song and go back to the menu. The host publishes its microphones so the phone can assign them to singers. Every change shows up on the host instantly.
 
 ### Fixes
 

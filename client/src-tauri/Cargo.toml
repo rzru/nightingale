@@ -22,6 +22,7 @@ tauri-build = { version = "2", features = [] }
 # App Core
 app-api = { path = "../../app-api" }
 app-core = { path = "../../app-core" }
+server = { path = "../src-server" }
 
 # Dependencies
 tauri = { version = "2", features = ["protocol-asset"] }
@@ -32,6 +33,8 @@ tauri-plugin-dialog = "2"
 tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+axum = "0.7"
+tokio = { version = "1", features = ["net", "rt-multi-thread"] }
 base64 = "0.22"
 ts-rs = { version = "12", features = ["no-serde-warnings"] }
 dotenvy = "0.15.7"

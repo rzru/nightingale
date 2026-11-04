@@ -2,7 +2,7 @@ mod vendor;
 
 use std::{
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 
 use app_core::{
@@ -36,6 +36,8 @@ pub struct CommandState {
     runtime: Arc<dyn CommandRuntime>,
     playback_queue: Arc<PlaybackQueue>,
     playback_sessions: Arc<PlaybackSessionStore>,
+    playback_status: Arc<Mutex<PlaybackStatus>>,
+    remote_microphones: Arc<Mutex<Vec<RemoteMicrophone>>>,
 }
 
 impl CommandState {
@@ -44,8 +46,86 @@ impl CommandState {
             runtime,
             playback_queue: Arc::new(PlaybackQueue::default()),
             playback_sessions: Arc::new(PlaybackSessionStore::default()),
+            playback_status: Arc::new(Mutex::new(PlaybackStatus::default())),
+            remote_microphones: Arc::new(Mutex::new(Vec::new())),
         }
     }
+
+    fn playback_status(&self) -> PlaybackStatus {
+        self.playback_status
+            .lock()
+            .map(|status| *status)
+            .unwrap_or_default()
+    }
+
+    fn set_playback_status(&self, next: PlaybackStatus) -> PlaybackStatus {
+        let Ok(mut status) = self.playback_status.lock() else {
+            return PlaybackStatus::default();
+        };
+        *status = next;
+        *status
+    }
+
+    fn remote_microphones(&self) -> Vec<RemoteMicrophone> {
+        self.remote_microphones
+            .lock()
+            .map(|microphones| microphones.clone())
+            .unwrap_or_default()
+    }
+
+    fn set_remote_microphones(&self, microphones: Vec<RemoteMicrophone>) -> Vec<RemoteMicrophone> {
+        let Ok(mut stored) = self.remote_microphones.lock() else {
+            return Vec::new();
+        };
+        *stored = microphones;
+        stored.clone()
+    }
+}
+
+/// What a remote client needs to know to mirror the host's playback actions.
+/// The playback surface publishes it; other clients (the phone) read it. It
+/// lives in the transport-neutral command state so desktop and web agree.
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaybackStatus {
+    pub active: bool,
+    pub paused: bool,
+    /// The end-of-song result screen is up.
+    pub finished: bool,
+    /// The queue has another entry to start.
+    pub has_next: bool,
+    /// Playback owns a separate window, which changes the exit wording.
+    pub session_playback: bool,
+}
+
+/// Microphone the host offers to remote clients. Device IDs only mean
+/// something on the host, so the phone picks from this published list.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteMicrophone {
+    pub device_id: String,
+    pub label: String,
+}
+
+/// Actions a remote can ask the playback surface to perform.
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PlaybackCommand {
+    Pause,
+    Resume,
+    /// Start the next queued entry, abandoning the current song if needed.
+    Next,
+    Exit,
+}
+
+#[derive(Debug, Deserialize)]
+struct PlaybackCommandArgs {
+    command: PlaybackCommand,
+}
+
+#[derive(Debug, Serialize)]
+struct PlaybackCommandRequest {
+    command: PlaybackCommand,
 }
 
 #[derive(Debug)]
@@ -230,6 +310,46 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
             let entries = state.playback_queue.clear().map_err(ApiError::internal)?;
             events.emit("playback-queue-changed", &entries);
             Ok(serde_json::to_value(entries).map_err(serde_err)?)
+        }
+
+        // ── Playback control ─────────────────────────────────────────────
+        "load_playback_status" => {
+            Ok(serde_json::to_value(state.playback_status()).map_err(serde_err)?)
+        }
+        "set_playback_status" => {
+            let status: PlaybackStatus = deserialize(payload)?;
+            let status = state.set_playback_status(status);
+            events.emit("playback-status-changed", &status);
+            Ok(Value::Null)
+        }
+        "request_playback_command" => {
+            let args: PlaybackCommandArgs = deserialize(payload)?;
+            events.emit(
+                "playback-command-requested",
+                &PlaybackCommandRequest {
+                    command: args.command,
+                },
+            );
+            Ok(Value::Null)
+        }
+        "request_queue_playback" => {
+            // The phone may name the singers; the host resolves microphones.
+            events.emit_value("playback-queue-play-requested", payload);
+            Ok(Value::Null)
+        }
+        "load_remote_microphones" => {
+            Ok(serde_json::to_value(state.remote_microphones()).map_err(serde_err)?)
+        }
+        "set_remote_microphones" => {
+            #[derive(Deserialize)]
+            struct Args {
+                microphones: Vec<RemoteMicrophone>,
+            }
+            let Args { microphones } = deserialize(payload)?;
+            Ok(
+                serde_json::to_value(state.set_remote_microphones(microphones))
+                    .map_err(serde_err)?,
+            )
         }
 
         // ── Playback session ─────────────────────────────────────────────

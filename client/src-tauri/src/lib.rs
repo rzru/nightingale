@@ -16,13 +16,91 @@ use microphones::{
     list_microphones, set_mic_monitoring, set_monitor_gain, start_mic_capture, stop_mic_capture,
 };
 use serde_json::Value;
+use server::{AppState as RemoteAppState, EventBus};
 use tauri::{
     AppHandle, Emitter, Manager, PhysicalSize, RunEvent, WebviewWindow, WebviewWindowBuilder,
     WindowEvent,
 };
 
 #[derive(Clone)]
-struct DesktopRuntime(AppHandle);
+struct DesktopRuntime {
+    app: AppHandle,
+    events: Arc<EventBus>,
+}
+
+/// Owns the LAN listener and the token phones present.
+struct RemoteServer {
+    commands: CommandState,
+    events: Arc<EventBus>,
+    control: Mutex<app_core::RemoteControl>,
+    listener: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
+}
+
+impl RemoteServer {
+    fn new(commands: CommandState, events: Arc<EventBus>) -> Self {
+        Self {
+            commands,
+            events,
+            control: Mutex::new(app_core::RemoteControl::load()),
+            listener: Mutex::new(None),
+        }
+    }
+
+    fn info(&self) -> app_core::RemoteInfo {
+        let control = self
+            .control
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        control.info()
+    }
+
+    async fn start(&self) -> Result<(), String> {
+        if self
+            .listener
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .is_some()
+        {
+            return Ok(());
+        }
+
+        let address = std::net::SocketAddr::from(([0, 0, 0, 0], app_core::REMOTE_PORT));
+        let listener = tokio::net::TcpListener::bind(address)
+            .await
+            .map_err(|error| format!("cannot listen on port {}: {error}", app_core::REMOTE_PORT))?;
+
+        let control = self
+            .control
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .clone();
+        let state = RemoteAppState::new(
+            self.commands.clone(),
+            self.events.clone(),
+            control,
+            server::RemoteAddress::new(app_core::REMOTE_PORT, None),
+            false,
+            false,
+        );
+
+        tracing::info!(%address, "remote control listening");
+        let handle = tauri::async_runtime::spawn(serve_remote(listener, state));
+        *self
+            .listener
+            .lock()
+            .unwrap_or_else(|error| error.into_inner()) = Some(handle);
+
+        Ok(())
+    }
+}
+
+async fn serve_remote(listener: tokio::net::TcpListener, state: RemoteAppState) {
+    if let Err(error) =
+        axum::serve(listener, server::remote_router(state).into_make_service()).await
+    {
+        tracing::error!("remote control server error: {error}");
+    }
+}
 
 #[derive(Clone)]
 struct TrackedWindowState {
@@ -123,7 +201,8 @@ fn save_open_window_states(app: &AppHandle) {
 
 impl CommandRuntime for DesktopRuntime {
     fn emit(&self, name: &str, payload: Value) {
-        let _ = self.0.emit(name, payload);
+        let _ = self.app.emit(name, payload.clone());
+        self.events.emit_value(name, payload);
     }
 
     fn set_monitor_gain(&self, gain: f32) {
@@ -131,7 +210,7 @@ impl CommandRuntime for DesktopRuntime {
     }
 
     fn allow_directory(&self, path: &Path) -> Result<(), String> {
-        self.0
+        self.app
             .asset_protocol_scope()
             .allow_directory(path, true)
             .map_err(|error| format!("failed to allow asset protocol for {path:?}: {error}"))
@@ -152,6 +231,11 @@ async fn dispatch_command(
 #[tauri::command]
 fn get_media_endpoint() -> app_core::MediaEndpoint {
     app_core::media_server::endpoint()
+}
+
+#[tauri::command]
+fn remote_control_info(remote: tauri::State<'_, RemoteServer>) -> app_core::RemoteInfo {
+    remote.info()
 }
 
 #[tauri::command]
@@ -229,6 +313,7 @@ pub fn run() {
             track_window_state,
             import_custom_background,
             get_media_endpoint,
+            remote_control_info,
             list_microphones,
             start_mic_capture,
             set_mic_monitoring,
@@ -236,15 +321,27 @@ pub fn run() {
         ])
         .setup(|app| {
             let _ = dotenvy::dotenv();
-            app.manage(CommandState::new(Arc::new(DesktopRuntime(
-                app.handle().clone(),
-            ))));
+            let events = Arc::new(EventBus::new());
+            let commands = CommandState::new(Arc::new(DesktopRuntime {
+                app: app.handle().clone(),
+                events: events.clone(),
+            }));
+            app.manage(commands.clone());
+            app.manage(RemoteServer::new(commands, events));
             app.manage(WindowStates::default());
             app.handle()
                 .plugin(tauri_plugin_updater::Builder::new().build())?;
             app_core::startup()?;
             app_core::media_server::start()?;
             let media_endpoint = app_core::media_server::endpoint();
+
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let remote = handle.state::<RemoteServer>();
+                if let Err(error) = remote.start().await {
+                    tracing::error!(%error, "failed to start remote control");
+                }
+            });
 
             let config = AppConfig::load();
             set_monitor_gain(config.mic_monitor_gain());

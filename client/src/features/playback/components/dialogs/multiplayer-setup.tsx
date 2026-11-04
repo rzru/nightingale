@@ -1,9 +1,11 @@
+import { useQuery } from '@tanstack/react-query';
 import { useAtom } from 'jotai';
 import { PlusIcon, UsersIcon, XIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PlaybackPlayer } from '@/bridge/playback-session';
-import { playbackPlayersSchema } from '@/bridge/schemas';
+import { loadRemoteMicrophones } from '@/bridge/playback-status';
+import { playbackPlayersSchema, type RemoteMicrophone } from '@/bridge/schemas';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
 import { useMicDevicesQuery, type MicDevice } from '@/features/microphone/queries/use-mic-devices';
 import { multiplayerPlayersAtom } from '@/features/playback/atoms/multiplayer-players';
@@ -38,8 +40,10 @@ import {
   playerColorOption,
   type PlayerColor,
 } from '@/shared/player-colors';
+import { REMOTE_MICROPHONES } from '@/shared/query-keys';
 import { cn } from '@/shared/utils/cn';
 import type { AppConfig } from '@/types/AppConfig';
+import type { ProfileStore } from '@/types/ProfileStore';
 
 const MAX_PLAYERS = 4;
 const RING = 'ring-2 ring-primary';
@@ -53,6 +57,8 @@ type MultiplayerSetupDialogProps = {
   onStart: (players: PlaybackPlayer[]) => void;
   queuePlayback?: boolean;
   submitLabel?: string;
+  /** Phone lineup: the host owns the microphones, so only singers are chosen. */
+  remote?: boolean;
 };
 
 const playerNumber = (id: string): number => Number(id.slice('player-'.length));
@@ -138,12 +144,16 @@ type SetupErrorInput = {
   validMicrophones: boolean;
 };
 
-const setupDescription = (queuePlayback: boolean | undefined): string =>
-  t(
+const setupDescription = (queuePlayback: boolean | undefined, remote: boolean): string => {
+  if (remote) {
+    return t('playback.players.remoteSetupDescription');
+  }
+  return t(
     queuePlayback === true
       ? 'playback.players.queueSetupDescription'
       : 'playback.players.setupDescription',
   );
+};
 
 const setupSubmitLabel = (label: string | undefined): string =>
   label ?? t('playback.players.startMultiplayer');
@@ -159,8 +169,11 @@ const capabilityDevices = (
   combinedMicrophones: readonly MicDevice[],
 ): readonly MicDevice[] => (combineChannels ? microphones : combinedMicrophones);
 
-const shouldLoadCombinedCapabilities = (open: boolean, combineChannels: boolean): boolean =>
-  open && !combineChannels;
+const shouldLoadCombinedCapabilities = (
+  open: boolean,
+  combineChannels: boolean,
+  remote: boolean,
+): boolean => open && !remote && !combineChannels;
 
 function setupError(input: SetupErrorInput): string | null {
   if (input.microphonesError) {
@@ -202,12 +215,12 @@ function playerSetupStatus(
   );
   const duplicateProfile =
     selectedProfiles.size !== players.filter((player) => player.profile !== null).length;
+  const duplicateMicrophone = selectedMicrophones.size !== players.length;
   const validMicrophones = players.every(
     (player) =>
       player.microphoneId !== '' &&
       microphones.some((microphone) => microphone.deviceId === player.microphoneId),
   );
-  const duplicateMicrophone = selectedMicrophones.size !== players.length;
   const canStart =
     players.length >= 2 &&
     !loading &&
@@ -223,14 +236,18 @@ function playerSetupStatus(
   };
 }
 
-const setupStops = (
-  players: readonly PlaybackPlayer[],
-  canAdd: boolean,
-  canStart: boolean,
-  hasMultiChannelInput: boolean,
-) => [
+const playerSlotCount = (index: number): number => (index >= 2 ? 4 : 3);
+
+type SetupStopsInput = {
+  players: readonly PlaybackPlayer[];
+  canAdd: boolean;
+  canStart: boolean;
+  hasMultiChannelInput: boolean;
+};
+
+const setupStops = ({ players, canAdd, canStart, hasMultiChannelInput }: SetupStopsInput) => [
   ...(hasMultiChannelInput ? [1] : []),
-  ...players.map((_, index) => (index >= 2 ? 4 : 3)),
+  ...players.map((_, index) => playerSlotCount(index)),
   ...(canAdd ? [1] : []),
   canStart ? 2 : 1,
 ];
@@ -486,26 +503,89 @@ function PlayerColorDialog({ player, onColorChange, onOpenChange }: PlayerColorD
   );
 }
 
+type LineupSource = {
+  profileStore: ProfileStore | undefined;
+  config: AppConfig | undefined;
+  microphones: readonly MicDevice[];
+  rememberedPlayers: readonly PlaybackPlayer[] | null;
+};
+
+/** Host microphones as device choices for the phone's player rows. */
+const hostMicrophoneDevices = (microphones: readonly RemoteMicrophone[]): MicDevice[] =>
+  microphones.map(({ deviceId, label }) => ({ deviceId, label, name: label, channelCount: 1 }));
+
+type LineupMicrophones = {
+  devices: MicDevice[];
+  loading: boolean;
+  error: boolean;
+};
+
+/** Local devices on the host; the published host list on the phone. */
+function useLineupMicrophones(
+  open: boolean,
+  remote: boolean,
+  combineChannels: boolean,
+): LineupMicrophones {
+  const local = useMicDevicesQuery(undefined, open && !remote, combineChannels);
+  const host = useQuery({
+    queryKey: REMOTE_MICROPHONES,
+    queryFn: loadRemoteMicrophones,
+    enabled: open && remote,
+  });
+  if (remote) {
+    return {
+      devices: hostMicrophoneDevices(host.data ?? []),
+      loading: host.isLoading,
+      error: host.isError,
+    };
+  }
+  return { devices: local.data, loading: local.isLoading, error: local.isError };
+}
+
+const lineupDefaults = (source: LineupSource): PlaybackPlayer[] =>
+  initialPlayers({
+    activeProfile: source.profileStore?.active ?? null,
+    profiles: source.profileStore?.profiles ?? [],
+    microphones: source.microphones,
+    preferredMicrophone: source.config?.preferred_mic ?? null,
+    rememberedPlayers: source.rememberedPlayers,
+  });
+
+function SetupColumns() {
+  return (
+    <div className="hidden grid-cols-[7rem_minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 border-b px-1 pb-2 text-xs font-medium text-muted-foreground sm:grid">
+      <span>{t('playback.dialogs.multiplayerSetup.player')}</span>
+      <span>{t('playback.dialogs.multiplayerSetup.profile')}</span>
+      <span>{t('playback.dialogs.multiplayerSetup.microphone')}</span>
+    </div>
+  );
+}
+
 export function MultiplayerSetupDialog({
   open,
   onOpenChange,
   onStart,
   queuePlayback,
   submitLabel,
+  remote = false,
 }: MultiplayerSetupDialogProps) {
   const { data: profileStore, isLoading: profilesLoading } = useProfiles();
-  const { data: config, isLoading: configLoading } = useConfig();
-  const { mutate: saveConfig } = useConfigMutation();
+  const { data: config, isLoading: configLoading } = useConfig(!remote);
+  const { mutate: saveConfig } = useConfigMutation(!remote);
   const combineChannels = combineMultiplayerChannels(config);
-  const microphones = useMicDevicesQuery(undefined, open, combineChannels);
+  const {
+    devices: microphones,
+    loading: microphonesLoading,
+    error: microphonesError,
+  } = useLineupMicrophones(open, remote, combineChannels);
   const capabilityQuery = useMicDevicesQuery(
     undefined,
-    shouldLoadCombinedCapabilities(open, combineChannels),
+    shouldLoadCombinedCapabilities(open, combineChannels, remote),
     true,
   );
   const hasMultiChannelInput = capabilityDevices(
     combineChannels,
-    microphones.data,
+    microphones,
     capabilityQuery.data,
   ).some((device) => device.channelCount > 1);
   const [rememberedPlayers, setRememberedPlayers] = useAtom(multiplayerPlayersAtom);
@@ -514,49 +594,44 @@ export function MultiplayerSetupDialog({
   const initialized = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const loading = setupDataLoading(profilesLoading, microphonesLoading, !remote && configLoading);
+
   useEffect(() => {
     if (!open) {
       initialized.current = false;
       return;
     }
-    const loading = setupDataLoading(profilesLoading, configLoading, microphones.isLoading);
     if (initialized.current || loading) {
       return;
     }
     initialized.current = true;
     setPlayers(
-      initialPlayers({
-        activeProfile: profileStore?.active ?? null,
-        profiles: profileStore?.profiles ?? [],
-        microphones: microphones.data,
-        preferredMicrophone: config?.preferred_mic ?? null,
+      lineupDefaults({
+        profileStore,
+        config,
+        microphones,
         rememberedPlayers,
       }),
     );
-  }, [
-    config?.preferred_mic,
-    configLoading,
-    microphones.data,
-    microphones.isLoading,
-    open,
-    profileStore?.active,
-    profileStore?.profiles,
-    profilesLoading,
-    rememberedPlayers,
-  ]);
+  }, [config, loading, microphones, open, profileStore, rememberedPlayers]);
 
-  const loading = setupDataLoading(profilesLoading, configLoading, microphones.isLoading);
   const { selectedMicrophones, duplicateProfile, duplicateMicrophone, validMicrophones, canStart } =
     useMemo(
-      () => playerSetupStatus(players, microphones.data, loading),
-      [loading, microphones.data, players],
+      () => playerSetupStatus(players, microphones, loading),
+      [loading, microphones, players],
     );
   const canAddPlayer = players.length < MAX_PLAYERS;
   const playerSegmentOffset = Number(hasMultiChannelInput);
   const addPlayerSegment = playerSegmentOffset + players.length;
-  const footerSegment = addPlayerSegment + (canAddPlayer ? 1 : 0);
+  const footerSegment = addPlayerSegment + Number(canAddPlayer);
   const stops = useMemo(
-    () => setupStops(players, canAddPlayer, canStart, hasMultiChannelInput),
+    () =>
+      setupStops({
+        players,
+        canAdd: canAddPlayer,
+        canStart,
+        hasMultiChannelInput,
+      }),
     [canAddPlayer, canStart, hasMultiChannelInput, players],
   );
   const closeDialog = () => {
@@ -575,7 +650,12 @@ export function MultiplayerSetupDialog({
     cn(NO_FOCUS_RING, isFocused(segment, slot) && RING);
 
   useEffect(() => {
-    if (!open || !initialized.current || !playbackPlayersSchema.safeParse(players).success) {
+    if (
+      remote ||
+      !open ||
+      !initialized.current ||
+      !playbackPlayersSchema.safeParse(players).success
+    ) {
       return;
     }
     if (players === rememberedPlayers) {
@@ -583,7 +663,7 @@ export function MultiplayerSetupDialog({
     }
     setRememberedPlayers(players);
     saveConfig({ multiplayer_players: players });
-  }, [open, players, rememberedPlayers, saveConfig, setRememberedPlayers]);
+  }, [open, players, rememberedPlayers, remote, saveConfig, setRememberedPlayers]);
 
   const updatePlayer = (id: string, patch: Partial<PlaybackPlayer>) => {
     setPlayers((current) => updatedPlayers(current, id, patch));
@@ -592,7 +672,7 @@ export function MultiplayerSetupDialog({
   const addPlayer = () => {
     const usedIds = new Set(players.map((player) => player.id));
     const nextNumber = [1, 2, 3, 4].find((number) => !usedIds.has(`player-${number}`));
-    const nextMicrophone = microphones.data.find(
+    const nextMicrophone = microphones.find(
       (microphone) => !selectedMicrophones.has(microphone.deviceId),
     );
     if (nextNumber === undefined) {
@@ -616,8 +696,8 @@ export function MultiplayerSetupDialog({
   };
 
   const error = setupError({
-    microphonesError: microphones.isError,
-    microphoneCount: microphones.data.length,
+    microphonesError,
+    microphoneCount: microphones.length,
     duplicateMicrophone,
     duplicateProfile,
     validMicrophones,
@@ -654,7 +734,7 @@ export function MultiplayerSetupDialog({
             <UsersIcon className="size-5" />
             {t('playback.dialogs.multiplayerSetup.setUpPlayers')}
           </DialogTitle>
-          <DialogDescription>{setupDescription(queuePlayback)}</DialogDescription>
+          <DialogDescription>{setupDescription(queuePlayback, remote)}</DialogDescription>
         </DialogHeader>
 
         <CombineChannelsField
@@ -668,16 +748,12 @@ export function MultiplayerSetupDialog({
         />
 
         <div>
-          <div className="hidden grid-cols-[7rem_minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3 border-b px-1 pb-2 text-xs font-medium text-muted-foreground sm:grid">
-            <span>{t('playback.dialogs.multiplayerSetup.player')}</span>
-            <span>{t('playback.dialogs.multiplayerSetup.profile')}</span>
-            <span>{t('playback.dialogs.multiplayerSetup.microphone')}</span>
-          </div>
+          <SetupColumns />
           <div className="divide-y border-b">
             <PlayerRows
               players={players}
               profiles={profileStore?.profiles ?? []}
-              microphones={microphones.data}
+              microphones={microphones}
               updatePlayer={updatePlayer}
               removePlayer={removePlayer}
               segmentOffset={playerSegmentOffset}

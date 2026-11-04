@@ -40,6 +40,9 @@ impl PlaybackQueue {
             .into_iter()
             .next()
             .ok_or_else(|| "song not found".to_string())?;
+        if !song.is_analyzed {
+            return Err("song must be analyzed before it can be queued".to_string());
+        }
         let id = self.next_id.fetch_add(1, Ordering::Relaxed).to_string();
         let mut entries = self
             .entries

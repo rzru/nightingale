@@ -10,6 +10,10 @@ edition = "2021"
 name = "server"
 path = "src/main.rs"
 
+[lib]
+name = "server"
+path = "src/lib.rs"
+
 [dependencies]
 app-api = { path = "../../app-api" }
 app-core = { path = "../../app-core" }
