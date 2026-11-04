@@ -14,7 +14,8 @@ import { Header } from './header';
 import { MainNavigation } from './main-navigation';
 import { Stats } from './stats';
 
-const THEME_SLOT_INDEX = 0;
+const REMOTE_SLOT_INDEX = 0;
+const THEME_SLOT_INDEX = REMOTE_SLOT_INDEX + 1;
 const FOLDER_SLOT_INDEX = THEME_SLOT_INDEX + 1;
 const MAIN_NAV_BASE_INDEX = FOLDER_SLOT_INDEX + 1;
 
@@ -26,6 +27,7 @@ export const Sidebar = ({ children }: PropsWithChildren<{}>) => {
   const [mainNavigationCallbacks, setMainNavigationCallbacks] = useState<SidebarCallback[]>([]);
 
   const focusRef = useLatestRef(focus);
+  const remoteCallbackRef = useRef<SidebarCallback | null>(null);
   const themeCallbackRef = useRef<SidebarCallback | null>(null);
   const folderCallbackRef = useRef<SidebarSubCallback | null>(null);
   const cacheCallbackRef = useRef<SidebarSubCallback | null>(null);
@@ -34,6 +36,10 @@ export const Sidebar = ({ children }: PropsWithChildren<{}>) => {
   const cacheSlotIndex = MAIN_NAV_BASE_INDEX + mainNavigationCallbacks.length;
   const actionsSlotIndex = cacheSlotIndex + 1;
   const sidebarCount = actionsSlotIndex + 1;
+
+  const registerRemoteCallback = useCallback((callback: (() => void) | null) => {
+    remoteCallbackRef.current = callback;
+  }, []);
 
   const registerThemeCallback = useCallback((callback: (() => void) | null) => {
     themeCallbackRef.current = callback;
@@ -57,6 +63,7 @@ export const Sidebar = ({ children }: PropsWithChildren<{}>) => {
 
   const sidebarCallbacks = useMemo(
     () => [
+      () => remoteCallbackRef.current?.(),
       () => themeCallbackRef.current?.(),
       () => folderCallbackRef.current?.(focusRef.current.sidebarSubIndex),
       ...mainNavigationCallbacks,
@@ -92,7 +99,12 @@ export const Sidebar = ({ children }: PropsWithChildren<{}>) => {
   return (
     <SidebarProvider>
       <ShadCnSidebar>
-        <Header focusedSidebarIndex={THEME_SLOT_INDEX} registerCallback={registerThemeCallback} />
+        <Header
+          remoteIndex={REMOTE_SLOT_INDEX}
+          registerRemoteCallback={registerRemoteCallback}
+          themeIndex={THEME_SLOT_INDEX}
+          registerThemeCallback={registerThemeCallback}
+        />
 
         <MainNavigation
           baseIndex={MAIN_NAV_BASE_INDEX}

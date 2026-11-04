@@ -73,7 +73,7 @@ async fn main() -> Result<(), String> {
         commands,
         events,
         app_core::RemoteControl::load(),
-        server::RemoteAddress::new(args.bind.port(), args.remote_url.clone()),
+        server::RemoteAddress::new(args.bind, args.remote_url.clone()),
         data.is_some(),
         library.is_some(),
     );

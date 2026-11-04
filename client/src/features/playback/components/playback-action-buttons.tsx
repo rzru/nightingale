@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, type ReactNode } from 'react';
 
 import type { PlaybackCommand } from '@/bridge/playback-status';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
@@ -21,6 +21,8 @@ type PlaybackActionButtonsProps = {
   className?: string;
   /** Touch surfaces need taller buttons than the TV/desktop overlay. */
   buttonClassName?: string;
+  /** Extra surface-specific actions rendered after the shared list. */
+  trailing?: ReactNode;
 };
 
 /**
@@ -36,6 +38,7 @@ export function PlaybackActionButtons({
   disabled,
   className,
   buttonClassName,
+  trailing,
 }: PlaybackActionButtonsProps) {
   const confirm = useCallback(
     (index: number) => {
@@ -67,6 +70,7 @@ export function PlaybackActionButtons({
           {t(action.labelKey)}
         </Button>
       ))}
+      {trailing}
     </div>
   );
 }

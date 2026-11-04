@@ -5,7 +5,6 @@ import {
   DownloadIcon,
   HeartIcon,
   InfoIcon,
-  QrCodeIcon,
   RefreshCcwDotIcon,
   TrophyIcon,
   UserIcon,
@@ -19,7 +18,6 @@ import { useDonationSeen } from '@/features/menu/hooks/use-donation-seen';
 import { useNavInput } from '@/features/menu/hooks/use-nav-input';
 import { useMenuFocus } from '@/features/menu/providers/menu-focus-context';
 import { useCurrentProfile } from '@/features/profiles/hooks/use-current-profile';
-import { RemoteControlDialog } from '@/features/remote/remote-control-dialog';
 import { useShouldRunSetup } from '@/features/setup/hooks/use-should-run-setup';
 import { useUpdate } from '@/features/updates/queries/use-update';
 import { t } from '@/i18n';
@@ -87,7 +85,6 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
   const showDonationAvatarBadge = showDonationBadge && !updateAvailable;
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [remoteOpen, setRemoteOpen] = useState(false);
   const isMobile = useIsMobile();
   const dropdownOpenRef = useLatestRef(dropdownOpen);
 
@@ -216,20 +213,6 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
                   if (isMobile) {
                     setOpen(false);
                   }
-                  // Open on the next tick so the menu can finish closing; Radix
-                  // leaves a dialog unclickable when it mounts mid-close.
-                  setTimeout(() => setRemoteOpen(true), 0);
-                }}
-              >
-                <QrCodeIcon />
-                {t('menu.sidebar.actions.remote')}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setDropdownOpen(false);
-                  if (isMobile) {
-                    setOpen(false);
-                  }
                   void navigate('/settings');
                 }}
               >
@@ -270,7 +253,6 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
-      <RemoteControlDialog open={remoteOpen} onOpenChange={setRemoteOpen} />
     </SidebarMenu>
   );
 };

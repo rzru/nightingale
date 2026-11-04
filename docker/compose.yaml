@@ -25,6 +25,11 @@ services:
     image: nightingale:latest
     container_name: nightingale
     restart: unless-stopped
+    # Phones scan the queue QR from the URL you open. Browsing via localhost
+    # cannot reveal the host address, so pin the one phones should use:
+    #   NIGHTINGALE_REMOTE_URL=http://192.168.1.10:64448 docker compose up -d
+    environment:
+      NIGHTINGALE_REMOTE_URL: ${NIGHTINGALE_REMOTE_URL:-}
     ports:
       - "64448:8080"
     volumes:
@@ -48,6 +53,8 @@ services:
     image: nightingale:cuda
     container_name: nightingale-gpu
     restart: unless-stopped
+    environment:
+      NIGHTINGALE_REMOTE_URL: ${NIGHTINGALE_REMOTE_URL:-}
     ports:
       - "64448:8080"
     volumes:

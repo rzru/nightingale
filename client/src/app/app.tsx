@@ -1,10 +1,11 @@
 import './app.css';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router';
 
 import { UPDATES_SUPPORTED } from '@/bridge/platform';
+import { loadInterfaceLanguage } from '@/bridge/remote-control';
 import { LibraryPage } from '@/features/library/library-page';
 import { MenuLayout } from '@/features/menu/menu';
 import { MenuFocusProvider } from '@/features/menu/providers/menu-focus-context';
@@ -17,6 +18,7 @@ import { Toaster } from '@/shared/components/ui/sonner';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { TauriAppShell } from '@/shared/components/window/title-bar';
 import { useConfig } from '@/shared/config/use-config';
+import { REMOTE_LANGUAGE } from '@/shared/query-keys';
 
 import { NavInputProvider } from './providers/nav-input-context';
 import { ThemeProvider } from './providers/theme-context';
@@ -53,8 +55,30 @@ const InnerWrapper = () => (
   </>
 );
 
+/**
+ * The phone is served by the LAN router, so it never receives the host's
+ * bootstrap payload. Ask for the interface language so the remote reads the
+ * same language the host selected.
+ */
+const RemoteLanguageSync = () => {
+  const { data } = useQuery({
+    queryKey: REMOTE_LANGUAGE,
+    queryFn: loadInterfaceLanguage,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (data !== undefined) {
+      syncLanguagePreference(data);
+    }
+  }, [data]);
+
+  return null;
+};
+
 const RemoteShell = () => (
   <ThemeProvider defaultTheme="dark">
+    <RemoteLanguageSync />
     <TooltipProvider>
       <BrowserRouter>
         <Routes>

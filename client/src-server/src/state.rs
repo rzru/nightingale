@@ -1,4 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    net::{IpAddr, SocketAddr},
+    sync::{Arc, RwLock},
+};
 
 use app_api::CommandState;
 use app_core::{RemoteControl, RemoteInfo};
@@ -13,6 +16,9 @@ use crate::jukebox::JukeboxStore;
 #[derive(Clone, Debug)]
 pub struct RemoteAddress {
     port: u16,
+    /// The listener only accepts loopback traffic, so no LAN address can reach
+    /// it. Advertising one would hand phones a URL that cannot connect.
+    loopback_only: bool,
     /// Operator-pinned base URL (`NIGHTINGALE_REMOTE_URL`). Wins over detection
     /// for deployments a LAN address cannot describe, e.g. a container port
     /// mapping or a reverse proxy forwarding to a loopback bind.
@@ -20,9 +26,10 @@ pub struct RemoteAddress {
 }
 
 impl RemoteAddress {
-    pub fn new(port: u16, base: Option<String>) -> Self {
+    pub fn new(bind: SocketAddr, base: Option<String>) -> Self {
         Self {
-            port,
+            port: bind.port(),
+            loopback_only: bind.ip().is_loopback(),
             base: base
                 .map(|base| base.trim().trim_end_matches('/').to_string())
                 .filter(|base| !base.is_empty()),
@@ -108,20 +115,84 @@ impl AppState {
             return Some(base);
         }
 
-        let host = header(headers, "host");
+        let host = header(headers, "host")?;
         let scheme = header(headers, "x-forwarded-proto").unwrap_or_else(|| "http".to_string());
-        let direct = || host.clone().map(|host| format!("{scheme}://{host}"));
+        // A proxy in front means the public scheme and port are the request's,
+        // not this listener's (the shipped installer proxies :80/:443 into a
+        // loopback-only backend).
+        let proxied =
+            headers.contains_key("x-forwarded-proto") || headers.contains_key("x-forwarded-for");
 
-        match host.as_deref() {
-            Some(host) if is_ip_host(host) => Some(format!("{scheme}://{host}")),
-            // `.local`, single-label, and `localhost` names are exactly the ones
-            // phones fail to resolve, so swap in the LAN address.
-            Some(host) if is_phone_unfriendly_name(host) => {
-                app_core::lan_base(self.address.port).or_else(direct)
+        if is_ip_host(&host) {
+            // A loopback address is what the local browser used; a phone cannot
+            // follow it, and a loopback-only listener has nothing else to offer.
+            if self.address.loopback_only && !proxied && is_loopback_host(&host) {
+                return None;
             }
-            _ => direct(),
+            // Behind a proxy, hand the phone the plain-HTTP door: the TLS one
+            // uses a local CA most phones flag as insecure.
+            return Some(if proxied {
+                plain_http_url(&host, &scheme)
+            } else {
+                format!("{scheme}://{host}")
+            });
         }
+
+        if is_phone_unfriendly_name(&host) {
+            // `.local`, single-label, and `localhost` names are exactly the ones
+            // phones fail to resolve. Keep the port the client used (that is
+            // what a proxy or container publishes) and swap only the name.
+            if proxied {
+                return lan_url(http_port(&scheme, host_port(&host)));
+            }
+            // No proxy: the LAN address only works when something actually
+            // listens on the LAN. Otherwise report nothing instead of handing
+            // phones a URL that cannot connect.
+            if self.address.loopback_only {
+                return None;
+            }
+            // Prefer the port the client used: a container publishes its own
+            // port (e.g. 64448 -> 8080), and that is the one phones must hit.
+            return lan_url(host_port(&host).or(Some(self.address.port)));
+        }
+
+        Some(format!("{scheme}://{host}"))
     }
+}
+
+/// Phone links stay plain HTTP: self-hosted TLS usually comes from a local CA
+/// that phones do not trust. Pin `NIGHTINGALE_REMOTE_URL` for a real HTTPS
+/// deployment.
+fn http_port(scheme: &str, port: Option<u16>) -> Option<u16> {
+    if scheme == "http" {
+        port
+    } else {
+        None
+    }
+}
+
+fn plain_http_url(host: &str, scheme: &str) -> String {
+    let name = hostname(host);
+
+    match http_port(scheme, host_port(host)) {
+        Some(port) => format!("http://{name}:{port}"),
+        None => format!("http://{name}"),
+    }
+}
+
+/// Swaps the hostname for the machine's LAN address, keeping the given port.
+fn lan_url(port: Option<u16>) -> Option<String> {
+    let ip = app_core::lan_ip()?;
+
+    Some(match port {
+        Some(port) => format!("http://{ip}:{port}"),
+        None => format!("http://{ip}"),
+    })
+}
+
+fn host_port(host: &str) -> Option<u16> {
+    host.rsplit_once(':')
+        .and_then(|(_, port)| port.parse::<u16>().ok())
 }
 
 fn header(headers: &HeaderMap, name: &str) -> Option<String> {
@@ -131,12 +202,20 @@ fn header(headers: &HeaderMap, name: &str) -> Option<String> {
         .map(str::to_owned)
 }
 
-fn is_ip_host(host: &str) -> bool {
+fn parse_ip(host: &str) -> Option<IpAddr> {
     hostname(host)
         .trim_start_matches('[')
         .trim_end_matches(']')
-        .parse::<std::net::IpAddr>()
-        .is_ok()
+        .parse::<IpAddr>()
+        .ok()
+}
+
+fn is_ip_host(host: &str) -> bool {
+    parse_ip(host).is_some()
+}
+
+fn is_loopback_host(host: &str) -> bool {
+    parse_ip(host).is_some_and(|ip| ip.is_loopback())
 }
 
 /// mDNS and single-label names resolve on desktops but not on many phones, so

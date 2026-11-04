@@ -78,7 +78,7 @@ impl RemoteServer {
             self.commands.clone(),
             self.events.clone(),
             control,
-            server::RemoteAddress::new(app_core::REMOTE_PORT, None),
+            server::RemoteAddress::new(address, None),
             false,
             false,
         );

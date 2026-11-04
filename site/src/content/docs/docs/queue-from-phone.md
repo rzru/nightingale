@@ -8,10 +8,10 @@ Show a QR code, they scan it, and they get a queue page: search the library, add
 
 ## Open the QR code
 
-Press the profile button at the bottom of the sidebar and choose **Phone remote**, or use the QR button in the playback queue header.
+Hover the QR button at the top right of the sidebar for the code and its link. Click it (or press it with a keyboard or gamepad) to open the same code in a dialog, where the link can be copied with one click.
 
 - **Desktop:** the app serves the queue page itself on port `64449`.
-- **Self-hosted:** the server you already run serves it on the port it listens on.
+- **Self-hosted:** the server you already run serves it on the port it listens on, or on whatever your proxy publishes it as.
 
 The link is printed under the code, so it can be typed in when a camera is not handy.
 
@@ -28,19 +28,20 @@ In browser playback mode where each song opens in its own playback window (the *
 
 ## How the address is picked
 
-The QR encodes a plain HTTP LAN address:
+The address mirrors how you reached the app, so the phone talks to the same door your browser used:
 
-```text
-http://<lan-ip>:<port>/q?t=<token>
-```
-
-- A raw IP instead of a `<hostname>.local` name, because many phones cannot resolve mDNS names. Real DNS names and IP addresses you reached the app with are kept as they are.
-- The port the server actually listens on, not the port in your browser's address bar. A host reachable through Caddy on `443` still gets the direct listener in the code.
+- An IP address or real DNS name in the address bar is kept as it is.
+- The bare hostname is swapped for the machine's LAN address when it is something phones struggle with (`nightingale.local`, `localhost`, single-label names).
+- The link is always plain `http://`. The installer's HTTPS uses a local CA that phones flag as insecure, and a phone needs no secure context to sit in the queue, so the QR never hands out a warning screen. The port follows the request: a container mapping keeps the published port (`64448` in the Compose example), and visiting over `https://` falls back to the proxy's HTTP port (`80`).
+- If your phones should use a real HTTPS address instead, pin it with the override below.
+- If the server listens only on loopback and nothing proxies it, the app shows no address at all instead of a link no phone can open. Put a proxy in front, bind to the LAN, or pin the address.
 - A random token. The first visit stores it as a cookie and strips it from the address bar, so it does not sit in the phone's history.
+
+Browsing through `localhost` cannot reveal the address phones should use, which is why container and proxy setups often want the override below.
 
 ### Override the address
 
-Some setups cannot be described by a LAN address, for example a container port mapping, a proxy in front of a loopback bind, or a VPN-only interface. Pin it instead:
+Some setups cannot be described by a LAN address, for example a Docker container browsing through `localhost`, a proxy in front of a loopback bind, or a VPN-only interface. Pin it instead:
 
 ```bash
 NIGHTINGALE_REMOTE_URL=http://192.168.1.10:64448

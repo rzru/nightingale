@@ -113,7 +113,7 @@ pub fn lan_base(port: u16) -> Option<String> {
 /// resolves a route, it sends nothing. Behind a VPN or with an unusual routing
 /// table this can still be wrong, which is why the UI also shows the URL text
 /// and lets the operator correct it.
-fn lan_ip() -> Option<IpAddr> {
+pub fn lan_ip() -> Option<IpAddr> {
     let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0)).ok()?;
     socket.connect((Ipv4Addr::new(8, 8, 8, 8), 80)).ok()?;
     let address = socket.local_addr().ok()?.ip();

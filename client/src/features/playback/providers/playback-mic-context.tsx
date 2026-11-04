@@ -48,6 +48,7 @@ export type PlaybackPlayerMicState = {
 export type PlaybackMicState = {
   multiplayer: boolean;
   players: PlaybackPlayerMicState[];
+  devices: readonly MicDevice[];
   micUserEnabled: boolean;
   micMonitorUserEnabled: boolean;
   selectedMicId: string | null;
@@ -65,6 +66,7 @@ export type PlaybackMicActions = {
   handleToggleMic: () => void;
   handleCycleMic: () => void;
   handleToggleMicMonitor: () => void;
+  selectMic: (deviceId: string) => void;
 };
 
 const EMPTY_PLAYERS: readonly PlaybackPlayer[] = [];
@@ -238,6 +240,7 @@ function errorPrefix(multiplayer: boolean, index: number): string {
 type MicStateInput = {
   multiplayer: boolean;
   players: PlaybackPlayerMicState[];
+  devices: readonly MicDevice[];
   primary: PlaybackPlayerMicState;
   micUserEnabled: boolean;
   micMonitorUserEnabled: boolean;
@@ -249,6 +252,7 @@ function micState(input: MicStateInput): PlaybackMicState {
     return {
       multiplayer,
       players,
+      devices: input.devices,
       micUserEnabled: true,
       micMonitorUserEnabled: input.micMonitorUserEnabled,
       selectedMicId: primary.microphoneId,
@@ -264,6 +268,7 @@ function micState(input: MicStateInput): PlaybackMicState {
   return {
     multiplayer,
     players,
+    devices: input.devices,
     micUserEnabled: input.micUserEnabled,
     micMonitorUserEnabled: input.micMonitorUserEnabled,
     selectedMicId: primary.microphoneId,
@@ -357,15 +362,25 @@ export function PlaybackMicProvider({ config, players, children }: PlaybackMicPr
     });
   }, [micMonitorUserEnabled, multiplayer, persistConfig]);
 
+  const selectMic = useCallback(
+    (deviceId: string) => {
+      if (multiplayer || !micDevices.some((device) => device.deviceId === deviceId)) {
+        return;
+      }
+      setSelectedMicId(deviceId);
+      persistConfig({ preferred_mic: deviceId });
+    },
+    [micDevices, multiplayer, persistConfig],
+  );
+
   const handleCycleMic = useCallback(() => {
     if (multiplayer || micDevices.length <= 1) {
       return;
     }
     const currentIndex = micDevices.findIndex((device) => device.deviceId === selectedMicId);
     const next = micDevices[(currentIndex + 1) % micDevices.length];
-    setSelectedMicId(next.deviceId);
-    persistConfig({ preferred_mic: next.deviceId });
-  }, [micDevices, multiplayer, persistConfig, selectedMicId]);
+    selectMic(next.deviceId);
+  }, [micDevices, multiplayer, selectMic, selectedMicId]);
 
   const handleToggleMicMonitor = useCallback(() => {
     setMicMonitorUserEnabled((previous) => {
@@ -384,15 +399,16 @@ export function PlaybackMicProvider({ config, players, children }: PlaybackMicPr
       micState({
         multiplayer,
         players: namedPlayers,
+        devices: micDevices,
         primary,
         micUserEnabled,
         micMonitorUserEnabled,
       }),
-    [micMonitorUserEnabled, micUserEnabled, multiplayer, namedPlayers, primary],
+    [micDevices, micMonitorUserEnabled, micUserEnabled, multiplayer, namedPlayers, primary],
   );
   const actionsValue = useMemo<PlaybackMicActions>(
-    () => ({ reactiveRef, handleToggleMic, handleCycleMic, handleToggleMicMonitor }),
-    [handleCycleMic, handleToggleMic, handleToggleMicMonitor, reactiveRef],
+    () => ({ reactiveRef, handleToggleMic, handleCycleMic, handleToggleMicMonitor, selectMic }),
+    [handleCycleMic, handleToggleMic, handleToggleMicMonitor, reactiveRef, selectMic],
   );
 
   return (

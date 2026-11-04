@@ -3,6 +3,11 @@ import { SearchIcon, XIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import {
+  requestPlaybackControl,
+  type PlaybackControl,
+  type PlaybackProgress,
+} from '@/bridge/playback-remote';
+import {
   loadPlaybackStatus,
   onPlaybackStatusChanged,
   requestPlaybackCommand,
@@ -22,9 +27,13 @@ import {
 import { MultiplayerSetupDialog } from '@/features/playback/components/dialogs/multiplayer-setup';
 import { PlaybackActionButtons } from '@/features/playback/components/playback-action-buttons';
 import { playbackActions } from '@/features/playback/lib/playback-actions';
+import { useRemotePlayback, useRemoteTransport } from '@/features/remote/hooks/use-remote-playback';
+import { RemotePlaybackSettings } from '@/features/remote/remote-playback-settings';
+import { RemoteTransportBar } from '@/features/remote/remote-transport-bar';
 import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { Separator } from '@/shared/components/ui/separator';
 import { PLAYBACK_STATUS, SONGS } from '@/shared/query-keys';
 import type { LibraryMenuFilters } from '@/types/LibraryMenuFilters';
 import type { LoadSongsParams } from '@/types/LoadSongsParams';
@@ -44,19 +53,71 @@ const PAGE_SIZE = 25;
 const MIN_SEARCH_LENGTH = 2;
 
 /**
- * Playback runs on the host, so these buttons only send commands. The action
- * list is the shared one, so the phone offers exactly what the host's own
- * pause and result screens offer.
+ * The host only offers these while they apply, so the row simply mirrors the
+ * published progress next to the shared playback actions.
+ */
+function RemoteSkipButtons({
+  progress,
+  disabled,
+  onControl,
+}: {
+  progress: PlaybackProgress | undefined;
+  disabled: boolean;
+  onControl: (control: PlaybackControl) => void;
+}) {
+  const skipIntro = progress?.skipIntro === true;
+  const skipOutro = progress?.skipOutro === true;
+
+  if (!skipIntro && !skipOutro) {
+    return null;
+  }
+
+  return (
+    <>
+      {skipIntro ? (
+        <Button
+          variant="outline"
+          disabled={disabled}
+          className="h-11 flex-1"
+          onClick={() => onControl({ type: 'skip-intro' })}
+        >
+          {t('playback.playbackHud.skipIntro')}
+        </Button>
+      ) : null}
+      {skipOutro ? (
+        <Button
+          variant="outline"
+          disabled={disabled}
+          className="h-11 flex-1"
+          onClick={() => onControl({ type: 'skip-outro' })}
+        >
+          {t('playback.playbackHud.skipOutro')}
+        </Button>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Playback runs on the host, so these controls only send requests. The action
+ * list is the shared one, the transport mirrors the host HUD, and the settings
+ * panel edits the host's live playback state.
  */
 function PlaybackControl({ entryCount }: { entryCount: number }) {
   const queryClient = useQueryClient();
   const { data: status } = useQuery({ queryKey: PLAYBACK_STATUS, queryFn: loadPlaybackStatus });
+  const { progress, options } = useRemotePlayback();
   const { mutate, isLoading } = useMutation({ mutationFn: requestPlaybackCommand });
+  const { mutate: sendControl } = useMutation({ mutationFn: requestPlaybackControl });
   const { mutate: startQueue, isLoading: starting } = useMutation({
     mutationFn: requestQueuePlayback,
   });
   const { mutate: clear, isLoading: clearing } = useClearPlaybackQueue();
   const [multiplayerOpen, setMultiplayerOpen] = useState(false);
+  const runControl = (control: PlaybackControl) => sendControl(control);
+  const transport = useRemoteTransport(progress, (seconds) =>
+    runControl({ type: 'seek', positionMs: Math.round(seconds * 1000) }),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -108,14 +169,30 @@ function PlaybackControl({ entryCount }: { entryCount: number }) {
   }
 
   return (
-    <PlaybackActionButtons
-      actions={playbackActions(status)}
-      onCommand={(command) => mutate(command)}
-      open={false}
-      disabled={isLoading}
-      className="w-full"
-      buttonClassName="h-11 flex-1"
-    />
+    <div className="flex flex-col gap-2">
+      {options === undefined || options.themeKey === '' ? null : (
+        <>
+          <RemotePlaybackSettings options={options} onControl={runControl} />
+          <Separator className="bg-border/60" />
+        </>
+      )}
+
+      <RemoteTransportBar transport={transport} />
+
+      <Separator className="bg-border/60" />
+
+      <PlaybackActionButtons
+        actions={playbackActions(status)}
+        onCommand={(command) => mutate(command)}
+        open={false}
+        disabled={isLoading}
+        className="w-full"
+        buttonClassName="h-11 flex-1"
+        trailing={
+          <RemoteSkipButtons progress={progress} disabled={isLoading} onControl={runControl} />
+        }
+      />
+    </div>
   );
 }
 
@@ -236,7 +313,7 @@ export const RemoteQueuePage = () => {
   }, []);
 
   return (
-    <div className="mx-auto flex h-dvh max-w-xl flex-col">
+    <div className="mx-auto flex h-dvh max-w-xl flex-col overflow-x-hidden">
       <div className="flex flex-col gap-2 border-b px-4 py-3">
         <header className="flex items-center justify-between gap-3">
           <h1 className="text-lg font-semibold">{t('remote.queue.title')}</h1>
@@ -258,7 +335,7 @@ export const RemoteQueuePage = () => {
         />
       </div>
 
-      <div className="border-t px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="shrink-0 border-t px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <PlaybackControl entryCount={entries.length} />
       </div>
     </div>

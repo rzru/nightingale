@@ -5,11 +5,12 @@ import {
   SkipForwardIcon,
   type LucideIcon,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { usePlaybackTransportActions } from '@/features/playback/providers';
 import { findCurrentSegment } from '@/features/playback/utils/lyrics-gap';
 import { t } from '@/i18n';
+import { cn } from '@/shared/utils/cn';
 import { formatSeconds } from '@/shared/utils/format-duration';
 import type { Segment } from '@/types/Transcript';
 
@@ -50,20 +51,38 @@ function TransportButton({
   );
 }
 
-export function PlaybackTransportControls({
-  duration,
-  segments,
-}: {
+/** Lyric-line jumping for whatever owns the timeline. */
+export type TransportLines = {
+  isAvailable: () => { previous: boolean; next: boolean };
+  seek: (delta: 1 | -1) => void;
+};
+
+export type TransportControlsProps = {
   duration: number;
-  segments: Segment[];
-}) {
-  const { subscribe, getCurrentTime, seek } = usePlaybackTransportActions();
+  subscribe: (fn: (time: number) => void) => () => void;
+  getCurrentTime: () => number;
+  seek: (seconds: number) => void;
+  lines: TransportLines;
+  className?: string;
+};
+
+/**
+ * The seek slider and its buttons. Presentation only: the playback HUD binds it
+ * to the local audio engine, the phone binds it to the host's published clock.
+ */
+export function TransportControls({
+  duration,
+  subscribe,
+  getCurrentTime,
+  seek,
+  lines,
+  className,
+}: TransportControlsProps) {
   const timerRef = useRef<HTMLParagraphElement>(null);
   const sliderRef = useRef<HTMLInputElement>(null);
   const previousLineRef = useRef<HTMLButtonElement>(null);
   const nextLineRef = useRef<HTMLButtonElement>(null);
   const draggingRef = useRef(false);
-  const lineHintRef = useRef(0);
 
   const updateTime = useCallback(
     (time: number) => {
@@ -77,22 +96,18 @@ export function PlaybackTransportControls({
         }
       }
 
-      if (segments.length > 0) {
-        const index = findCurrentSegment(segments, clamped, lineHintRef.current);
-        lineHintRef.current = index;
-        if (previousLineRef.current) {
-          previousLineRef.current.disabled = index === 0;
-        }
-        if (nextLineRef.current) {
-          nextLineRef.current.disabled = index === segments.length - 1;
-        }
+      const available = lines.isAvailable();
+      if (previousLineRef.current) {
+        previousLineRef.current.disabled = !available.previous;
+      }
+      if (nextLineRef.current) {
+        nextLineRef.current.disabled = !available.next;
       }
     },
-    [duration, segments],
+    [duration, lines],
   );
 
   useEffect(() => {
-    lineHintRef.current = 0;
     updateTime(getCurrentTime());
     return subscribe(updateTime);
   }, [getCurrentTime, subscribe, updateTime]);
@@ -113,17 +128,9 @@ export function PlaybackTransportControls({
   const seekRelative = (seconds: number) =>
     seek(Math.max(0, Math.min(duration, getCurrentTime() + seconds)));
 
-  const seekLine = (offset: number) => {
-    if (segments.length === 0) {
-      return;
-    }
-    const current = findCurrentSegment(segments, getCurrentTime(), lineHintRef.current);
-    seek(segments[Math.max(0, Math.min(segments.length - 1, current + offset))].start);
-  };
-
   return (
     <div
-      className="mt-1.5 w-full max-w-[340px]"
+      className={cn('mt-1.5 w-full max-w-[340px]', className)}
       aria-label={t('playback.playbackTransportControls.playbackPosition')}
     >
       <div className="flex h-[28px] items-center justify-between gap-3 [@media(any-pointer:coarse)]:h-[44px]">
@@ -134,9 +141,8 @@ export function PlaybackTransportControls({
           <TransportButton
             icon={SkipBackIcon}
             label={t('playback.playbackTransportControls.previousLyricLine')}
-            disabled={segments.length === 0}
             buttonRef={previousLineRef}
-            onClick={() => seekLine(-1)}
+            onClick={() => lines.seek(-1)}
           />
           <TransportButton
             icon={RotateCcwIcon}
@@ -151,9 +157,8 @@ export function PlaybackTransportControls({
           <TransportButton
             icon={SkipForwardIcon}
             label={t('playback.playbackTransportControls.nextLyricLine')}
-            disabled={segments.length === 0}
             buttonRef={nextLineRef}
-            onClick={() => seekLine(1)}
+            onClick={() => lines.seek(1)}
           />
         </div>
       </div>
@@ -178,5 +183,52 @@ export function PlaybackTransportControls({
         className="block h-[12px] w-full cursor-pointer accent-[#f3ead7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f3ead7] [@media(any-pointer:coarse)]:h-[24px]"
       />
     </div>
+  );
+}
+
+/** Binds the transport controls to the playback surface's own audio engine. */
+export function PlaybackTransportControls({
+  duration,
+  segments,
+}: {
+  duration: number;
+  segments: Segment[];
+}) {
+  const { subscribe, getCurrentTime, seek } = usePlaybackTransportActions();
+  const hintRef = useRef(0);
+
+  const lines = useMemo<TransportLines>(() => {
+    const currentLine = () => {
+      if (segments.length === 0) {
+        return -1;
+      }
+      const index = findCurrentSegment(segments, getCurrentTime(), hintRef.current);
+      hintRef.current = index;
+      return index;
+    };
+
+    return {
+      isAvailable: () => {
+        const index = currentLine();
+        return { previous: index > 0, next: index >= 0 && index < segments.length - 1 };
+      },
+      seek: (delta) => {
+        const index = currentLine();
+        if (index < 0) {
+          return;
+        }
+        seek(segments[Math.max(0, Math.min(segments.length - 1, index + delta))].start);
+      },
+    };
+  }, [getCurrentTime, seek, segments]);
+
+  return (
+    <TransportControls
+      duration={duration}
+      subscribe={subscribe}
+      getCurrentTime={getCurrentTime}
+      seek={seek}
+      lines={lines}
+    />
   );
 }

@@ -165,7 +165,7 @@ The container runs as a non-root `nightingale` user. Mount your music read-only 
 | `NIGHTINGALE_BIND` | `0.0.0.0:8080` | Address the server listens on inside the container. |
 | `NIGHTINGALE_DATA_PATH` | `/data` | Data + config directory (mount this as a volume). Fixed, so the setup wizard skips the data-folder step. |
 | `NIGHTINGALE_LIBRARY_PATH` | `/songs` | Pin the library to a folder at this in-container path (mount your music here). Scanned on startup; the in-app source pickers are hidden while it's set. Set empty to use in-app / remote sources instead. |
-| `NIGHTINGALE_REMOTE_URL` | empty | Base URL phones should scan for [queue control](/docs/queue-from-phone/), e.g. `http://192.168.1.10:64448`. Overrides LAN address detection. |
+| `NIGHTINGALE_REMOTE_URL` | empty | Base URL phones should scan for [queue control](/docs/queue-from-phone/), e.g. `http://192.168.1.10:64448`. Overrides LAN address detection. Needed when you open the app through `localhost`, because a container cannot see the host address phones should use. |
 
 Build-time:
 

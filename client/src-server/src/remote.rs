@@ -22,17 +22,30 @@ pub(crate) const REMOTE_COMMANDS: &[&str] = &[
     "clear_playback_queue",
     "load_songs",
     "load_profiles",
+    "load_interface_language",
     "load_remote_microphones",
     "load_playback_status",
+    "load_playback_progress",
+    "load_playback_options",
     "request_playback_command",
+    "request_playback_control",
     "request_queue_playback",
 ];
+
+/// Branding the browser fetches on its own, often before the pairing cookie
+/// exists (tab icon, iOS home-screen icon). They carry no data, so they stay
+/// public instead of rendering the phone link iconless.
+const PUBLIC_PATHS: &[&str] = &["/favicon.png", "/favicon.ico", "/apple-touch-icon.png"];
 
 pub(crate) async fn require_token(
     State(state): State<AppState>,
     request: Request,
     next: Next,
 ) -> Response {
+    if PUBLIC_PATHS.contains(&request.uri().path()) {
+        return next.run(request).await;
+    }
+
     let token = state.remote_token();
     let from_query = query_token(request.uri().query()).map(str::to_owned);
     let presented = header_token(request.headers())

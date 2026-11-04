@@ -1,4 +1,4 @@
-import { ListMusicIcon, QrCodeIcon, XIcon } from 'lucide-react';
+import { ListMusicIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
 
 import type { PlaybackQueueEntry } from '@/bridge/playback-queue';
@@ -13,7 +13,6 @@ import {
   useStartNextPlaybackQueueSong,
 } from '@/features/playback-queue/use-playback-queue';
 import { MultiplayerSetupDialog } from '@/features/playback/components/dialogs/multiplayer-setup';
-import { RemoteControlDialog } from '@/features/remote/remote-control-dialog';
 import { t } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 
@@ -49,16 +48,6 @@ export function QueueSidebar({ entries, onClose }: QueueSidebarProps) {
         <h2 className="min-w-0 flex-1 text-sm font-semibold">
           {t('playbackQueue.queueSidebar.playbackQueue2')}
         </h2>
-        <RemoteControlDialog>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label={t('remote.control.openLabel')}
-            title={t('remote.control.openLabel')}
-          >
-            <QrCodeIcon />
-          </Button>
-        </RemoteControlDialog>
         <Button
           variant="ghost"
           size="icon-sm"
