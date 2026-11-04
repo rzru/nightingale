@@ -373,7 +373,7 @@
   "playback.hud.themeShortcut": "Theme: {{theme}} [{{shortcut}}]",
   "playback.lyrics.loadError": "Failed to load lyrics: {{error}}",
   "playback.lyrics.nextIn": "Next lyrics in {{seconds}}s",
-  "playback.pauseOverlay.exitingNowWonAposTDescription": "Exiting now won&apos;t save your progress",
+  "playback.pauseOverlay.exitingNowWonAposTDescription": "Exiting now won't save your progress",
   "playback.pauseOverlay.paused": "Paused",
   "playback.playbackHud.escBack": "[ESC] Back",
   "playback.playbackHud.flavor": "Flavor",

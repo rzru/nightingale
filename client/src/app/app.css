@@ -298,4 +298,56 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /*
+   * WebKit ignores `accent-color` on range inputs, so macOS drew its own dark
+   * slider while web and Linux stayed light. Explicit track and thumb keep the
+   * seek bar identical on every platform.
+   */
+  .seek-slider {
+    appearance: none;
+    background: transparent;
+  }
+
+  .seek-slider::-webkit-slider-runnable-track {
+    height: 0.25rem;
+    border-radius: 999px;
+    background: color(srgb 1 1 1 / 24%);
+  }
+
+  .seek-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 0.875rem;
+    height: 0.875rem;
+    margin-top: -0.3125rem;
+    border-radius: 999px;
+    background: #f3ead7;
+  }
+
+  .seek-slider::-moz-range-track {
+    height: 0.25rem;
+    border-radius: 999px;
+    background: color(srgb 1 1 1 / 24%);
+  }
+
+  .seek-slider::-moz-range-thumb {
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 0;
+    border-radius: 999px;
+    background: #f3ead7;
+  }
+
+  @media (any-pointer: coarse) {
+    .seek-slider::-webkit-slider-thumb {
+      width: 1.125rem;
+      height: 1.125rem;
+      margin-top: -0.4375rem;
+    }
+
+    .seek-slider::-moz-range-thumb {
+      width: 1.125rem;
+      height: 1.125rem;
+    }
+  }
 }

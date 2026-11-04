@@ -180,7 +180,7 @@ export function TransportControls({
         }}
         onKeyUp={(event) => isSeekKey(event.key) && commitSeek()}
         onBlur={() => draggingRef.current && commitSeek()}
-        className="block h-[12px] w-full cursor-pointer accent-[#f3ead7] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f3ead7] [@media(any-pointer:coarse)]:h-[24px]"
+        className="seek-slider block h-[14px] w-full cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f3ead7] [@media(any-pointer:coarse)]:h-[24px]"
       />
     </div>
   );
