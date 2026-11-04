@@ -198,6 +198,11 @@ export const SettingsPage = () => {
     mutate({ master_volume: volume });
   };
 
+  const updateLanguage = (language: string) => {
+    setLanguage(language);
+    mutate({ language: language === 'system' ? null : language });
+  };
+
   const updateLyricsScale = (scale: number) => {
     setLyricsScale(scale);
     mutate({ lyrics_scale: scale });
@@ -335,7 +340,7 @@ export const SettingsPage = () => {
                   value={preference}
                   options={LANGUAGE_OPTIONS}
                   triggerClassName={getFocusClassName(NAV.general.language, 0)}
-                  onValueChange={setLanguage}
+                  onValueChange={updateLanguage}
                 />
               </Field>
 

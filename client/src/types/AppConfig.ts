@@ -52,5 +52,10 @@ export type AppConfig = {
   auto_analyze: boolean | null;
   song_list_view: string | null;
   song_list_sort: Array<SongSort> | null;
+  /**
+   * Interface language preference (`system` or a BCP 47 tag such as
+   * `zh-cn`). `None` follows the system language.
+   */
+  language: string | null;
   language_overrides: { [key in string]: string } | null;
 };

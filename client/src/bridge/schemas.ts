@@ -137,6 +137,7 @@ export const appConfigSchema: z.ZodType<AppConfig> = z.object({
       }),
     )
     .nullable(),
+  language: nullableString,
   language_overrides: z.record(z.string(), z.string()).nullable(),
 });
 

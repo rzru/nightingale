@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from 'react';
 
+import de from './translations/de.json';
 import en from './translations/en.json';
-import ru from './translations/ru.json';
+import zhCn from './translations/zh-cn.json';
 
-const STORAGE_KEY = 'nightingale-language';
 const RTL_LANGUAGES = new Set<string>(['ar', 'fa', 'he', 'ur']);
 
 export type TranslationKey = keyof typeof en;
@@ -11,7 +11,7 @@ export type TranslationKey = keyof typeof en;
 type PluralKeyOf<Key extends string> = Key extends `${infer Base}.other` ? Base : never;
 export type PluralKey = PluralKeyOf<TranslationKey>;
 
-const catalogs = { en, ru } satisfies Record<string, Record<TranslationKey, string>>;
+const catalogs = { en, de, 'zh-cn': zhCn } satisfies Record<string, Record<TranslationKey, string>>;
 
 export type Locale = keyof typeof catalogs;
 export type LanguagePreference = Locale | 'system';
@@ -22,8 +22,9 @@ const isLocale = (value: string): value is Locale => Object.hasOwn(catalogs, val
 const locales = Object.keys(catalogs).filter(isLocale);
 
 const languageLabels = {
+  de: 'languages.german',
   en: 'languages.english',
-  ru: 'languages.russian',
+  'zh-cn': 'languages.simplifiedChinese',
 } satisfies Record<Locale, TranslationKey>;
 
 export const LANGUAGE_OPTIONS: { value: LanguagePreference; label: TranslationKey }[] = [
@@ -78,14 +79,14 @@ const systemLocale = (): Locale => {
 const isLanguagePreference = (value: string): value is LanguagePreference =>
   value === 'system' || isLocale(value);
 
-const readPreference = (): LanguagePreference => {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved !== null && isLanguagePreference(saved) ? saved : 'system';
-  } catch {
-    return 'system';
-  }
+const storedPreference = (value: unknown): LanguagePreference => {
+  const saved = typeof value === 'string' ? value : null;
+
+  return saved !== null && isLanguagePreference(saved) ? saved : 'system';
 };
+
+const readPreference = (): LanguagePreference =>
+  storedPreference(window.__NIGHTINGALE_APP_CONFIG__?.language);
 
 let preference = readPreference();
 let locale: Locale = preference === 'system' ? systemLocale() : preference;
@@ -95,15 +96,9 @@ const syncDocumentLanguage = () => {
   document.documentElement.dir = RTL_LANGUAGES.has(locale) ? 'rtl' : 'ltr';
 };
 
-const applyPreference = (next: LanguagePreference, persist: boolean) => {
+const applyPreference = (next: LanguagePreference) => {
   preference = next;
   locale = next === 'system' ? systemLocale() : next;
-
-  if (persist) {
-    try {
-      localStorage.setItem(STORAGE_KEY, next);
-    } catch {}
-  }
 
   syncDocumentLanguage();
   listeners.forEach((listener) => listener());
@@ -114,18 +109,19 @@ export const setLanguage = (next: string) => {
     return;
   }
 
-  applyPreference(next, true);
+  applyPreference(next);
 };
 
-window.addEventListener('storage', (event) => {
-  if (event.key === null || event.key === STORAGE_KEY) {
-    applyPreference(readPreference(), false);
+export const syncLanguagePreference = (value: string | null | undefined) => {
+  const next = storedPreference(value);
+  if (next !== preference) {
+    applyPreference(next);
   }
-});
+};
 
 window.addEventListener('languagechange', () => {
   if (preference === 'system') {
-    applyPreference('system', false);
+    applyPreference('system');
   }
 });
 

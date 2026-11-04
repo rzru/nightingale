@@ -1,6 +1,7 @@
 import './app.css';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router';
 
 import { UPDATES_SUPPORTED } from '@/bridge/platform';
@@ -10,7 +11,7 @@ import { MenuFocusProvider } from '@/features/menu/providers/menu-focus-context'
 import { Playback } from '@/features/playback/playback';
 import { SettingsPage } from '@/features/settings/settings';
 import { useUpdate } from '@/features/updates/queries/use-update';
-import { useTranslation } from '@/i18n';
+import { syncLanguagePreference, useTranslation } from '@/i18n';
 import { Toaster } from '@/shared/components/ui/sonner';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { TauriAppShell } from '@/shared/components/window/title-bar';
@@ -47,6 +48,12 @@ const InnerWrapper = () => (
 
 const ThemeWrapper = () => {
   const { data: config } = useConfig();
+
+  useEffect(() => {
+    if (config !== undefined) {
+      syncLanguagePreference(config.language);
+    }
+  }, [config]);
 
   return (
     <ThemeProvider defaultTheme={config?.dark_mode === false ? 'light' : 'dark'}>

@@ -227,6 +227,9 @@ pub struct AppConfig {
     pub song_list_view: Option<String>,
     #[serde(default, deserialize_with = "deserialize_song_list_sort")]
     pub song_list_sort: Option<Vec<SongSort>>,
+    /// Interface language preference (`system` or a BCP 47 tag such as
+    /// `zh-cn`). `None` follows the system language.
+    pub language: Option<String>,
     pub language_overrides: Option<HashMap<String, String>>,
 }
 
@@ -294,6 +297,7 @@ impl Default for AppConfig {
             auto_analyze: None,
             song_list_view: None,
             song_list_sort: None,
+            language: None,
             language_overrides: None,
         }
     }
