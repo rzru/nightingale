@@ -30,9 +30,7 @@ impl app_api::CommandRuntime for EventBus {
         if requested.is_some() {
             return Err("custom export destinations are unavailable in web mode".to_string());
         }
-        Ok(app_core::AppConfig::load()
-            .effective_data_path()
-            .join("exports"))
+        Ok(app_core::exports_dir())
     }
 }
 

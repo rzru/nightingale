@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::cache::CacheDir;
+use crate::config::AppConfig;
 use crate::error::NightingaleError;
 use crate::library_db;
 use crate::nge_format::write_nge;
@@ -82,6 +83,12 @@ fn nge_entries(song: &Song, cache: &CacheDir) -> Result<Vec<(String, PathBuf)>, 
         }
     }
     Ok(entries)
+}
+
+/// Where the self-hosted adapter writes `.nge` exports before handing them out.
+/// Desktop exports go to the folder the operator picked instead.
+pub fn exports_dir() -> PathBuf {
+    AppConfig::load().effective_data_path().join("exports")
 }
 
 pub fn export_song_nge(file_hash: &str, dest_dir: &Path) -> Result<PathBuf, NightingaleError> {

@@ -59,13 +59,19 @@ impl RemoteControl {
             let _ = std::fs::create_dir_all(parent);
         }
 
-        match serde_json::to_string_pretty(self) {
-            Ok(json) => {
-                if let Err(error) = std::fs::write(&path, json) {
-                    tracing::warn!("failed writing remote control state: {error}");
-                }
-            }
-            Err(error) => tracing::warn!("failed serialising remote control state: {error}"),
+        let Ok(json) = serde_json::to_string_pretty(self) else {
+            tracing::warn!("failed serialising remote control state");
+            return;
+        };
+
+        // Write then rename: a crash mid-write must not truncate the token,
+        // which would invalidate every QR code already printed.
+        let temporary = path.with_extension("json.part");
+        let result =
+            std::fs::write(&temporary, json).and_then(|()| std::fs::rename(&temporary, &path));
+        if let Err(error) = result {
+            tracing::warn!("failed writing remote control state: {error}");
+            let _ = std::fs::remove_file(&temporary);
         }
     }
 

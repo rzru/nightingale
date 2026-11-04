@@ -48,7 +48,7 @@ pub fn remote_router(state: AppState) -> Router {
     Router::new()
         .route("/", get(|| async { axum::response::Redirect::to("/q") }))
         .route("/api/cmd/:name", post(commands::handle_remote_cmd))
-        .route("/api/asset", get(media::handle_asset))
+        .route("/api/asset", get(media::handle_remote_asset))
         .route("/ws", any(ws::handle_upgrade))
         .fallback(static_files::handle)
         .layer(middleware::from_fn_with_state(

@@ -377,11 +377,19 @@ function ResultActions({
   onNext,
 }: ResultActionsProps) {
   const [setupOpen, setSetupOpen] = useState(false);
+  // One automatic attempt per results screen: a failed start must not retry on
+  // a loop, and a blocked playback window must not leave a countdown at zero.
+  // The dialog unmounts when it closes, so this resets with the next result.
+  const [autoContinueFired, setAutoContinueFired] = useState(false);
   const canChangePlayers = multiplayer && onNext !== undefined;
   const hasNext = onNext !== undefined;
   const { nextIndex, autoContinueIndex, itemCount } = navIndices(canChangePlayers, hasNext);
   const startNext = onNext ?? (() => {});
   const counting = isCounting({ open, autoContinue, hasNext, setupOpen, nextPending });
+  const advanced = (): void => {
+    setAutoContinueFired(true);
+    startNext();
+  };
   const actions: Record<Action, () => void> = {
     exit: onBack,
     players: () => setSetupOpen(true),
@@ -429,7 +437,9 @@ function ResultActions({
         autoContinue={autoContinue}
         disabled={nextPending}
         focused={open && focusedIndex === autoContinueIndex}
-        counter={counting ? <AutoContinueCountdown onElapsed={startNext} /> : null}
+        counter={
+          counting && !autoContinueFired ? <AutoContinueCountdown onElapsed={advanced} /> : null
+        }
         onToggle={onAutoContinueChange}
       />
 

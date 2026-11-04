@@ -400,6 +400,7 @@
   "playback.customBackground.couldNotLoad": "无法加载背景",
   "playback.players.duplicateProfileError": "已保存的档案只能使用一次。",
   "playback.players.guest": "访客",
+  "playback.players.invalidQueueRequest": "无法读取手机发来的请求，请在手机队列页面重试。",
   "playback.players.microphonesError": "无法加载麦克风。请检查麦克风权限后重试。",
   "playback.players.minimumMicrophonesError": "连接至少两个麦克风才能开始多人游戏。",
   "playback.players.missingMicrophoneError": "请为每位玩家选择已连接的麦克风。",

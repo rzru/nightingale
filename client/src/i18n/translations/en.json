@@ -400,6 +400,7 @@
   "playback.customBackground.couldNotLoad": "Background could not be loaded",
   "playback.players.duplicateProfileError": "A saved profile can only be used once.",
   "playback.players.guest": "Guest",
+  "playback.players.invalidQueueRequest": "Could not read that request from the phone. Try again from its queue page.",
   "playback.players.microphonesError": "Could not load microphones. Check microphone permission and try again.",
   "playback.players.minimumMicrophonesError": "Connect at least two microphones to start multiplayer.",
   "playback.players.missingMicrophoneError": "Select a connected microphone for every player.",

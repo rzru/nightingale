@@ -27,7 +27,7 @@ below.
 
 ### Fixes
 
-- The phone now hides the playback transport, seek bar, and settings once the session playback window closes, instead of leaving controls for a playback that is gone.
+- The phone now hides the playback transport, seek bar, and settings once the playback window or browser tab closes, instead of leaving controls for a playback that is gone.
 - The phone no longer offers **Skip Outro** while the results screen is already showing on the host.
 - The analysis status badge now names the lyrics source on its own instead of appending it in parentheses, so long labels no longer spill over the actions column in the song list.
 - Session mode now opens browser playback directly so audio can start, and desktop playback windows show cover art while loading.

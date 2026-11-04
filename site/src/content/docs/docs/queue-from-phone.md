@@ -2,9 +2,9 @@
 title: Queue From Your Phone
 ---
 
-Guests can manage the queue from their own phone while the machine keeps playing.
+Guests can manage the queue and the playback surface from their own phone while the machine keeps playing.
 
-Show a QR code, they scan it, and they get a queue page: search the library, add songs, reorder, remove. Nothing on the phone can start, pause, or stop playback.
+Show a QR code, they scan it, and they get a queue page: search the library, add songs, reorder, remove, and — while a song is playing — control the host's transport and a few playback settings. Audio always comes out of the host.
 
 ## Open the QR code
 
@@ -17,12 +17,14 @@ The link is printed under the code, so it can be typed in when a camera is not h
 
 ## What guests can do
 
-- Search analyzed songs and add them to the end of the queue.
+- Search analyzed songs and add them to the end of the queue. Unanalyzed songs are hidden, because a song has to be analyzed before it can be queued.
 - Reorder entries and remove them, including entries another guest added.
-- Start the queue on the host, pause or resume, skip straight to the next queued song, or end the song and go back to the menu. These are the same actions the host's own pause and end-of-song screens offer.
+- Start the queue on the host, in single-player or by naming the singers from the host's own microphone list.
+- Pause, resume, skip straight to the next queued song, or end the song and go back to the menu. These are the same actions the host's own pause and end-of-song screens offer.
+- While a song plays: seek with the same bar and ±1 second / lyric-line buttons the host uses, toggle **Skip Intro** and **Skip Outro**, set the guide-vocal volume, mute or unmute the microphone, switch host microphones, toggle monitoring, and pick the background theme and video flavor.
 - Watch the queue change live: every edit from a phone appears on the host screen immediately.
 
-Playback always runs on the host. The phone only sends the request, so a guest cannot play audio on their own device or take over the song. The remote does not expose seeking, volume, or picking a song to play out of order; skip only advances to the next entry already in the queue. Guests also get no settings, library management, or microphone access. Unanalyzed songs are hidden from search, because a song has to be analyzed before it can be queued.
+Playback always runs on the host, so a guest cannot play audio on their own device. Skip and start only ever take the next entry in the queue, so nobody can jump to a song out of order. Per-singer microphone controls are hidden during multiplayer because the lineup was fixed before the song started. Guests also get no library management, no song editing, and no microphone access from their own phone — the microphone list they see is the host's.
 
 In browser playback mode where each song opens in its own playback window (the **session** playback mode), some browsers block that window when the start comes from a phone tap rather than a click on the host. Use the default single-window mode if guests should be able to start the night from their phones.
 
@@ -62,6 +64,8 @@ server --remote-url http://192.168.1.10:64448
 
 ## Security
 
-Anyone who can scan the code can manage the queue. To invalidate existing links, quit Nightingale and delete `remote-control.json` from the data folder; a new token is generated on the next start.
+Anyone who can scan the code can manage the queue and the playback controls above. To invalidate existing links, quit Nightingale and delete `remote-control.json` from the data folder; a new token is generated on the next start.
 
-On desktop, the phone page is all the network can reach: it accepts only the queue commands and library search. Self-hosted mode already answers its full API to anything on the LAN, and the queue link does not widen that.
+On desktop, the phone page is served by a small LAN listener that only answers with the queue page, its album art, and the commands the queue needs — it is not the app's normal command or media surface. Self-hosted mode already answers its full API to anything on the LAN, and the queue link does not widen that; treat a self-hosted install like any other unauthenticated service on your network.
+
+Everything the phone sends is checked on the host before it runs: a transport request may only name actions, themes, flavors, and microphones the host is currently publishing, and a seek is clamped to the song's length.

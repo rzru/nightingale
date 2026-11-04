@@ -76,6 +76,13 @@ pub fn write_nge(
     metadata: serde_json::Value,
     entries: &[(String, PathBuf)],
 ) -> Result<(), NightingaleError> {
+    if !valid_file_hash(file_hash) {
+        return Err(nge_err("invalid source file hash"));
+    }
+    if entries.len() > MAX_ENTRIES {
+        return Err(nge_err("too many entries"));
+    }
+
     let manifest = Manifest {
         version: FORMAT_VERSION,
         file_hash: file_hash.to_string(),
@@ -91,6 +98,16 @@ pub fn write_nge(
             })
             .collect::<Result<_, std::io::Error>>()?,
     };
+
+    let mut names = HashSet::new();
+    for entry in &manifest.entries {
+        if !valid_entry_name(&entry.name) || !names.insert(entry.name.as_str()) {
+            return Err(nge_err(format!(
+                "invalid or duplicate entry name {}",
+                entry.name
+            )));
+        }
+    }
 
     let options = SimpleFileOptions::default()
         .compression_method(CompressionMethod::Stored)

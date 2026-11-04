@@ -400,6 +400,7 @@
   "playback.customBackground.couldNotLoad": "Hintergrund konnte nicht geladen werden",
   "playback.players.duplicateProfileError": "Ein gespeichertes Profil kann nur einmal verwendet werden.",
   "playback.players.guest": "Gast",
+  "playback.players.invalidQueueRequest": "Die Anfrage des Telefons konnte nicht gelesen werden. Versuch es erneut über die Warteschlangen-Seite.",
   "playback.players.microphonesError": "Mikrofone konnten nicht geladen werden. Prüfe die Mikrofonberechtigung und versuche es erneut.",
   "playback.players.minimumMicrophonesError": "Verbinde mindestens zwei Mikrofone, um Mehrspieler zu starten.",
   "playback.players.missingMicrophoneError": "Wähle für jeden Spieler ein verbundenes Mikrofon.",

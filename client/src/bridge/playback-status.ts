@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { invoke, listen, type UnlistenFn } from './runtime';
+import { invoke, invokeOnUnload, listen, type UnlistenFn } from './runtime';
 import {
   queuePlaybackRequestSchema,
   remoteMicrophonesSchema,
@@ -32,6 +32,11 @@ export const setPlaybackStatus = async (status: PlaybackStatus): Promise<void> =
   await invoke('set_playback_status', status);
 };
 
+/** Idle snapshot from a surface that is closing; still lands as its tab dies. */
+export const setPlaybackStatusOnUnload = (status: PlaybackStatus): void => {
+  invokeOnUnload('set_playback_status', status);
+};
+
 export const onPlaybackStatusChanged = async (
   callback: (status: PlaybackStatus) => void,
 ): Promise<UnlistenFn> =>
@@ -56,18 +61,21 @@ export const onPlaybackCommandRequested = async (
 /**
  * Asks the host to start the first queued song on its own playback surface,
  * optionally as named singers. The host resolves their microphones.
+ *
+ * The callback gets `null` when the host sent a lineup it cannot read, so the
+ * caller can report it instead of silently starting a solo song.
  */
 export const requestQueuePlayback = async (players: QueuePlaybackPlayer[] = []): Promise<void> => {
   await invoke('request_queue_playback', { players });
 };
 
 export const onQueuePlaybackRequested = async (
-  callback: (players: QueuePlaybackPlayer[]) => void,
+  callback: (players: QueuePlaybackPlayer[] | null) => void,
 ): Promise<UnlistenFn> =>
   await listen<unknown>('playback-queue-play-requested', ({ payload }) => {
     const parsed = queuePlaybackRequestSchema.safeParse(payload);
 
-    callback(parsed.success ? parsed.data.players : []);
+    callback(parsed.success ? parsed.data.players : null);
   });
 
 /** The host publishes its microphones so a phone can offer them as singers. */

@@ -8,7 +8,13 @@ const RTL_LANGUAGES = new Set<string>(['ar', 'fa', 'he', 'ur']);
 
 export type TranslationKey = keyof typeof en;
 
-type PluralKeyOf<Key extends string> = Key extends `${infer Base}.other` ? Base : never;
+// A plural base needs both forms: plain labels such as `menu.sidebar.stats.other`
+// must not become plural keys by accident.
+type PluralKeyOf<Key extends string> = Key extends `${infer Base}.other`
+  ? `${Base}.one` extends TranslationKey
+    ? Base
+    : never
+  : never;
 export type PluralKey = PluralKeyOf<TranslationKey>;
 
 const catalogs = { en, de, 'zh-cn': zhCn } satisfies Record<string, Record<TranslationKey, string>>;

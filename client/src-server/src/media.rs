@@ -51,6 +51,15 @@ pub(crate) async fn handle_asset(
     headers: HeaderMap,
     request: Request<Body>,
 ) -> Response<Body> {
+    // Self-hosted exports are written to the server before they are handed to
+    // the browser, so serve and delete in one request instead of leaving a copy
+    // of every exported bundle on disk.
+    if query.download {
+        if let Some(path) = export_file(query.path.as_ref()) {
+            return serve_export(path).await;
+        }
+    }
+
     let response = if let Some(value) = query.path.strip_prefix("nge://") {
         let Some((hash, entry)) = value.split_once('/') else {
             return response(StatusCode::BAD_REQUEST, Body::from("invalid bundle path"));
@@ -65,6 +74,85 @@ pub(crate) async fn handle_asset(
     } else {
         response
     }
+}
+
+/// Album art for the LAN phone page. The remote surface may only fetch cover
+/// images, so it cannot read configs, the secret seed, cached stems, or the
+/// music itself even with a valid pairing token.
+pub(crate) async fn handle_remote_asset(
+    State(_state): State<AppState>,
+    Query(query): Query<AssetQuery>,
+    headers: HeaderMap,
+    request: Request<Body>,
+) -> Response<Body> {
+    if query.download || !app_core::media_server::is_cover_art_path(Path::new(&query.path)) {
+        return not_found("media path not found or outside media roots");
+    }
+
+    serve(query.path.as_ref(), headers, request).await
+}
+
+/// Resolves an export download only when the path lives inside the exports
+/// folder this server wrote, so the cleanup below can never touch media.
+fn export_file(path: &Path) -> Option<PathBuf> {
+    if !path.is_absolute() {
+        return None;
+    }
+    let canonical = std::fs::canonicalize(path).ok()?;
+    let exports = std::fs::canonicalize(app_core::exports_dir()).ok()?;
+
+    canonical.starts_with(&exports).then_some(canonical)
+}
+
+/// Drops the exported file once the browser has the whole body (or aborts).
+struct ExportCleanup(PathBuf);
+
+impl Drop for ExportCleanup {
+    fn drop(&mut self) {
+        if let Err(error) = std::fs::remove_file(&self.0) {
+            tracing::warn!("failed removing export {:?}: {error}", self.0);
+        }
+    }
+}
+
+async fn serve_export(path: PathBuf) -> Response<Body> {
+    let name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("song.nge")
+        .to_string();
+    let file = match tokio::fs::File::open(&path).await {
+        Ok(file) => file,
+        Err(_) => return not_found("export not found"),
+    };
+    let Ok(metadata) = file.metadata().await else {
+        return response(StatusCode::INTERNAL_SERVER_ERROR, Body::empty());
+    };
+    let cleanup = ExportCleanup(path);
+    let stream =
+        futures_util::stream::try_unfold((file, cleanup), |(mut file, cleanup)| async move {
+            let mut bytes = vec![0; 64 * 1024];
+            let count = file.read(&mut bytes).await?;
+            if count == 0 {
+                return Ok::<_, std::io::Error>(None);
+            }
+            bytes.truncate(count);
+            Ok(Some((Bytes::from(bytes), (file, cleanup))))
+        });
+
+    let mut response = Response::new(Body::from_stream(stream));
+    let headers = response.headers_mut();
+    headers.insert(
+        header::CONTENT_TYPE,
+        HeaderValue::from_static("application/octet-stream"),
+    );
+    headers.insert(header::CONTENT_LENGTH, HeaderValue::from(metadata.len()));
+    headers.insert(
+        header::CONTENT_DISPOSITION,
+        HeaderValue::from_str(&format!("attachment; filename=\"{name}\""))
+            .unwrap_or_else(|_| HeaderValue::from_static("attachment")),
+    );
+    response
 }
 
 /// Hash-keyed route for song stems and source video. The browser never sees
@@ -111,21 +199,22 @@ async fn serve_nge(hash: &str, entry: &str, headers: HeaderMap) -> Response<Body
         }
     };
 
-    let range = headers
+    let byte_range = headers
         .get(header::RANGE)
         .and_then(|value| value.to_str().ok())
-        .and_then(|value| parse_range(value, region.length));
-    let (status, start, end, length) = match range {
-        Some((start, end)) => (
+        .map_or(ByteRange::Full, |value| parse_range(value, region.length));
+    let (status, start, end, length) = match byte_range {
+        ByteRange::Partial { start, end } => (
             StatusCode::PARTIAL_CONTENT,
             start,
             Some(end),
             end - start + 1,
         ),
-        None => (StatusCode::OK, 0, None, region.length),
+        ByteRange::Full => (StatusCode::OK, 0, None, region.length),
+        ByteRange::Unsatisfiable => return unsatisfiable(region.length),
     };
     let Some(position) = region.offset.checked_add(start) else {
-        return response(StatusCode::RANGE_NOT_SATISFIABLE, Body::empty());
+        return unsatisfiable(region.length);
     };
 
     let mut file = match tokio::fs::File::open(region.path).await {
@@ -177,23 +266,62 @@ async fn serve_nge(hash: &str, entry: &str, headers: HeaderMap) -> Response<Body
     annotate_audio(response)
 }
 
-fn parse_range(value: &str, length: u64) -> Option<(u64, u64)> {
+/// Outcome of a `Range` header. A malformed or multi-part header is ignored
+/// (the full body is legal per RFC 9110); a syntactically valid range that
+/// starts past the end must answer `416`.
+#[derive(Clone, Copy)]
+enum ByteRange {
+    Full,
+    Partial { start: u64, end: u64 },
+    Unsatisfiable,
+}
+
+fn parse_range(value: &str, length: u64) -> ByteRange {
     if length == 0 {
-        return None;
+        return ByteRange::Full;
     }
-    let (start, end) = value.strip_prefix("bytes=")?.split_once('-')?;
+    let Some(spec) = value.strip_prefix("bytes=") else {
+        return ByteRange::Full;
+    };
+    let Some((start, end)) = spec.split_once('-') else {
+        return ByteRange::Full;
+    };
+    let last = length - 1;
+
     if start.is_empty() {
-        let suffix = end.parse::<u64>().ok()?;
-        return (suffix > 0).then(|| (length.saturating_sub(suffix), length - 1));
+        return match end.parse::<u64>() {
+            Ok(0) => ByteRange::Unsatisfiable,
+            Ok(suffix) => ByteRange::Partial {
+                start: length.saturating_sub(suffix),
+                end: last,
+            },
+            Err(_) => ByteRange::Full,
+        };
     }
 
-    let start = start.parse::<u64>().ok()?;
-    let end = if end.is_empty() {
-        length - 1
-    } else {
-        end.parse::<u64>().ok()?.min(length - 1)
+    let Ok(start) = start.parse::<u64>() else {
+        return ByteRange::Full;
     };
-    (start <= end).then_some((start, end))
+    if start > last {
+        return ByteRange::Unsatisfiable;
+    }
+    let end = if end.is_empty() {
+        last
+    } else {
+        match end.parse::<u64>() {
+            Ok(end) => end.min(last),
+            Err(_) => return ByteRange::Full,
+        }
+    };
+    ByteRange::Partial { start, end }
+}
+
+fn unsatisfiable(length: u64) -> Response<Body> {
+    let mut response = response(StatusCode::RANGE_NOT_SATISFIABLE, Body::empty());
+    if let Ok(value) = HeaderValue::from_str(&format!("bytes */{length}")) {
+        response.headers_mut().insert(header::CONTENT_RANGE, value);
+    }
+    response
 }
 
 async fn serve(path: &Path, _headers: HeaderMap, request: Request<Body>) -> Response<Body> {

@@ -61,6 +61,10 @@ Use the song-list toolbar to switch between a compact table and an artwork grid.
 
 Select a song to open its details sidebar before playback. From there you can review the cover, metadata, and analysis state; adjust key and tempo; edit or provide lyrics; run analysis actions; play immediately; start [multiplayer](/docs/multiplayer/); or add the song to the playback queue.
 
+Every row and card also has quick actions, so the common steps do not need the sidebar: the queue button adds the song to the bottom of the queue, the play button starts it, and the analyze button starts analysis. A right-click (or long press) on each of those buttons opens a small menu instead of running the default — add to the top of the queue, choose solo or multiplayer playback, or pick analyze or provide-lyrics.
+
+Songs you want to keep together with their prepared audio and lyrics can be packed into a single `.nge` file from the details sidebar. See [Song Bundles](/docs/song-bundles/).
+
 Open the queue from the toolbar to see what is next, reorder or remove songs, start the queue in solo or multiplayer mode, or clear it. Key and tempo choices are stored with each queued song.
 
 Choose **Settings → Playback → Session mode** to open playback in a dedicated desktop window or browser tab while the menu remains available for queue management. The same settings page controls master volume, lyric placement, lyric romanization, and independent lyric and pitch-graph scaling with a live preview.

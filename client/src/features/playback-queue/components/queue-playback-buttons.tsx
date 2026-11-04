@@ -66,7 +66,7 @@ function ClearQueueButton({
           <Trash2Icon />
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent onEscapeKeyDown={(event) => event.preventDefault()}>
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{t('playbackQueue.queueSidebar.clearPlaybackQueue2')}</AlertDialogTitle>
           <AlertDialogDescription>

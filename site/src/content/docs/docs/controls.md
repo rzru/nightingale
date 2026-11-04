@@ -32,6 +32,12 @@ Nightingale supports keyboard, gamepad, and touch input. The UI adapts to your i
 
 Touch devices show on-screen playback controls for core actions instead of relying on keyboard shortcuts.
 
+### Transport controls
+
+Every playback screen also has a seek bar with four jump buttons: previous lyric line, back one second, forward one second, and next lyric line. Dragging the bar previews the position, and the song moves there when you let go. Jumping back rewinds the pitch graph and removes the score you earned after the new position, so re-singing a line is scored once.
+
+On touch screens the bar and buttons grow to finger-sized targets. On the phone queue page the same controls appear, but they drive the host's playback instead of the phone's.
+
 Key and tempo are adjusted from the song details sidebar after a song has been analyzed. Playback mode, master volume, lyric placement and scale, pitch-graph scale, CJK romanization, preferred microphone, mic latency compensation, and analysis defaults live in **Settings**.
 
 ## Multiplayer

@@ -210,6 +210,23 @@ export function invoke(name: string, args?: InvokeArgs): Promise<unknown> {
   return tauriInvoke('dispatch_command', { name, payload: args ?? {} });
 }
 
+/**
+ * Command that must still reach the server while the page is being torn down.
+ * A plain `fetch` is dropped when the tab closes, so the web transport uses a
+ * beacon instead. Only for small bodies (browsers cap beacons at 64 KiB).
+ */
+export const invokeOnUnload = (name: string, args?: InvokeArgs): void => {
+  if (isTauri) {
+    void invoke(name, args).catch(() => undefined);
+    return;
+  }
+
+  const body = new Blob([JSON.stringify(args ?? {})], { type: 'application/json' });
+  if (!navigator.sendBeacon(`/api/cmd/${name}`, body)) {
+    void invoke(name, args).catch(() => undefined);
+  }
+};
+
 export function listen<T>(event: string, cb: EventCallback<T>): Promise<UnlistenFn>;
 export function listen(event: string, cb: EventCallback<unknown>): Promise<UnlistenFn> {
   return isTauri ? tauriListen(event, cb) : webListen(event, cb);

@@ -13,7 +13,9 @@ Nightingale includes real-time pitch scoring to gamify the karaoke experience.
 
 ## Star Ratings
 
-At the end of each song, every singer receives a star rating based on overall pitch accuracy. Ratings assigned to saved profiles are added to those profiles' scoreboards.
+While you sing, the playback HUD fills a row of five stars from your live pitch score, with the exact number underneath. At the end of each song, every singer receives a star rating based on overall pitch accuracy. Ratings assigned to saved profiles are added to those profiles' scoreboards.
+
+Stars hold their last reading while playback is paused and pick up again on resume, so a break mid-song does not look like a lost score.
 
 <!-- TODO: screenshot of the end-of-song results screen with star rating -->
 ![Star rating](images/stars.png)
@@ -23,6 +25,8 @@ At the end of each song, every singer receives a star rating based on overall pi
 For solo playback, the results screen appears whenever your score is above 0. The active profile's result is saved to the song leaderboard.
 
 Multiplayer always shows ranked results, highest score first. Results assigned to saved profiles are stored; **Guest** results appear for the current round but are not added to a profile. During queue playback, choose **Next Song** to keep the lineup or **Change players** before continuing.
+
+**Auto-continue** sits under the results buttons whenever the queue has another song. Turn it on and the next song starts by itself after a five-second countdown; turn it off to read the scores first. The setting is remembered, so a queue can run hands-free, and any other action on the results screen cancels the countdown. If the next song cannot be prepared, auto-continue gives up after one attempt instead of retrying — the error message tells you what happened and **Next Song** is still there to retry by hand.
 
 ## Microphone Selection
 

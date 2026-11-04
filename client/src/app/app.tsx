@@ -29,7 +29,7 @@ const queryClient = new QueryClient();
  * The phone page skips the desktop shell: it has no host config, no window
  * chrome, and no business loading library or playback state.
  */
-const isRemoteQueue = (): boolean => window.location.pathname === '/q';
+const isRemoteQueue = (): boolean => window.location.pathname.replace(/\/+$/, '') === '/q';
 
 const UpdateAutoCheck = () => {
   useUpdate();

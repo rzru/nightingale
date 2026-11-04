@@ -76,6 +76,7 @@ export default defineConfig({
             { label: "Library Sources", slug: "docs/library-sources" },
             { label: "Stem Separation", slug: "docs/stems" },
             { label: "Lyrics & Transcription", slug: "docs/lyrics" },
+            { label: "Song Bundles (.nge)", slug: "docs/song-bundles" },
             { label: "UltraStar Deluxe", slug: "docs/usdx" },
             { label: "Pitch Scoring", slug: "docs/scoring" },
             { label: "Multiplayer", slug: "docs/multiplayer" },

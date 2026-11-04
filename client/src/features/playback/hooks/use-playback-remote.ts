@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import {
   onPlaybackCommandRequested,
   setPlaybackStatus,
+  setPlaybackStatusOnUnload,
   type PlaybackCommand,
   type PlaybackStatus,
 } from '@/bridge/playback-status';
@@ -56,7 +57,7 @@ export function usePlaybackRemote(status: PlaybackStatus, handlers: PlaybackComm
 
     if (!isTauri) {
       const onPageHide = () => {
-        void publishIdleStatus();
+        setPlaybackStatusOnUnload(IDLE_STATUS);
       };
       window.addEventListener('pagehide', onPageHide);
       return () => window.removeEventListener('pagehide', onPageHide);

@@ -250,6 +250,37 @@ pub fn local_media_roots() -> Vec<PathBuf> {
     roots
 }
 
+/// True for the only local files the LAN phone page may fetch: a cover image
+/// from the songs cache, or one inside the folder library. Images only, and
+/// never the data folder, so a pairing token cannot read configs, the secret
+/// seed, cached stems, or the music itself.
+pub fn is_cover_art_path(input: &Path) -> bool {
+    let Ok(canonical) = std::fs::canonicalize(input) else {
+        return false;
+    };
+    let image = canonical
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(|extension| extension.to_ascii_lowercase())
+        .is_some_and(|extension| matches!(extension.as_str(), "jpg" | "jpeg" | "png" | "webp"));
+    if !image {
+        return false;
+    }
+
+    if std::fs::canonicalize(crate::cache::songs_cache_dir())
+        .is_ok_and(|root| canonical.starts_with(root))
+    {
+        return true;
+    }
+
+    match AppConfig::load().library_source {
+        Some(LibrarySource::Folder { path }) => {
+            std::fs::canonicalize(path).is_ok_and(|root| canonical.starts_with(root))
+        }
+        _ => false,
+    }
+}
+
 fn serve_file(request: Request, file_path: &Path) {
     let file_len = match std::fs::metadata(file_path) {
         Ok(m) => m.len(),
@@ -273,9 +304,16 @@ fn serve_file(request: Request, file_path: &Path) {
         return;
     };
 
-    let range_val = request_header(&request, "Range");
+    let byte_range = request_header(&request, "Range")
+        .as_deref()
+        .map_or(ByteRange::Full, |value| parse_range(value, file_len));
 
-    if let Some((start, end)) = range_val.as_deref().and_then(|r| parse_range(r, file_len)) {
+    if let ByteRange::Unsatisfiable = byte_range {
+        let _ = request.respond(with_cors(unsatisfiable(file_len)));
+        return;
+    }
+
+    if let ByteRange::Partial { start, end } = byte_range {
         let mut file = match std::fs::File::open(file_path) {
             Ok(f) => f,
             Err(_) => {
@@ -364,10 +402,14 @@ fn sanitize_entry_name(raw: &str) -> Option<String> {
 fn serve_file_region(request: Request, path: &Path, offset: u64, total: u64, mime: &str) {
     let range = request_header(&request, "Range")
         .as_deref()
-        .and_then(|value| parse_range(value, total));
+        .map_or(ByteRange::Full, |value| parse_range(value, total));
     let (status, start, end, length) = match range {
-        Some((start, end)) => (StatusCode(206), start, Some(end), end - start + 1),
-        None => (StatusCode(200), 0, None, total),
+        ByteRange::Partial { start, end } => (StatusCode(206), start, Some(end), end - start + 1),
+        ByteRange::Full => (StatusCode(200), 0, None, total),
+        ByteRange::Unsatisfiable => {
+            let _ = request.respond(with_cors(unsatisfiable(total)));
+            return;
+        }
     };
     let Some(position) = offset.checked_add(start) else {
         let _ = request.respond(with_cors(server_error("nge range")));
@@ -442,28 +484,64 @@ fn mime_for_path(path: &Path) -> &'static str {
     }
 }
 
-fn parse_range(range_header: &str, file_len: u64) -> Option<(u64, u64)> {
+/// Outcome of a `Range` header. A malformed or multi-part header is ignored
+/// (serving the full body is legal per RFC 9110); a valid range that starts
+/// past the end must answer `416`.
+#[derive(Clone, Copy)]
+enum ByteRange {
+    Full,
+    Partial { start: u64, end: u64 },
+    Unsatisfiable,
+}
+
+fn parse_range(range_header: &str, file_len: u64) -> ByteRange {
     if file_len == 0 {
-        return None;
+        return ByteRange::Full;
     }
 
-    let spec = range_header.strip_prefix("bytes=")?;
+    let Some(spec) = range_header.strip_prefix("bytes=") else {
+        return ByteRange::Full;
+    };
     let mut parts = spec.splitn(2, '-');
     let start_str = parts.next().unwrap_or("");
     let end_str = parts.next().unwrap_or("");
+    let last = file_len - 1;
 
     if start_str.is_empty() {
-        let suffix: u64 = end_str.parse().ok()?;
-        (suffix > 0).then(|| (file_len.saturating_sub(suffix), file_len - 1))
-    } else {
-        let start: u64 = start_str.parse().ok()?;
-        let end = if end_str.is_empty() {
-            file_len - 1
-        } else {
-            end_str.parse::<u64>().ok()?.min(file_len - 1)
+        return match end_str.parse::<u64>() {
+            Ok(0) => ByteRange::Unsatisfiable,
+            Ok(suffix) => ByteRange::Partial {
+                start: file_len.saturating_sub(suffix),
+                end: last,
+            },
+            Err(_) => ByteRange::Full,
         };
-        (start <= end).then_some((start, end))
     }
+
+    let Ok(start) = start_str.parse::<u64>() else {
+        return ByteRange::Full;
+    };
+    if start > last {
+        return ByteRange::Unsatisfiable;
+    }
+    let end = if end_str.is_empty() {
+        last
+    } else {
+        match end_str.parse::<u64>() {
+            Ok(end) => end.min(last),
+            Err(_) => return ByteRange::Full,
+        }
+    };
+    ByteRange::Partial { start, end }
+}
+
+fn unsatisfiable(file_len: u64) -> Response<std::io::Cursor<Vec<u8>>> {
+    let mut response =
+        Response::from_string("range not satisfiable").with_status_code(StatusCode(416));
+    if let Some(value) = header("Content-Range", format!("bytes */{file_len}")) {
+        response.add_header(value);
+    }
+    response
 }
 
 // ─── Source-agnostic remote song proxy ───────────────────────────────

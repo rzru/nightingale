@@ -65,8 +65,20 @@ Toggle between dark and light themes from the sidebar. The theme preference is s
 | `lyrics_scale` / `pitch_graph_scale` | Independent playback display scales from `0.5` to `2.5` (50–250%, default `1.0`). |
 | `lyrics_romanization_mode` | Shows (`enabled`, default) or hides (`disabled`) romanized readings above Japanese, Chinese, Cantonese, and Korean lyrics. |
 | `auto_analyze` | When `true`, scans automatically queue every unanalyzed song after they finish. |
+| `auto_continue_queue` | Remembered choice of the results screen's **Auto-continue** checkbox. When `true`, the next queued song starts by itself five seconds after the results appear. Defaults to off. |
+| `language` | Interface language: `system` (follow the OS/browser language) or a BCP 47 tag such as `de` or `zh-cn`. `null` means follow the system. Also available in **Settings → General**; see [Languages](#languages). |
 | `cache_paths` | Optional per-folder overrides for `songs`, `videos`, `models`, and `vendor`. Use Settings to move them so existing contents migrate safely. |
 | `last_video_flavor` | Index of the last-used Pixabay video flavor (Nature, Underwater, Space, City, Countryside). |
 | `last_theme` | Index of the last-used playback background (shaders → video → source). |
 | `language_overrides` | Per-song forced ASR language, keyed by song hash. Set this from the song-list controls. |
 | `data_path` | Selected data folder root. Set during first-run setup. |
+| `multiplayer_players` | Last singer lineup (profile, color, microphone) reused as the starting point for multiplayer and queue playback. |
+| `multiplayer_combine_multi_channel` | When `true`, a multi-channel interface is offered as one device per channel instead of a single combined input. |
+
+## Languages
+
+Nightingale ships with English, German, and Simplified Chinese, and picks the system language on first launch. Change it in **Settings → General → Interface language**; **System default** follows the operating system (and later changes to it) instead of pinning a language.
+
+The choice travels with your settings, so the playback window and any self-hosted browser session read the same language. Songs' own metadata, lyrics, and analysis are never translated — only the interface around them.
+
+Translations are plain JSON catalogs under `client/src/i18n/translations`; the [translations README](https://github.com/rzru/nightingale/tree/master/client/src/i18n/translations#readme) explains how to add a language. The **Contribute a translation** link on that setting opens it.

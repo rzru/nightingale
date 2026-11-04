@@ -65,7 +65,7 @@ pub use profile::ProfileStore;
 pub use remote_control::{REMOTE_PORT, RemoteControl, RemoteInfo, lan_base, lan_ip};
 pub use scanner::{CacheReconcileSummary, reconcile_cache, start_scan};
 pub use song::{Song, SongOrigin};
-pub use song_export::export_song_nge;
+pub use song_export::{export_song_nge, exports_dir};
 pub use source::{
     JellyfinAuth, JellyfinSource, MediaSource, NavidromeAuth, NavidromeSource, PlexAuth,
     PlexSource, SourceKind, active_source,

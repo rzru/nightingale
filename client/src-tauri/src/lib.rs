@@ -34,6 +34,9 @@ struct RemoteServer {
     events: Arc<EventBus>,
     control: Mutex<app_core::RemoteControl>,
     listener: Mutex<Option<tauri::async_runtime::JoinHandle<()>>>,
+    /// Set when the listener could not bind, so the UI reports an unavailable
+    /// link instead of showing a QR code no phone can open.
+    failure: Mutex<Option<String>>,
 }
 
 impl RemoteServer {
@@ -43,10 +46,23 @@ impl RemoteServer {
             events,
             control: Mutex::new(app_core::RemoteControl::load()),
             listener: Mutex::new(None),
+            failure: Mutex::new(None),
         }
     }
 
     fn info(&self) -> app_core::RemoteInfo {
+        if self
+            .failure
+            .lock()
+            .map(|failure| failure.is_some())
+            .unwrap_or(false)
+        {
+            return app_core::RemoteInfo {
+                url: None,
+                qr_svg: None,
+            };
+        }
+
         let control = self
             .control
             .lock()
@@ -65,9 +81,17 @@ impl RemoteServer {
         }
 
         let address = std::net::SocketAddr::from(([0, 0, 0, 0], app_core::REMOTE_PORT));
-        let listener = tokio::net::TcpListener::bind(address)
-            .await
-            .map_err(|error| format!("cannot listen on port {}: {error}", app_core::REMOTE_PORT))?;
+        let listener = match tokio::net::TcpListener::bind(address).await {
+            Ok(listener) => listener,
+            Err(error) => {
+                let message = format!("cannot listen on port {}: {error}", app_core::REMOTE_PORT);
+                *self
+                    .failure
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(message.clone());
+                return Err(message);
+            }
+        };
 
         let control = self
             .control

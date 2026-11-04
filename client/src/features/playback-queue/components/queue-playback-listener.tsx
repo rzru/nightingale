@@ -62,6 +62,10 @@ export function QueuePlaybackListener() {
     let unlisten: (() => void) | undefined;
 
     void onQueuePlaybackRequested((players) => {
+      if (players === null) {
+        toast.error(t('playback.players.invalidQueueRequest'));
+        return;
+      }
       if (players.length === 0) {
         playNextRef.current();
         return;
