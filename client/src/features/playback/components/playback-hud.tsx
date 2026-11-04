@@ -488,9 +488,7 @@ function PlaybackHudImpl({
             ) : (
               <div className="flex flex-col items-end gap-0.5">
                 <LiveStars score={pitchScore} />
-                <div className={scoreTextClass(pitchScore)}>
-                  {t('playback.playbackHud.scoreValue1', { value1: pitchScore ?? '--' })}
-                </div>
+                <div className={scoreTextClass(pitchScore)}>{pitchScore ?? '--'}</div>
               </div>
             )}
             <div className="my-1.5 hidden h-px w-full bg-white/20 sm:block" aria-hidden="true" />

@@ -71,7 +71,7 @@ export function PlaybackPreview({
           className={`flex items-end ${hudPosition === 'bottom' ? 'flex-col-reverse' : 'flex-col'}`}
         >
           <p className="text-white/80" style={{ fontSize: '1.65cqh' }}>
-            {t('settings.playbackPreview.score8420')}
+            8420
           </p>
           <p className="text-white/40" style={{ fontSize: '1.1cqh' }}>
             {t('settings.playbackPreview.micDefaultMN')}

@@ -167,7 +167,7 @@ function clampDialogPosition(input: DialogPositionInput) {
  *
  * 2. **Segmented rows** — pass `stops: [2, 1, 1, …]`. Each number is the
  *    width of one row. Up/down change row; left/right move inside a row when
- *    width &gt; 1.
+ *    width > 1.
  */
 export function useDialogNav({
   open,
