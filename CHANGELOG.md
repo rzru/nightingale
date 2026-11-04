@@ -22,6 +22,7 @@ below.
 - Added `.nge` song bundles that play directly without unpacking, with clear read-only actions.
 - Added `.nge` export for analyzed local songs on desktop and self-hosted web.
 - Playback now shows your score as five stars that fill in as you sing, with the exact score beneath them.
+- Added a phone queue link: scan the QR code in the sidebar header and control the queue, playback, and playback settings from a phone on the same network.
 
 ### Fixes
 

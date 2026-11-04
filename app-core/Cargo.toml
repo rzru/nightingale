@@ -24,6 +24,7 @@ base64 = "0.22"
 md-5 = "0.10"
 zip = { version = "4", default-features = false }
 unicode-normalization = "0.1"
+qrcode = { version = "0.14", default-features = false }
 
 [build-dependencies]
 dotenvy = "0.15"

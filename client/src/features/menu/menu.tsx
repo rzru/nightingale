@@ -12,6 +12,7 @@ import { InfoDialog } from '@/features/menu/components/info';
 import { Sidebar } from '@/features/menu/components/sidebar/sidebar';
 import { useDialog, type DialogMode } from '@/features/menu/hooks/use-dialog';
 import { useMenuNav } from '@/features/menu/hooks/use-menu-nav';
+import { QueuePlaybackListener } from '@/features/playback-queue/components/queue-playback-listener';
 import { CreateProfileDialog } from '@/features/profiles/components/create';
 import { LeaderboardsDialog } from '@/features/profiles/components/leaderboards';
 import { SelectProfileDialog } from '@/features/profiles/components/select';
@@ -73,6 +74,7 @@ export const MenuLayout = () => {
       <ViewLyricsDialog />
       <ClearCacheDialog />
       <SourceDialogs mode={mode} />
+      <QueuePlaybackListener />
       <Setup />
       <SidebarInset>
         <Outlet />

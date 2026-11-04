@@ -7,9 +7,9 @@ import { useConfig } from '@/shared/config/use-config';
 import { CONFIG } from '@/shared/query-keys';
 import type { AppConfig } from '@/types/AppConfig';
 
-export const useConfigMutation = () => {
+export const useConfigMutation = (enabled = true) => {
   const queryClient = useQueryClient();
-  const { data: config } = useConfig();
+  const { data: config } = useConfig(enabled);
 
   return useMutation({
     mutationFn: async (partialConfig: Partial<AppConfig>) => {

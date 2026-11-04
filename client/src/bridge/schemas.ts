@@ -93,6 +93,42 @@ export const playbackPlayersSchema = z
     }
   });
 
+/** Remote queue start payload; an empty list means single player. */
+export const queuePlaybackRequestSchema = z.object({
+  players: z
+    .array(playbackPlayerSchema)
+    .max(4)
+    .superRefine((players, context) => {
+      const ids = new Set(players.map((player) => player.id));
+      const microphones = new Set(players.map((player) => player.microphoneId));
+      const profiles = players.flatMap((player) =>
+        player.profile === null ? [] : [player.profile],
+      );
+      if (ids.size !== players.length) {
+        context.addIssue({ code: 'custom', message: 'Queue playback player IDs must be unique' });
+      }
+      if (microphones.size !== players.length) {
+        context.addIssue({ code: 'custom', message: 'Queue playback microphones must be unique' });
+      }
+      if (new Set(profiles).size !== profiles.length) {
+        context.addIssue({ code: 'custom', message: 'Queue playback profiles must be unique' });
+      }
+    })
+    .default([]),
+});
+
+export type QueuePlaybackPlayer = z.infer<typeof playbackPlayerSchema>;
+
+/** Microphones the host offers to remote clients. */
+export const remoteMicrophoneSchema = z.object({
+  deviceId: z.string().min(1),
+  label: z.string(),
+});
+
+export const remoteMicrophonesSchema = z.array(remoteMicrophoneSchema);
+
+export type RemoteMicrophone = z.infer<typeof remoteMicrophoneSchema>;
+
 export const appConfigSchema: z.ZodType<AppConfig> = z.object({
   data_path: nullableString,
   cache_paths: cachePathsSchema.nullable(),

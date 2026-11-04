@@ -1,4 +1,4 @@
-import { FLAVORS, type VideoFlavor } from '@/features/playback/lib/video-flavor';
+import { videoFlavorLabel, type VideoFlavor } from '@/features/playback/lib/video-flavor';
 import { t } from '@/i18n';
 import type { BackgroundSelection } from '@/types/BackgroundSelection';
 import type { CustomBackground } from '@/types/CustomBackground';
@@ -123,7 +123,7 @@ export function themeName(theme: PlaybackTheme, videoFlavor: VideoFlavor): strin
       return t('playback.theme.sourceVideo');
     case 'pixabay':
       return t('playback.theme.videoFlavor', {
-        flavor: videoFlavor.charAt(0).toUpperCase() + videoFlavor.slice(1),
+        flavor: videoFlavorLabel(videoFlavor),
       });
     case 'shader':
       return theme.name;
@@ -138,10 +138,6 @@ export function nextThemeKey(themes: readonly PlaybackTheme[], current: string):
   const currentIndex = themes.findIndex((theme) => themeKey(theme) === current);
   const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % themes.length;
   return themeKey(themes[nextIndex]);
-}
-
-export function nextFlavorIndex(current: number): number {
-  return (current + 1) % FLAVORS.length;
 }
 
 export function isPixabayTheme(theme: PlaybackTheme): boolean {

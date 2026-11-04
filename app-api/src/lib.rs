@@ -2,7 +2,7 @@ mod vendor;
 
 use std::{
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 
 use app_core::{
@@ -36,6 +36,10 @@ pub struct CommandState {
     runtime: Arc<dyn CommandRuntime>,
     playback_queue: Arc<PlaybackQueue>,
     playback_sessions: Arc<PlaybackSessionStore>,
+    playback_status: Arc<Mutex<PlaybackStatus>>,
+    playback_progress: Arc<Mutex<PlaybackProgress>>,
+    playback_options: Arc<Mutex<PlaybackOptions>>,
+    remote_microphones: Arc<Mutex<Vec<RemoteMicrophone>>>,
 }
 
 impl CommandState {
@@ -44,8 +48,233 @@ impl CommandState {
             runtime,
             playback_queue: Arc::new(PlaybackQueue::default()),
             playback_sessions: Arc::new(PlaybackSessionStore::default()),
+            playback_status: Arc::new(Mutex::new(PlaybackStatus::default())),
+            playback_progress: Arc::new(Mutex::new(PlaybackProgress::default())),
+            playback_options: Arc::new(Mutex::new(PlaybackOptions::default())),
+            remote_microphones: Arc::new(Mutex::new(Vec::new())),
         }
     }
+
+    fn playback_status(&self) -> PlaybackStatus {
+        self.playback_status
+            .lock()
+            .map(|status| *status)
+            .unwrap_or_default()
+    }
+
+    fn set_playback_status(&self, next: PlaybackStatus) -> PlaybackStatus {
+        let Ok(mut status) = self.playback_status.lock() else {
+            return PlaybackStatus::default();
+        };
+        *status = next;
+        *status
+    }
+
+    fn playback_progress(&self) -> PlaybackProgress {
+        self.playback_progress
+            .lock()
+            .map(|progress| *progress)
+            .unwrap_or_default()
+    }
+
+    fn set_playback_progress(&self, next: PlaybackProgress) -> PlaybackProgress {
+        let Ok(mut progress) = self.playback_progress.lock() else {
+            return PlaybackProgress::default();
+        };
+        *progress = next;
+        *progress
+    }
+
+    fn playback_options(&self) -> PlaybackOptions {
+        self.playback_options
+            .lock()
+            .map(|options| options.clone())
+            .unwrap_or_default()
+    }
+
+    fn set_playback_options(&self, next: PlaybackOptions) -> PlaybackOptions {
+        let Ok(mut options) = self.playback_options.lock() else {
+            return PlaybackOptions::default();
+        };
+        *options = next;
+        options.clone()
+    }
+
+    fn remote_microphones(&self) -> Vec<RemoteMicrophone> {
+        self.remote_microphones
+            .lock()
+            .map(|microphones| microphones.clone())
+            .unwrap_or_default()
+    }
+
+    fn set_remote_microphones(&self, microphones: Vec<RemoteMicrophone>) -> Vec<RemoteMicrophone> {
+        let Ok(mut stored) = self.remote_microphones.lock() else {
+            return Vec::new();
+        };
+        *stored = microphones;
+        stored.clone()
+    }
+}
+
+/// What a remote client needs to know to mirror the host's playback actions.
+/// The playback surface publishes it; other clients (the phone) read it. It
+/// lives in the transport-neutral command state so desktop and web agree.
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaybackStatus {
+    pub active: bool,
+    pub paused: bool,
+    /// The end-of-song result screen is up.
+    pub finished: bool,
+    /// The queue has another entry to start.
+    pub has_next: bool,
+    /// Playback owns a separate window, which changes the exit wording.
+    pub session_playback: bool,
+}
+
+/// Microphone the host offers to remote clients. Device IDs only mean
+/// something on the host, so the phone picks from this published list.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteMicrophone {
+    pub device_id: String,
+    pub label: String,
+}
+
+/// What the playback surface publishes continuously so a remote can mirror the
+/// host's transport without owning a second clock. The host interpolates its
+/// own timeline; remotes only read what it last published.
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaybackProgress {
+    pub active: bool,
+    /// The audio engine is advancing, so a remote may interpolate between updates.
+    pub playing: bool,
+    pub paused: bool,
+    pub finished: bool,
+    pub has_next: bool,
+    pub session_playback: bool,
+    pub position_ms: u64,
+    pub duration_ms: u64,
+    pub skip_intro: bool,
+    pub skip_outro: bool,
+    /// Absolute targets so remotes never guess a lyric boundary themselves.
+    pub previous_line_ms: Option<u64>,
+    pub next_line_ms: Option<u64>,
+}
+
+/// A labelled choice the host offers to remotes. Keys stay opaque to the
+/// transport; the host is the only side that knows what they resolve to.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteOption {
+    pub key: String,
+    pub label: String,
+}
+
+/// Playback settings the host offers to remotes. Published on change only: it
+/// carries option lists, so it must not ride the progress tick.
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaybackOptions {
+    pub guide_volume: f32,
+    pub guide_available: bool,
+    /// Several singers own their own microphones, so remotes hide per-singer controls.
+    pub multiplayer: bool,
+    pub mic_enabled: bool,
+    pub mic_monitor_enabled: bool,
+    pub selected_mic_id: Option<String>,
+    pub microphones: Vec<RemoteMicrophone>,
+    pub themes: Vec<RemoteOption>,
+    pub theme_key: String,
+    pub flavors: Vec<RemoteOption>,
+    pub flavor_key: String,
+    pub flavor_available: bool,
+}
+
+/// Fine-grained transport and settings actions a remote can request. Values are
+/// checked against the published snapshot before the playback surface sees them.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(
+    tag = "type",
+    rename_all = "kebab-case",
+    rename_all_fields = "camelCase"
+)]
+pub enum PlaybackControl {
+    Seek { position_ms: u64 },
+    SkipIntro,
+    SkipOutro,
+    SetGuideVolume { volume: f32 },
+    ToggleMic,
+    SelectMic { device_id: String },
+    ToggleMonitoring,
+    SelectTheme { key: String },
+    SelectFlavor { key: String },
+}
+
+/// Actions a remote can ask the playback surface to perform.
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PlaybackCommand {
+    Pause,
+    Resume,
+    /// Start the next queued entry, abandoning the current song if needed.
+    Next,
+    Exit,
+}
+
+fn sanitize_control(
+    control: PlaybackControl,
+    options: &PlaybackOptions,
+    progress: &PlaybackProgress,
+) -> Option<PlaybackControl> {
+    match control {
+        PlaybackControl::Seek { position_ms } => Some(PlaybackControl::Seek {
+            position_ms: position_ms.min(progress.duration_ms),
+        }),
+        PlaybackControl::SkipIntro => Some(PlaybackControl::SkipIntro),
+        PlaybackControl::SkipOutro => Some(PlaybackControl::SkipOutro),
+        PlaybackControl::SetGuideVolume { volume } => (options.guide_available
+            && volume.is_finite())
+        .then(|| PlaybackControl::SetGuideVolume {
+            volume: volume.clamp(0.0, 1.0),
+        }),
+        PlaybackControl::ToggleMic if !options.multiplayer => Some(PlaybackControl::ToggleMic),
+        PlaybackControl::ToggleMonitoring if !options.multiplayer => {
+            Some(PlaybackControl::ToggleMonitoring)
+        }
+        PlaybackControl::SelectMic { device_id }
+            if !options.multiplayer
+                && options
+                    .microphones
+                    .iter()
+                    .any(|microphone| microphone.device_id == device_id) =>
+        {
+            Some(PlaybackControl::SelectMic { device_id })
+        }
+        PlaybackControl::SelectTheme { key }
+            if options.themes.iter().any(|theme| theme.key == key) =>
+        {
+            Some(PlaybackControl::SelectTheme { key })
+        }
+        PlaybackControl::SelectFlavor { key }
+            if options.flavor_available
+                && options.flavors.iter().any(|flavor| flavor.key == key) =>
+        {
+            Some(PlaybackControl::SelectFlavor { key })
+        }
+        _ => None,
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct PlaybackCommandArgs {
+    command: PlaybackCommand,
+}
+
+#[derive(Debug, Serialize)]
+struct PlaybackCommandRequest {
+    command: PlaybackCommand,
 }
 
 #[derive(Debug)]
@@ -230,6 +459,80 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
             let entries = state.playback_queue.clear().map_err(ApiError::internal)?;
             events.emit("playback-queue-changed", &entries);
             Ok(serde_json::to_value(entries).map_err(serde_err)?)
+        }
+
+        // ── Playback control ─────────────────────────────────────────────
+        "load_playback_status" => {
+            Ok(serde_json::to_value(state.playback_status()).map_err(serde_err)?)
+        }
+        "set_playback_status" => {
+            let status: PlaybackStatus = deserialize(payload)?;
+            let status = state.set_playback_status(status);
+            events.emit("playback-status-changed", &status);
+            Ok(Value::Null)
+        }
+        "request_playback_command" => {
+            let args: PlaybackCommandArgs = deserialize(payload)?;
+            events.emit(
+                "playback-command-requested",
+                &PlaybackCommandRequest {
+                    command: args.command,
+                },
+            );
+            Ok(Value::Null)
+        }
+        "request_queue_playback" => {
+            // The phone may name the singers; the host resolves microphones.
+            events.emit_value("playback-queue-play-requested", payload);
+            Ok(Value::Null)
+        }
+        "load_playback_progress" => {
+            Ok(serde_json::to_value(state.playback_progress()).map_err(serde_err)?)
+        }
+        "set_playback_progress" => {
+            let progress: PlaybackProgress = deserialize(payload)?;
+            let progress = state.set_playback_progress(progress);
+            events.emit("playback-progress-changed", &progress);
+            Ok(Value::Null)
+        }
+        "load_playback_options" => {
+            Ok(serde_json::to_value(state.playback_options()).map_err(serde_err)?)
+        }
+        "set_playback_options" => {
+            let options: PlaybackOptions = deserialize(payload)?;
+            let options = state.set_playback_options(options);
+            events.emit("playback-options-changed", &options);
+            Ok(Value::Null)
+        }
+        "request_playback_control" => {
+            let control: PlaybackControl = deserialize(payload)?;
+            let control = sanitize_control(
+                control,
+                &state.playback_options(),
+                &state.playback_progress(),
+            )
+            .ok_or_else(|| ApiError::bad_request("playback control is not available"))?;
+            events.emit("playback-control-requested", &control);
+            Ok(Value::Null)
+        }
+        // The phone has no bootstrap payload (it is served by the LAN router),
+        // so it asks for the interface language explicitly.
+        "load_interface_language" => {
+            Ok(serde_json::to_value(AppConfig::load().language).map_err(serde_err)?)
+        }
+        "load_remote_microphones" => {
+            Ok(serde_json::to_value(state.remote_microphones()).map_err(serde_err)?)
+        }
+        "set_remote_microphones" => {
+            #[derive(Deserialize)]
+            struct Args {
+                microphones: Vec<RemoteMicrophone>,
+            }
+            let Args { microphones } = deserialize(payload)?;
+            Ok(
+                serde_json::to_value(state.set_remote_microphones(microphones))
+                    .map_err(serde_err)?,
+            )
         }
 
         // ── Playback session ─────────────────────────────────────────────

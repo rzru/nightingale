@@ -14,6 +14,7 @@ mod playback;
 mod playback_queue;
 mod playback_session;
 mod profile;
+mod remote_control;
 mod scanner;
 mod secret;
 mod song;
@@ -61,6 +62,7 @@ pub use playback::{
 pub use playback_queue::{PlaybackQueue, PlaybackQueueEntry};
 pub use playback_session::{PlaybackPlayer, PlaybackSession, PlaybackSessionStore};
 pub use profile::ProfileStore;
+pub use remote_control::{REMOTE_PORT, RemoteControl, RemoteInfo, lan_base, lan_ip};
 pub use scanner::{CacheReconcileSummary, reconcile_cache, start_scan};
 pub use song::{Song, SongOrigin};
 pub use song_export::export_song_nge;
