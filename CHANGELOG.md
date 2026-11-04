@@ -21,11 +21,10 @@ below.
 - Added playback scrubbing and controls to jump by one second or one lyric line.
 - Added `.nge` song bundles that play directly without unpacking, with clear read-only actions.
 - Added `.nge` export for analyzed local songs on desktop and self-hosted web.
-- Added a phone queue link: hover the QR code in the sidebar header to connect a phone on the same network and manage the night's playlist, while the desktop or host browser keeps playing. Phones can search the library, add songs, reorder or remove entries, or clear the whole queue, and the remote mirrors the host's queue and playback buttons: start the queue, start it in multiplayer with singers picked on the phone, pause or resume, skip to the next queued song, or end the song and go back to the menu. The host publishes its microphones so the phone can assign them to singers. The phone reads in the host's interface language. During playback it mirrors the host's seek slider and lyric-line buttons, offers skip intro and skip outro when they apply, and holds guide volume, microphone, monitoring, theme, and video flavor settings behind a collapsible panel. Every change shows up on the host instantly.
+- Added a phone queue link: scan the QR code in the sidebar header and control the queue, playback, and playback settings from a phone on the same network.
 
 ### Fixes
 
-- The phone link now always opens over plain HTTP on the port you reached the app on — including a container's published port — and only swaps an unresolvable name like `nightingale.local` for the machine's LAN address, so scanning the QR from a self-hosted or Docker install works without a certificate warning on the phone. A loopback-only server reached directly no longer hands out a URL a phone can never open.
 - The analysis status badge now names the lyrics source on its own instead of appending it in parentheses, so long labels no longer spill over the actions column in the song list.
 - Session mode now opens browser playback directly so audio can start, and desktop playback windows show cover art while loading.
 - Playback now waits for the background, lyrics, and HUD to finish loading before the music starts, with a smooth loading backdrop that stays responsive while playback prepares.
@@ -65,7 +64,6 @@ below.
 
 ### Fixes
 
-- The phone link now always opens over plain HTTP on the port you reached the app on — including a container's published port — and only swaps an unresolvable name like `nightingale.local` for the machine's LAN address, so scanning the QR from a self-hosted or Docker install works without a certificate warning on the phone. A loopback-only server reached directly no longer hands out a URL a phone can never open.
 - Desktop drag-resizing no longer performs macOS window queries or renderer IPC; dimensions are captured from native resize events and persisted when the window closes.
 - Audio-reactive backgrounds in multiplayer now respond to the merged microphone waveform from every player instead of only Player 1.
 - Self-hosted web mode now requests microphone permission before enumerating inputs, so browsers expose the available devices.
@@ -108,7 +106,6 @@ below.
 
 ### Fixes
 
-- The phone link now always opens over plain HTTP on the port you reached the app on — including a container's published port — and only swaps an unresolvable name like `nightingale.local` for the machine's LAN address, so scanning the QR from a self-hosted or Docker install works without a certificate warning on the phone. A loopback-only server reached directly no longer hands out a URL a phone can never open.
 - Analyzer setup now keeps WhisperX on a release compatible with `transformers` 5, preventing Windows lyrics analysis failures in pyannote.
 - Video files now use audio-stream title metadata, preventing subtitle titles from replacing song names.
 - The lyrics editor now allows re-aligning analyzed songs without requiring a lyrics change.
@@ -133,7 +130,6 @@ below.
 
 ### Fixes
 
-- The phone link now always opens over plain HTTP on the port you reached the app on — including a container's published port — and only swaps an unresolvable name like `nightingale.local` for the machine's LAN address, so scanning the QR from a self-hosted or Docker install works without a certificate warning on the phone. A loopback-only server reached directly no longer hands out a URL a phone can never open.
 - Setup errors now wrap and scroll within the modal instead of overflowing the dialog.
 - UVR stem separation now converts source audio to WAV before loading it, preventing failures on input formats the separator cannot read directly.
 
@@ -171,7 +167,6 @@ below.
 
 ### Fixes
 
-- The phone link now always opens over plain HTTP on the port you reached the app on — including a container's published port — and only swaps an unresolvable name like `nightingale.local` for the machine's LAN address, so scanning the QR from a self-hosted or Docker install works without a certificate warning on the phone. A loopback-only server reached directly no longer hands out a URL a phone can never open.
 - Fixed Settings page focus rings: tabs, buttons, and the beam/batch number pickers no longer show clipped borders or a brief shrink flicker on hover. The page now uses the same focus-ring style as the rest of the app (removing the `ring-offset` that got clipped by the scroll containers) and the number pickers have room for the ring.
 
 ## [0.8.0] - 2026-06-08
@@ -196,7 +191,6 @@ below.
 
 ### Fixes
 
-- The phone link now always opens over plain HTTP on the port you reached the app on — including a container's published port — and only swaps an unresolvable name like `nightingale.local` for the machine's LAN address, so scanning the QR from a self-hosted or Docker install works without a certificate warning on the phone. A loopback-only server reached directly no longer hands out a URL a phone can never open.
 - Folder libraries now detect `.opus` audio files and serve them with an Ogg audio MIME type for browser playback.
 - Changing a song's language can now realign existing lyrics without forcing a fresh transcription, and the selected language is preserved for the alignment pass.
 - Edited lyrics keep the song's previous language hint when re-running alignment, avoiding accidental language resets.
@@ -254,7 +248,6 @@ below.
 
 ### Fixes
 
-- The phone link now always opens over plain HTTP on the port you reached the app on — including a container's published port — and only swaps an unresolvable name like `nightingale.local` for the machine's LAN address, so scanning the QR from a self-hosted or Docker install works without a certificate warning on the phone. A loopback-only server reached directly no longer hands out a URL a phone can never open.
 - Various typo and copy fixes in playback UI strings.
 
 ### Documentation
