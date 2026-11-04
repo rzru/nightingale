@@ -39,7 +39,12 @@ export const Stars = ({ score, size = 'lg', className }: Props) => {
           {Array.from({ length: filled }, (_, i) => (
             <StarIcon key={`f-${i}`} className={cn(ic, 'fill-primary text-primary')} />
           ))}
-          {hasHalf ? <StarHalfIcon className={cn(ic, 'fill-primary text-primary')} /> : null}
+          {hasHalf ? (
+            <span className="relative inline-flex">
+              <StarIcon className={cn(ic, 'text-muted-foreground/25')} />
+              <StarHalfIcon className={cn(ic, 'absolute inset-0 fill-primary text-primary')} />
+            </span>
+          ) : null}
           {Array.from({ length: empty }, (_, i) => (
             <StarIcon key={`e-${i}`} className={cn(ic, 'text-muted-foreground/25')} />
           ))}

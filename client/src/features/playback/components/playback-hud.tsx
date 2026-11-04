@@ -19,6 +19,7 @@ import { t, useTranslation } from '@/i18n';
 import { playerColorOption } from '@/shared/player-colors';
 import type { AppConfig } from '@/types/AppConfig';
 
+import { LiveStars } from './live-stars';
 import { PlaybackTransportControls } from './playback-transport-controls';
 import { isPixabayTheme, themeName, type PlaybackTheme } from './theme';
 
@@ -327,22 +328,34 @@ function creditPositionClass(position: PlaybackHudPosition, windowControls: bool
 }
 
 const scoreTextClass = (score: number | null): string =>
-  `text-base md:text-lg ${score !== null && score !== 0 ? 'text-white' : 'text-white/50'}`;
+  `text-sm md:text-base ${score !== null && score !== 0 ? 'text-white' : 'text-white/50'}`;
+
+function PlayerScore({
+  player,
+  players,
+}: {
+  player: PlaybackPlayerMicState;
+  players: PlaybackPlayerMicState[];
+}) {
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <LiveStars score={player.pitchScore} size="sm" />
+      <span className={`whitespace-nowrap ${scoreTextClass(player.pitchScore)}`}>
+        {playerDisplayName(player, players)}: {player.pitchScore ?? '--'}
+      </span>
+    </div>
+  );
+}
 
 function MultiplayerScores({ players }: { players: PlaybackPlayerMicState[] }) {
   return (
     <div
-      className="grid justify-items-end gap-0.5"
+      className="grid justify-items-end gap-1"
       aria-label={t('playback.playbackHud.playerScores')}
     >
       {players.map((player) => (
-        <div
-          key={player.id}
-          className={`flex items-center justify-end gap-2 ${scoreTextClass(player.pitchScore)}`}
-        >
-          <span className="whitespace-nowrap">
-            {playerDisplayName(player, players)}: {player.pitchScore ?? '--'}
-          </span>
+        <div key={player.id} className="flex items-center justify-end gap-2">
+          <PlayerScore player={player} players={players} />
           <span
             className={`size-2 rounded-full ${playerColorOption(player.color).className}`}
             aria-hidden="true"
@@ -473,8 +486,11 @@ function PlaybackHudImpl({
             {multiplayer ? (
               <MultiplayerScores players={players} />
             ) : (
-              <div className={scoreTextClass(pitchScore)}>
-                {t('playback.playbackHud.scoreValue1', { value1: pitchScore ?? '--' })}
+              <div className="flex flex-col items-end gap-0.5">
+                <LiveStars score={pitchScore} />
+                <div className={scoreTextClass(pitchScore)}>
+                  {t('playback.playbackHud.scoreValue1', { value1: pitchScore ?? '--' })}
+                </div>
               </div>
             )}
             <div className="my-1.5 hidden h-px w-full bg-white/20 sm:block" aria-hidden="true" />
