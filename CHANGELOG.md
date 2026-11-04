@@ -23,14 +23,17 @@ below.
 - Added `.nge` export for analyzed local songs on desktop and self-hosted web.
 - Playback now shows your score as five stars that fill in as you sing, with the exact score beneath them.
 - Added a phone queue link: scan the QR code in the sidebar header and control the queue, playback, and playback settings from a phone on the same network.
+- The results screen now offers **Auto-continue**, which starts the next queued song after a five-second countdown. Your choice is remembered, so a queue keeps running hands-free.
 
 ### Fixes
 
+- The phone now hides the playback transport, seek bar, and settings once the session playback window closes, instead of leaving controls for a playback that is gone.
+- The phone no longer offers **Skip Outro** while the results screen is already showing on the host.
 - The analysis status badge now names the lyrics source on its own instead of appending it in parentheses, so long labels no longer spill over the actions column in the song list.
 - Session mode now opens browser playback directly so audio can start, and desktop playback windows show cover art while loading.
 - Playback now waits for the background, lyrics, and HUD to finish loading before the music starts, with a smooth loading backdrop that stays responsive while playback prepares.
 - Multiplayer guest names now number only guest singers, while a single guest is simply labeled **Guest**.
-- Singer trails now stay on their normalized octave through reference-vocal pauses and brief detector octave jumps.
+- Singer trails now follow the song's octave from the first note, and singers sharing a room no longer appear in separate octaves.
 - The playback score divider now matches the score width instead of the settings block beneath it.
 - Seeking backward during playback now rewinds the pitch graph and removes score earned after the new position.
 - Microphone monitoring now pauses with playback and toggles without restarting the microphone stream, preventing buffer underrun warning floods.

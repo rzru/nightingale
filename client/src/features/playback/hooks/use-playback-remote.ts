@@ -1,3 +1,4 @@
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useEffect } from 'react';
 
 import {
@@ -6,9 +7,21 @@ import {
   type PlaybackCommand,
   type PlaybackStatus,
 } from '@/bridge/playback-status';
+import { isTauri } from '@/bridge/runtime';
 import { useLatestRef } from '@/shared/hooks/use-latest-ref';
 
 type PlaybackCommandHandlers = Record<PlaybackCommand, () => void>;
+
+const IDLE_STATUS: PlaybackStatus = {
+  active: false,
+  paused: false,
+  finished: false,
+  hasNext: false,
+  sessionPlayback: false,
+};
+
+const publishIdleStatus = (): Promise<void> =>
+  setPlaybackStatus(IDLE_STATUS).catch(() => undefined);
 
 /**
  * Bridges the playback surface to remote clients. It publishes what a remote
@@ -29,15 +42,49 @@ export function usePlaybackRemote(status: PlaybackStatus, handlers: PlaybackComm
 
   useEffect(() => {
     return () => {
-      void setPlaybackStatus({
-        active: false,
-        paused: false,
-        finished: false,
-        hasNext: false,
-        sessionPlayback: false,
-      }).catch(() => undefined);
+      void publishIdleStatus();
     };
   }, []);
+
+  // The session playback window/tab is torn down without unmounting React, so
+  // the cleanup above never runs. Publish the idle snapshot on the way out, or
+  // phones keep showing a transport that no longer exists.
+  useEffect(() => {
+    if (!sessionPlayback) {
+      return undefined;
+    }
+
+    if (!isTauri) {
+      const onPageHide = () => {
+        void publishIdleStatus();
+      };
+      window.addEventListener('pagehide', onPageHide);
+      return () => window.removeEventListener('pagehide', onPageHide);
+    }
+
+    const win = getCurrentWindow();
+    let cancelled = false;
+    let unlisten: (() => void) | undefined;
+
+    void win
+      .onCloseRequested((event) => {
+        event.preventDefault();
+        void publishIdleStatus().finally(() => void win.destroy().catch(() => undefined));
+      })
+      .then((fn) => {
+        if (cancelled) {
+          fn();
+          return undefined;
+        }
+        unlisten = fn;
+        return undefined;
+      });
+
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, [sessionPlayback]);
 
   useEffect(() => {
     let cancelled = false;

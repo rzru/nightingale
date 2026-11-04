@@ -66,7 +66,7 @@ If in doubt, open a discussion first.
 
 Once your discussion is approved:
 
-1. Fork the repo and create a branch from `main`.
+1. Fork the repo and create a branch from `master`.
 2. Keep the change focused on what was approved in the discussion.
 3. Reference the approved discussion thread in the PR description.
 4. Make sure the project builds and existing checks pass.

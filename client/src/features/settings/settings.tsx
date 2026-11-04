@@ -47,7 +47,7 @@ import { cn } from '@/shared/utils/cn';
 import type { AppConfig } from '@/types/AppConfig';
 
 const TRANSLATIONS_URL =
-  'https://github.com/rzru/nightingale/tree/main/client/src/i18n/translations#readme';
+  'https://github.com/rzru/nightingale/tree/master/client/src/i18n/translations#readme';
 
 const generalSettings = (config: AppConfig | undefined) => {
   if (!config) {

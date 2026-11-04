@@ -62,6 +62,7 @@ export function usePitchScoring(
 
     const reference = getReferenceBuffer();
     const track = reference ? analyzeReferencePitches(reference) : null;
+    bufferRef.current.setOctaveAnchor(track?.octaveAnchorSemitone ?? null);
     referenceTrackRef.current = track;
     scoringRef.current = new PitchScoring(track?.singableTime ?? duration);
 

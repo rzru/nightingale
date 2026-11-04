@@ -162,7 +162,7 @@ function PlaybackLayout({
       positionMs: Math.round(position * 1000),
       durationMs: Math.round(duration * 1000),
       skipIntro: position < transcript.firstSegmentStart - transcript.introSkipLeadSec,
-      skipOutro: position > transcript.lastSegmentEnd + 1,
+      skipOutro: !result.open && position > transcript.lastSegmentEnd + 1,
       previousLineMs: line > 0 ? Math.round(segments[line - 1].start * 1000) : null,
       nextLineMs:
         line >= 0 && line < segments.length - 1
@@ -261,6 +261,8 @@ function PlaybackLayout({
         scores={result.scores}
         nextPending={result.nextPending}
         exitLabel={t(playbackExitLabelKey(status))}
+        autoContinue={config?.auto_continue_queue === true}
+        onAutoContinueChange={(next) => persistConfig({ auto_continue_queue: next })}
         onBack={result.onBack}
         onNext={result.onNext}
       />

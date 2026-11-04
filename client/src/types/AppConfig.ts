@@ -50,6 +50,7 @@ export type AppConfig = {
   align_backend: string | null;
   vocal_detection_threshold_pct: number | null;
   auto_analyze: boolean | null;
+  auto_continue_queue: boolean | null;
   song_list_view: string | null;
   song_list_sort: Array<SongSort> | null;
   /**

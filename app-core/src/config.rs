@@ -224,6 +224,9 @@ pub struct AppConfig {
     pub align_backend: Option<String>,
     pub vocal_detection_threshold_pct: Option<f64>,
     pub auto_analyze: Option<bool>,
+    /// When `true`, the results screen starts the next queued song by itself
+    /// after a short countdown.
+    pub auto_continue_queue: Option<bool>,
     pub song_list_view: Option<String>,
     #[serde(default, deserialize_with = "deserialize_song_list_sort")]
     pub song_list_sort: Option<Vec<SongSort>>,
@@ -295,6 +298,7 @@ impl Default for AppConfig {
             align_backend: None,
             vocal_detection_threshold_pct: None,
             auto_analyze: None,
+            auto_continue_queue: None,
             song_list_view: None,
             song_list_sort: None,
             language: None,

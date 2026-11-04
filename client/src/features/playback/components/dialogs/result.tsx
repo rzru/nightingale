@@ -1,5 +1,5 @@
 import { TrophyIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import type { PlaybackPlayer } from '@/bridge/playback-session';
 import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
@@ -10,6 +10,7 @@ import { topScoresForSong } from '@/features/playback/utils/result';
 import { t } from '@/i18n';
 import { Stars } from '@/shared/components/shared/stars';
 import { Button } from '@/shared/components/ui/button';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -27,12 +28,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/shared/components/ui/table';
+import { useLatestRef } from '@/shared/hooks/use-latest-ref';
 import { defaultPlayerColor, playerColorOption } from '@/shared/player-colors';
 import { cn } from '@/shared/utils/cn';
 import type { ScoreRecord } from '@/types/ScoreRecord';
 import type { Song } from '@/types/Song';
 
 const TOP_LIMIT = 5;
+const AUTO_CONTINUE_SECONDS = 5;
 const RING = 'ring-2 ring-primary';
 const NO_FOCUS_RING = 'focus-visible:ring-0 focus-visible:border-transparent';
 const EMPTY_RESULT: PlaybackPlayerResult = {
@@ -49,6 +52,8 @@ type Props = {
   scores: ScoreRecord[];
   nextPending: boolean;
   exitLabel: string;
+  autoContinue: boolean;
+  onAutoContinueChange: (next: boolean) => void;
   onBack: () => void;
   onNext?: (players?: readonly PlaybackPlayer[]) => void;
 };
@@ -165,7 +170,13 @@ function SoloResults({ result, board }: { result: PlaybackPlayerResult; board: S
 
 type ResultActionsProps = Pick<
   Props,
-  'open' | 'nextPending' | 'exitLabel' | 'onBack' | 'onNext'
+  | 'open'
+  | 'nextPending'
+  | 'exitLabel'
+  | 'autoContinue'
+  | 'onAutoContinueChange'
+  | 'onBack'
+  | 'onNext'
 > & {
   multiplayer: boolean;
 };
@@ -233,6 +244,103 @@ function NextSongButton({
   );
 }
 
+function AutoContinueToggle({
+  show,
+  autoContinue,
+  disabled,
+  focused,
+  counter,
+  onToggle,
+}: {
+  show: boolean;
+  autoContinue: boolean;
+  disabled: boolean;
+  focused: boolean;
+  counter: ReactNode;
+  onToggle: (next: boolean) => void;
+}) {
+  if (!show) {
+    return null;
+  }
+  return (
+    <label className="flex items-center justify-center gap-2 text-sm">
+      <Checkbox
+        checked={autoContinue}
+        disabled={disabled}
+        className={cn(NO_FOCUS_RING, focused && RING)}
+        onCheckedChange={(checked) => onToggle(checked === true)}
+      />
+      <span className="text-muted-foreground">{t('playback.dialogs.result.autoContinue')}</span>
+      {counter}
+    </label>
+  );
+}
+
+function AutoContinueCountdown({ onElapsed }: { onElapsed: () => void }) {
+  const [secondsLeft, setSecondsLeft] = useState(AUTO_CONTINUE_SECONDS);
+  const onElapsedRef = useLatestRef(onElapsed);
+  const firedRef = useRef(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setSecondsLeft((left) => Math.max(0, left - 1)), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (secondsLeft > 0 || firedRef.current) {
+      return;
+    }
+
+    firedRef.current = true;
+    onElapsedRef.current();
+  }, [onElapsedRef, secondsLeft]);
+
+  return (
+    <span className="font-medium text-primary tabular-nums" aria-live="polite">
+      {t('playback.dialogs.result.autoContinueIn', { count: secondsLeft })}
+    </span>
+  );
+}
+
+function isCounting(options: {
+  open: boolean;
+  autoContinue: boolean;
+  hasNext: boolean;
+  setupOpen: boolean;
+  nextPending: boolean;
+}): boolean {
+  const { open, autoContinue, hasNext, setupOpen, nextPending } = options;
+  return open && autoContinue && hasNext && !setupOpen && !nextPending;
+}
+
+function navIndices(canChangePlayers: boolean, hasNext: boolean) {
+  const nextIndex = canChangePlayers ? 2 : 1;
+  return {
+    nextIndex,
+    autoContinueIndex: hasNext ? nextIndex + 1 : null,
+    itemCount: hasNext ? nextIndex + 2 : 1,
+  };
+}
+
+type Action = 'exit' | 'players' | 'autoContinue' | 'next';
+
+function actionAt(
+  index: number,
+  canChangePlayers: boolean,
+  autoContinueIndex: number | null,
+): Action {
+  if (index === 0) {
+    return 'exit';
+  }
+  if (canChangePlayers && index === 1) {
+    return 'players';
+  }
+  if (index === autoContinueIndex) {
+    return 'autoContinue';
+  }
+  return 'next';
+}
+
 function NextSongSetup({
   show,
   open,
@@ -263,25 +371,28 @@ function ResultActions({
   multiplayer,
   nextPending,
   exitLabel,
+  autoContinue,
+  onAutoContinueChange,
   onBack,
   onNext,
 }: ResultActionsProps) {
   const [setupOpen, setSetupOpen] = useState(false);
   const canChangePlayers = multiplayer && onNext !== undefined;
-  const nextIndex = canChangePlayers ? 2 : 1;
+  const hasNext = onNext !== undefined;
+  const { nextIndex, autoContinueIndex, itemCount } = navIndices(canChangePlayers, hasNext);
   const startNext = onNext ?? (() => {});
+  const counting = isCounting({ open, autoContinue, hasNext, setupOpen, nextPending });
+  const actions: Record<Action, () => void> = {
+    exit: onBack,
+    players: () => setSetupOpen(true),
+    autoContinue: () => onAutoContinueChange(!autoContinue),
+    next: startNext,
+  };
+
   const { focusedIndex } = useDialogNav({
     open: open && !setupOpen && !nextPending,
-    itemCount: onNext ? nextIndex + 1 : 1,
-    onConfirm: (index) => {
-      if (index === 0) {
-        onBack();
-      } else if (canChangePlayers && index === 1) {
-        setSetupOpen(true);
-      } else {
-        startNext();
-      }
-    },
+    itemCount,
+    onConfirm: (index) => actions[actionAt(index, canChangePlayers, autoContinueIndex)](),
     onBack,
   });
 
@@ -313,6 +424,15 @@ function ResultActions({
         />
       </DialogFooter>
 
+      <AutoContinueToggle
+        show={hasNext}
+        autoContinue={autoContinue}
+        disabled={nextPending}
+        focused={open && focusedIndex === autoContinueIndex}
+        counter={counting ? <AutoContinueCountdown onElapsed={startNext} /> : null}
+        onToggle={onAutoContinueChange}
+      />
+
       <NextSongSetup
         show={canChangePlayers}
         open={setupOpen}
@@ -330,6 +450,8 @@ export const ResultDialog = ({
   scores,
   nextPending,
   exitLabel,
+  autoContinue,
+  onAutoContinueChange,
   onBack,
   onNext,
 }: Props) => {
@@ -362,6 +484,8 @@ export const ResultDialog = ({
             multiplayer={multiplayer}
             nextPending={nextPending}
             exitLabel={exitLabel}
+            autoContinue={autoContinue}
+            onAutoContinueChange={onAutoContinueChange}
             onBack={onBack}
             onNext={onNext}
           />
