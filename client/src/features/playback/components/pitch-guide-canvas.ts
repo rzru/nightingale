@@ -288,22 +288,29 @@ function drawTargetNotes(
     const x2 = timeToX(note.end - currentTime, layout);
     const y = semitoneToY(note.semitone, layout) - barHeight / 2;
     const active = note.start <= currentTime && note.end >= currentTime;
+    const strokeWidth = active ? 2.5 : 1.5;
 
     ctx.beginPath();
     ctx.roundRect(x1, y, Math.max(3, x2 - x1), barHeight, barHeight / 2);
     ctx.fillStyle = rgba(TARGET_COLOR, active ? 0.42 : 0.22);
     ctx.fill();
     ctx.strokeStyle = rgba(TARGET_COLOR, active ? 1 : 0.72);
-    ctx.lineWidth = active ? 2.5 : 1.5;
+    ctx.lineWidth = strokeWidth;
     ctx.stroke();
 
     if (x2 - x1 > 34) {
       const noteName = NOTE_NAMES[((note.semitone % 12) + 12) % 12];
+      const fontSize = Math.max(6, Math.min(10, Math.round(barHeight - strokeWidth - 2)));
       ctx.fillStyle = 'rgba(235,243,255,0.75)';
-      ctx.font = '600 10px ui-sans-serif, system-ui, sans-serif';
+      ctx.font = `600 ${fontSize}px ui-sans-serif, system-ui, sans-serif`;
       ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(noteName, x1 + 7, y + barHeight / 2);
+      ctx.textBaseline = 'alphabetic';
+      const metrics = ctx.measureText(noteName);
+      const textY =
+        y +
+        barHeight / 2 +
+        (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2;
+      ctx.fillText(noteName, x1 + 7, textY);
     }
   }
 }
