@@ -24,7 +24,7 @@ Bundles are written uncompressed on purpose: that is what lets playback seek ins
 2. Pick **Export (.nge)**.
 3. Choose where to write it — or, in self-hosted web mode, let it download.
 
-Export is offered for analyzed songs from a folder library. Songs from Jellyfin, Navidrome, or Plex, and songs that are already a bundle, have no export action. Bundles always store the original key and tempo: key and tempo changes are playback-time adjustments, not part of the file.
+Export is offered for analyzed songs from folder, Jellyfin, Navidrome, and Plex libraries. Songs that are already a bundle have no export action. Bundles always store the original key and tempo: key and tempo changes are playback-time adjustments, not part of the file.
 
 In web mode the server writes the bundle into its data folder and streams it to your browser as a download; the temporary copy is removed once the download finishes, so exports do not pile up on the server.
 
