@@ -13,6 +13,8 @@ below.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-06
+
 ### Features
 
 - Added an interface language selector with English, German, and Simplified Chinese, plus contributor-friendly translation catalogs for the whole app. The choice is saved with your Nightingale settings, so it follows you to the playback window and self-hosted sessions. Switching language updates every surface, including the separate playback window and later system changes, and counted text follows each language's own plural rules.

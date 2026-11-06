@@ -34,6 +34,8 @@ While a song is playing:
 
 Use the song-list toolbar to switch between table and grid views, filter by analysis status or lyric source, open bulk actions, and open the playback queue. Select a row or card to open its details sidebar before playback.
 
+Each row and card also has a quick-action button, and right-clicking it opens a menu: analyze an unanalyzed song or jump straight to providing lyrics, add a song to the top or bottom of the queue, or play it solo or in multiplayer without opening the sidebar first.
+
 For an analyzed song, the details sidebar provides:
 
 - **Play**: start solo playback with the selected settings

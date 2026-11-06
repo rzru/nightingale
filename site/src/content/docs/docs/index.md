@@ -21,7 +21,11 @@ Ships as a single binary. No manual installation of Python, ffmpeg, or ML models
 - **Pluggable ASR** — Whisper (default) or Parakeet v3 (experimental, ~25 European languages)
 - **UltraStar Deluxe Songs (experimental)** — drop USDX folders into your library and play them with their built-in pitch + lyric data
 - **Pitch Scoring** — real-time microphone input with star ratings
+- **Full-Screen Pitch Guide** — the whole screen becomes a scrolling pitch graph with octave lanes and color-coded singer trails
 - **Local Multiplayer** — two to four singers with separate microphones, profiles, live scores, and ranked results
+- **Queue From Your Phone** — scan a QR code and manage the queue and playback from any phone on the same network
+- **Song Bundles (.nge)** — one file that carries stems, lyrics, cover, and video, ready to play or export
+- **Interface Languages** — English, German, and Simplified Chinese, following the system language by default
 - **Key & Tempo Shifts** — adjust analyzed songs to better fit your voice
 - **Profiles** — per-player score tracking
 - **Video Files** — use video files with synchronized background playback
