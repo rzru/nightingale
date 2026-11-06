@@ -25,7 +25,7 @@ function bundleActionCaps(
   const isNge = song.path.toLowerCase().endsWith('.nge');
   const ready = status.isReady === true;
   return {
-    canExport: ready && song.origin.kind === 'local_file' && !isNge,
+    canExport: ready && !isNge,
     canViewLyrics: ready && isNge,
   };
 }

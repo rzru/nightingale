@@ -5,7 +5,7 @@ use crate::config::AppConfig;
 use crate::error::NightingaleError;
 use crate::library_db;
 use crate::nge_format::write_nge;
-use crate::song::{NgeSongMeta, Song, SongOrigin, compute_file_hash};
+use crate::song::{NgeSongMeta, Song, compute_file_hash};
 
 fn resolve_stem_files(song: &Song, cache: &CacheDir) -> Option<(PathBuf, PathBuf)> {
     let hash = &song.file_hash;
@@ -42,12 +42,6 @@ fn stem_entry_name(base: &str, path: &Path) -> String {
 }
 
 fn nge_entries(song: &Song, cache: &CacheDir) -> Result<Vec<(String, PathBuf)>, NightingaleError> {
-    if !matches!(song.origin, SongOrigin::LocalFile) {
-        return Err(NightingaleError::Other(
-            "only local songs can be exported to .nge".into(),
-        ));
-    }
-
     let hash = &song.file_hash;
     let mut entries = Vec::new();
 

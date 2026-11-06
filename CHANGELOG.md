@@ -20,7 +20,7 @@ below.
 - Added a full-screen pitch graph with scrolling target notes, stable live pitch tracking, octave guidance, audio-reactive visuals, and color-coded multiplayer trails.
 - Added playback scrubbing and controls to jump by one second or one lyric line.
 - Added `.nge` song bundles that play directly without unpacking, with clear read-only actions.
-- Added `.nge` export for analyzed local songs on desktop and self-hosted web.
+- Added `.nge` export for analyzed songs from local folders, Jellyfin, Navidrome, and Plex on desktop and self-hosted web.
 - Playback now shows your score as five stars that fill in as you sing, with the score as a plain number beneath them.
 - Added a phone queue link: scan the QR code in the sidebar header and control the queue, playback, and playback settings from a phone on the same network.
 - The results screen now offers **Auto-continue**, which starts the next queued song after a five-second countdown. Your choice is remembered, so a queue keeps running hands-free.
