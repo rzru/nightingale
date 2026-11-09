@@ -149,7 +149,7 @@ impl RoomState {
                 .map(|member| MemberView {
                     id: member.id.clone(),
                     name: member.name.clone(),
-                    ready: member.ready,
+                    ready: Self::is_ready(member, &self.host),
                     has_track: member.has_track,
                     score: member.score,
                     host: member.id == self.host,
@@ -174,7 +174,11 @@ impl RoomState {
                 .map_or_else(String::new, |member| member.name.clone()),
             members: self.members.len(),
             capacity: ROOM_CAPACITY,
-            ready: self.members.iter().filter(|member| member.ready).count(),
+            ready: self
+                .members
+                .iter()
+                .filter(|member| Self::is_ready(member, &self.host))
+                .count(),
             phase: self.phase,
             track_title: self.track.as_ref().map(|track| track.title.clone()),
             track_hash: self.track.as_ref().map(|track| track.hash.clone()),
@@ -205,9 +209,19 @@ impl RoomState {
     /// own the track and press start, so asking them to ready up is noise.
     fn clear_ready(&mut self) {
         for member in &mut self.members {
-            member.ready = member.id == self.host;
+            member.ready = false;
             member.has_track = false;
         }
+    }
+
+    /// The host is ready by definition, and a singer without the track is a
+    /// spectator, not a blocker.
+    fn is_ready(member: &Member, host: &str) -> bool {
+        member.id == host || member.ready
+    }
+
+    fn gates_start(&self, member: &Member) -> bool {
+        member.id != self.host && member.has_track && !member.ready
     }
 }
 
@@ -295,10 +309,14 @@ impl Room {
             }
             let is_host = state.host == member_id;
             let member = state.member_mut(member_id)?;
-            if !is_host && ready && !member.has_track {
+            if is_host {
+                // Nothing for the host to toggle: readiness is derived.
+                return Ok(());
+            }
+            if ready && !member.has_track {
                 return Err(RoomError::NoTrack);
             }
-            member.ready = ready || is_host;
+            member.ready = ready;
         }
         self.broadcast_view().await;
 
@@ -312,9 +330,10 @@ impl Room {
     ) -> Result<(), RoomError> {
         {
             let mut state = self.state.write().await;
+            let is_host = state.host == member_id;
             let member = state.member_mut(member_id)?;
             member.has_track = has_track;
-            if !has_track {
+            if !has_track && !is_host {
                 member.ready = false;
             }
         }
@@ -356,7 +375,7 @@ impl Room {
             if state.track.is_none() {
                 return Err(RoomError::TrackUnset);
             }
-            if !state.members.iter().all(|member| member.ready) {
+            if state.members.iter().any(|member| state.gates_start(member)) {
                 return Err(RoomError::NotReady);
             }
             state.phase = Phase::Playing;
@@ -496,8 +515,7 @@ impl RoomStore {
             None => None,
         };
 
-        let mut host = Member::new(host_name)?;
-        host.ready = true;
+        let host = Member::new(host_name)?;
         let issued = Issued {
             room_id: random_token(TOKEN_BYTES)?,
             member_id: host.id.clone(),
@@ -563,7 +581,7 @@ impl RoomStore {
             }
         }
 
-        let mut member = Member::new(name)?;
+        let member = Member::new(name)?;
         let issued = Issued {
             room_id: room.id.clone(),
             member_id: member.id.clone(),
@@ -584,7 +602,6 @@ impl RoomStore {
             {
                 state.host = member.id.clone();
                 state.clear_ready();
-                member.ready = true;
             }
             state.members.push(member);
         }

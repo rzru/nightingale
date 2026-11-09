@@ -47,7 +47,7 @@ const readyLabel = (member: RoomMember | undefined): string => {
     return '—';
   }
 
-  return member.ready ? t('rooms.room.ready') : t('rooms.room.notReady');
+  return member.host || member.ready ? t('rooms.room.ready') : t('rooms.room.notReady');
 };
 
 const MemberTable = ({ capacity, members }: { capacity: number; members: RoomMember[] }) => (
@@ -351,7 +351,12 @@ export function RoomView({ onLeave, session }: { onLeave: () => void; session: R
 
   const playing = state.phase === 'playing';
   const ready = me?.ready === true;
-  const canStart = isHost && state.track !== null && state.members.every((member) => member.ready);
+  // The host is always ready, and a singer without the track is a spectator:
+  // neither should block the start.
+  const canStart =
+    isHost &&
+    state.track !== null &&
+    state.members.every((member) => member.host || !member.hasTrack || member.ready);
 
   return (
     <div className="flex flex-col gap-4">
