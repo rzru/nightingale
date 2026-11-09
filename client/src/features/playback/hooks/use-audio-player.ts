@@ -30,6 +30,7 @@ export type AudioPlayer = {
   isFinished: boolean;
   error: string | null;
   guideVolume: number;
+  masterVolume: number;
   /** False for LRC-provided songs without stems: the original mix plays and
    * there is no separate guide vocal track to control. */
   guideAvailable: boolean;
@@ -38,6 +39,7 @@ export type AudioPlayer = {
   resume: () => void;
   seek: (time: number) => void;
   setGuideVolume: (v: number) => void;
+  setMasterVolume: (v: number) => void;
   cleanup: () => void;
   getVocalsBuffer: () => AudioBuffer | null;
   getScoringBuffer: () => AudioBuffer | null;
@@ -75,6 +77,7 @@ export function useAudioPlayer(
   const [isFinished, setIsFinished] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [guideVolume, setGuideVolumeState] = useState(initialGuideVolume);
+  const [masterVolume, setMasterVolumeState] = useState(initialMasterVolume);
   const [guideAvailable, setGuideAvailable] = useState(true);
 
   const getVocalsBuffer = useCallback(() => vocalsBufRef.current, []);
@@ -371,6 +374,16 @@ export function useAudioPlayer(
     }
   }, []);
 
+  const setMasterVolume = useCallback((v: number) => {
+    const clamped = Math.max(0, Math.min(1, v));
+
+    setMasterVolumeState(clamped);
+
+    if (masterGainRef.current) {
+      masterGainRef.current.gain.value = clamped;
+    }
+  }, []);
+
   const cleanup = useCallback(() => {
     cancelledRef.current = true;
 
@@ -392,12 +405,14 @@ export function useAudioPlayer(
       isFinished,
       error,
       guideVolume,
+      masterVolume,
       guideAvailable,
       play,
       pause,
       resume,
       seek,
       setGuideVolume,
+      setMasterVolume,
       cleanup,
       getVocalsBuffer,
       getScoringBuffer,
@@ -412,12 +427,14 @@ export function useAudioPlayer(
       isFinished,
       error,
       guideVolume,
+      masterVolume,
       guideAvailable,
       play,
       pause,
       resume,
       seek,
       setGuideVolume,
+      setMasterVolume,
       cleanup,
       getVocalsBuffer,
       getScoringBuffer,

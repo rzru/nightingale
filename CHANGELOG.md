@@ -13,6 +13,10 @@ below.
 
 ## [Unreleased]
 
+### Features
+
+- Added a live master volume slider immediately beside the song progress bar, styled like the playback controls. It saves its setting for future songs and also controls the final score sound.
+
 ## [1.4.1] - 2026-11-09
 
 ### Fixes

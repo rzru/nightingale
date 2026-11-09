@@ -86,7 +86,7 @@ export function usePlaybackResult(
   const { data: entries = [] } = usePlaybackQueueQuery();
   const { isPreparing, playNext } = useStartNextPlaybackQueueSong(entries);
 
-  const { isFinished } = usePlaybackTransportState();
+  const { isFinished, masterVolume } = usePlaybackTransportState();
   const { handleExit } = usePlaybackTransportActions();
   const { rawScore, players: micPlayers, multiplayer } = usePlaybackMicState();
   const { skipOutroPending } = usePlaybackTranscriptState();
@@ -96,6 +96,7 @@ export function usePlaybackResult(
   const [results, setResults] = useState<PlaybackPlayerResult[]>([]);
   const micPlayersRef = useLatestRef(micPlayers);
   const scoreRef = useLatestRef(rawScore);
+  const masterVolumeRef = useLatestRef(masterVolume);
   const finishHandledRef = useRef(false);
 
   useEffect(() => {
@@ -161,13 +162,14 @@ export function usePlaybackResult(
     }
 
     const audioElement = new Audio(successSoundUrl);
+    audioElement.volume = masterVolumeRef.current;
     void audioElement.play().catch(() => {});
 
     return () => {
       audioElement.pause();
       audioElement.src = '';
     };
-  }, [showResult]);
+  }, [showResult, masterVolumeRef]);
 
   const onBack = useCallback(() => {
     setShowResult(false);
