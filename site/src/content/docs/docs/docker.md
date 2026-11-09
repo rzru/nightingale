@@ -20,7 +20,7 @@ Each release publishes images to Docker Hub and GHCR, so you don't have to build
 | CPU | `razzaru/nightingale:latest` | `ghcr.io/rzru/nightingale:latest` |
 | CUDA / GPU | `razzaru/nightingale:latest-cuda` | `ghcr.io/rzru/nightingale:latest-cuda` |
 
-Versioned tags (`:1.4.0`, `:1.4.0-cuda`, ...) are published alongside `latest`.
+Versioned tags (`:1.4.1`, `:1.4.1-cuda`, ...) are published alongside `latest`.
 
 ```bash
 docker pull razzaru/nightingale:latest

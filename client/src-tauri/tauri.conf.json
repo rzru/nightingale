@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Nightingale",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "identifier": "com.rzru.client",
   "build": {
     "beforeDevCommand": "pnpm build && pnpm dev",

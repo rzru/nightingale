@@ -13,6 +13,8 @@ below.
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-11-09
+
 ### Fixes
 
 - Song titles and other Latin text no longer show a wide gap around typographic quotes and dashes.
