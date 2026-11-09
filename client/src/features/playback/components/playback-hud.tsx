@@ -453,14 +453,14 @@ function PlaybackHudImpl({
       <div
         className={`pointer-events-auto absolute inset-x-0 z-20 flex justify-between gap-3 px-3 md:px-4 ${hudPosition}`}
       >
-        <div className="flex w-[70vw] min-w-0 max-w-80 flex-col sm:max-w-[48%] lg:max-w-96">
+        <div className="flex w-[70vw] min-w-0 max-w-[420px] flex-col sm:max-w-[55%]">
           <h1 className="line-clamp-2 [overflow-wrap:anywhere] text-base leading-tight text-white md:text-[1.375rem]">
             {title}
           </h1>
           <p className="line-clamp-1 [overflow-wrap:anywhere] text-sm text-white/70 md:text-base">
             {artist}
           </p>
-          <PlaybackTransportControls duration={duration} segments={segments} />
+          <PlaybackTransportControls duration={duration} segments={segments} config={config} />
           <output
             ref={gapCaptionRef}
             aria-live="polite"

@@ -12,7 +12,10 @@ import { findCurrentSegment } from '@/features/playback/utils/lyrics-gap';
 import { t } from '@/i18n';
 import { cn } from '@/shared/utils/cn';
 import { formatSeconds } from '@/shared/utils/format-duration';
+import type { AppConfig } from '@/types/AppConfig';
 import type { Segment } from '@/types/Transcript';
+
+import { PlaybackVolumeControl } from './playback-volume-control';
 
 const isSeekKey = (key: string) =>
   ['ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(key);
@@ -133,7 +136,7 @@ export function TransportControls({
       className={cn('mt-1.5 w-full max-w-[340px]', className)}
       aria-label={t('playback.playbackTransportControls.playbackPosition')}
     >
-      <div className="flex h-[28px] items-center justify-between gap-3 [@media(any-pointer:coarse)]:h-[44px]">
+      <div className="flex min-h-[28px] flex-wrap items-center justify-between gap-x-3 [@media(any-pointer:coarse)]:min-h-[44px]">
         <p ref={timerRef} className="text-[16px] text-white/60 tabular-nums">
           0:00 / {formatSeconds(duration)}
         </p>
@@ -190,9 +193,11 @@ export function TransportControls({
 export function PlaybackTransportControls({
   duration,
   segments,
+  config,
 }: {
   duration: number;
   segments: Segment[];
+  config: AppConfig | null;
 }) {
   const { subscribe, getCurrentTime, seek } = usePlaybackTransportActions();
   const hintRef = useRef(0);
@@ -223,12 +228,16 @@ export function PlaybackTransportControls({
   }, [getCurrentTime, seek, segments]);
 
   return (
-    <TransportControls
-      duration={duration}
-      subscribe={subscribe}
-      getCurrentTime={getCurrentTime}
-      seek={seek}
-      lines={lines}
-    />
+    <div className="inline-flex max-w-full self-start items-start gap-2">
+      <TransportControls
+        duration={duration}
+        subscribe={subscribe}
+        getCurrentTime={getCurrentTime}
+        seek={seek}
+        lines={lines}
+        className="min-w-0 w-[340px]"
+      />
+      <PlaybackVolumeControl config={config} />
+    </div>
   );
 }
