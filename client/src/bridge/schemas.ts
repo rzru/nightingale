@@ -246,9 +246,21 @@ export const webBootstrapSchema = z.object({
   libraryPinned: z.boolean().optional(),
 });
 
+/** Present only for room playback; solo playback never sets it. */
+export const roomPlaybackSchema = z.object({
+  nodeUrl: z.string(),
+  roomId: z.string(),
+  token: z.string(),
+  memberId: z.string(),
+  memberName: z.string(),
+  startAtMs: z.number(),
+  offsetMs: z.number(),
+});
+
 export const playbackLocationStateSchema = z.object({
   song: songSchema,
   queuePlayback: z.boolean().optional(),
   playbackId: z.string().optional(),
   players: playbackPlayersSchema.optional(),
+  room: roomPlaybackSchema.optional(),
 });

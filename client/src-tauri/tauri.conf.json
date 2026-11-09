@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' ipc: http://ipc.localhost; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:* http://localhost:* https:; img-src 'self' asset: http://asset.localhost http://127.0.0.1:* https:; media-src 'self' http://127.0.0.1:* https:; style-src 'self' 'unsafe-inline'",
+      "csp": "default-src 'self' ipc: http://ipc.localhost; connect-src 'self' ipc: http://ipc.localhost http: https: ws: wss:; img-src 'self' asset: http://asset.localhost http://127.0.0.1:* https:; media-src 'self' http://127.0.0.1:* https:; style-src 'self' 'unsafe-inline'",
       "assetProtocol": {
         "enable": true,
         "scope": ["$HOME/.nightingale/**"]

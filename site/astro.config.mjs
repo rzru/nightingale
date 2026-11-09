@@ -80,6 +80,7 @@ export default defineConfig({
             { label: "UltraStar Deluxe", slug: "docs/usdx" },
             { label: "Pitch Scoring", slug: "docs/scoring" },
             { label: "Multiplayer", slug: "docs/multiplayer" },
+            { label: "Rooms & Community Nodes", slug: "docs/rooms" },
             { label: "Backgrounds", slug: "docs/backgrounds" },
             { label: "Queue From Your Phone", slug: "docs/queue-from-phone" },
             { label: "Profiles", slug: "docs/profiles" },

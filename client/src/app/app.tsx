@@ -11,6 +11,7 @@ import { MenuLayout } from '@/features/menu/menu';
 import { MenuFocusProvider } from '@/features/menu/providers/menu-focus-context';
 import { Playback } from '@/features/playback/playback';
 import { RemoteQueuePage } from '@/features/remote/remote-queue';
+import { RoomsPage } from '@/features/rooms/rooms-page';
 import { SettingsPage } from '@/features/settings/settings';
 import { useUpdate } from '@/features/updates/queries/use-update';
 import { syncLanguagePreference, useTranslation } from '@/i18n';
@@ -45,6 +46,7 @@ const InnerWrapper = () => (
           <Route path="/" element={<MenuLayout />}>
             <Route index element={<LibraryPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="rooms" element={<RoomsPage />} />
           </Route>
           <Route path="/playback" element={<Playback />} />
         </Routes>

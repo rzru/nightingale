@@ -32,6 +32,7 @@ import {
   usePlaybackRemoteControls,
   usePlaybackRemotePublisher,
 } from '@/features/playback/hooks/use-playback-remote-controls';
+import { useRoomPlayback } from '@/features/playback/hooks/use-room-playback';
 import { playbackActions, playbackExitLabelKey } from '@/features/playback/lib/playback-actions';
 import { FLAVORS, videoFlavorLabel } from '@/features/playback/lib/video-flavor';
 import {
@@ -49,6 +50,7 @@ import { usePlaybackStartupState } from '@/features/playback/providers/playback-
 import { findCurrentSegment } from '@/features/playback/utils/lyrics-gap';
 import { t } from '@/i18n';
 import type { AppConfig } from '@/types/AppConfig';
+import type { RoomPlayback } from '@/types/RoomPlayback';
 import type { Song } from '@/types/Song';
 
 export type PlaybackInnerProps = {
@@ -57,6 +59,8 @@ export type PlaybackInnerProps = {
   queuePlayback: boolean;
   sessionPlayback: boolean;
   players?: readonly PlaybackPlayer[];
+  /** Set only for room playback; `undefined` keeps the solo path untouched. */
+  room?: RoomPlayback;
 };
 
 type PlaybackLayoutProps = PlaybackInnerProps;
@@ -77,6 +81,7 @@ function PlaybackLayout({
   queuePlayback,
   sessionPlayback,
   players,
+  room,
 }: PlaybackLayoutProps) {
   const { paused, isPlaying, duration, guideVolume, guideAvailable } = usePlaybackTransportState();
   const {
@@ -84,6 +89,8 @@ function PlaybackLayout({
     subscribe,
     seek,
     setGuideVolume,
+    pauseAudio,
+    startPlayback,
     handlePause,
     handleContinue,
     handleExit,
@@ -96,6 +103,16 @@ function PlaybackLayout({
   const themeActions = usePlaybackThemeActions();
   const mic = usePlaybackMicState();
   const micActions = usePlaybackMicActions();
+  // Inert for solo playback: the hook returns no extra players and never opens
+  // a socket unless the session carries a room.
+  const roomSync = useRoomPlayback(
+    room ?? null,
+    { pauseAudio, seek, startPlayback },
+    {
+      score: mic.pitchScore,
+      series: mic.series,
+    },
+  );
   const persistConfig = usePlaybackConfigPersist(config);
   const {
     lyricsVerticalPosition,
@@ -240,7 +257,12 @@ function PlaybackLayout({
         windowControls={sessionWindowControls}
       />
       {!isPitchGuideTheme(theme) && (
-        <PitchGraph series={mic.series} position={hudPosition} scale={pitchGraphScale} />
+        <PitchGraph
+          series={mic.series}
+          position={hudPosition}
+          scale={pitchGraphScale}
+          extraPlayers={roomSync.players}
+        />
       )}
       <LyricsDisplay
         segments={segments}
@@ -276,10 +298,12 @@ export function PlaybackInner({
   queuePlayback,
   sessionPlayback,
   players,
+  room,
 }: PlaybackInnerProps) {
   return (
     <PlaybackProviders song={song} config={config} players={players}>
       <PlaybackLayout
+        room={room}
         song={song}
         config={config}
         queuePlayback={queuePlayback}

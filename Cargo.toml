@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["app-api", "app-core", "client/src-tauri", "client/src-server", "xtask"]
+members = ["app-api", "app-core", "client/src-tauri", "client/src-server", "node", "xtask"]
 
 [workspace.lints.rust]
 unsafe_code = "deny"

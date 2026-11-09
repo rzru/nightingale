@@ -34,6 +34,7 @@ function PlaybackSessionView({
       queuePlayback={session.queuePlayback}
       sessionPlayback={sessionPlayback}
       players={session.players}
+      room={session.room}
     />
   );
 }

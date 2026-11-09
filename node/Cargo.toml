@@ -1,0 +1,33 @@
+[package]
+name = "nightingale-node"
+version = "1.4.1"
+description = "Nightingale co-op singing node."
+authors = ["rzru <rzzzzru@gmail.com>"]
+license = "GPL-3.0"
+edition = "2021"
+
+[[bin]]
+name = "nightingale-node"
+path = "src/main.rs"
+
+[dependencies]
+axum = { version = "0.7", features = ["ws", "macros"] }
+tokio = { version = "1", features = [
+  "macros",
+  "rt-multi-thread",
+  "sync",
+  "signal",
+  "time",
+] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+clap = { version = "4", features = ["derive", "env"] }
+futures-util = "0.3"
+argon2 = "0.5"
+getrandom = "0.3"
+
+[lints]
+workspace = true

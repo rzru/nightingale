@@ -8,6 +8,7 @@ import {
   RefreshCcwDotIcon,
   TrophyIcon,
   UserIcon,
+  UsersIcon,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -206,6 +207,18 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
               <DropdownMenuItem onClick={() => setMode('leaderboards')}>
                 <TrophyIcon />
                 {t('menu.sidebar.actions.leaderboards')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setDropdownOpen(false);
+                  if (isMobile) {
+                    setOpen(false);
+                  }
+                  void navigate('/rooms');
+                }}
+              >
+                <UsersIcon />
+                {t('rooms.title')}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {

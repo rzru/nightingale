@@ -13,6 +13,11 @@ below.
 
 ## [Unreleased]
 
+### Features
+
+- Added **Rooms**: pick a community node, browse the rooms open on it, and sing the same track together while you hear each other in Discord. A room holds up to four singers, can be password protected, and only starts once everyone who owns the track is ready. Playback begins on a shared timestamp, and every singer's pitch trail and score appear together while you sing.
+- Added `nightingale-node`, a small room-coordination server with no music library and no storage, plus a Docker Compose file to run one. Nodes are listed only when their operator opts in; private nodes are added by URL.
+
 ## [1.4.1] - 2026-11-09
 
 ### Fixes

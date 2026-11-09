@@ -1,0 +1,26 @@
+# Nightingale co-op singing node.
+#
+# No volumes and no library mount: the node only coordinates rooms. Singers play
+# their own copies of a track through their own Nightingale client.
+#
+#   docker compose -f docker/node.compose.yaml up -d
+#
+# Browsers reach a plain http node fine, but the desktop app needs TLS because
+# its CSP has no ws:// allowance. Put Caddy or nginx in front for wss://.
+services:
+  node:
+    build:
+      context: ..
+      dockerfile: docker/node.Dockerfile
+    image: nightingale-node:latest
+    container_name: nightingale-node
+    restart: unless-stopped
+    environment:
+      NIGHTINGALE_NODE_NAME: ${NIGHTINGALE_NODE_NAME:-Nightingale node}
+      # Public nodes can be listed in the shared node list. Private nodes stay
+      # reachable by URL only.
+      NIGHTINGALE_NODE_PUBLIC: ${NIGHTINGALE_NODE_PUBLIC:-false}
+      NIGHTINGALE_NODE_MAX_ROOMS: ${NIGHTINGALE_NODE_MAX_ROOMS:-10}
+      NIGHTINGALE_NODE_MAX_SLOTS: ${NIGHTINGALE_NODE_MAX_SLOTS:-16}
+    ports:
+      - "64450:8080"
