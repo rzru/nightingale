@@ -13,6 +13,11 @@ below.
 
 ## [Unreleased]
 
+### Fixes
+
+- Song titles and other Latin text no longer show a wide gap around typographic quotes and dashes.
+- Song covers are visible again in installed desktop builds, where they had been blocked from loading.
+
 ## [1.4.0] - 2026-11-06
 
 ### Features
