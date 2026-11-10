@@ -18,6 +18,8 @@ import { useRoomSongs } from './use-room-song';
 type RoomLaunchInput = {
   session: RoomSession | null;
   trackHash: string | null;
+  /** Arming already opens the surface; the start time arrives over the socket. */
+  live: boolean;
   startAtMs: number | null;
   memberName: string;
   color: RoomColor;
@@ -27,6 +29,7 @@ type RoomLaunchInput = {
 export const useRoomLaunch = ({
   session,
   trackHash,
+  live,
   startAtMs,
   memberName,
   color,
@@ -37,12 +40,12 @@ export const useRoomLaunch = ({
   const { data: songs } = useRoomSongs(trackHash === null ? [] : [trackHash]);
 
   useEffect(() => {
-    if (session === null || trackHash === null || startAtMs === null || songs === undefined) {
+    if (session === null || trackHash === null || !live || songs === undefined) {
       return;
     }
 
     const song = songs.at(0);
-    const key = `${session.joining.roomId}:${startAtMs}`;
+    const key = `${session.joining.roomId}:${trackHash}`;
 
     if (song === undefined || launched.current === key) {
       return;
@@ -64,11 +67,22 @@ export const useRoomLaunch = ({
           memberId: session.joining.memberId,
           memberName,
           color,
-          startAtMs,
+          startAtMs: startAtMs ?? 0,
           offsetMs,
         },
       },
       target,
     );
-  }, [session, trackHash, startAtMs, memberName, color, offsetMs, songs, launch, reserveTarget]);
+  }, [
+    session,
+    trackHash,
+    live,
+    startAtMs,
+    memberName,
+    color,
+    offsetMs,
+    songs,
+    launch,
+    reserveTarget,
+  ]);
 };

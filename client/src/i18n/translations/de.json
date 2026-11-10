@@ -847,8 +847,12 @@
   "rooms.node.roomsUsed": "{{used}} von {{capacity}} Räumen",
   "rooms.room.color": "Farbe",
   "rooms.room.pickColor": "Farbe wählen",
-  "rooms.room.arming": "Warte auf {{loaded}}/{{total}} beim Laden des Titels",
   "rooms.room.skipIntro": "Intro überspringen",
   "rooms.room.skipOutro": "Outro überspringen",
-  "rooms.deny.colorTaken": "Diese Farbe ist schon vergeben."
+  "rooms.deny.colorTaken": "Diese Farbe ist schon vergeben.",
+  "rooms.room.armingNames": "Warte, bis {{names}} fertig geladen hat",
+  "rooms.room.starting": "Startet…",
+  "rooms.room.songs": "Titel",
+  "rooms.room.total": "Gesamt",
+  "rooms.room.pausedBy": "Pausiert von {{name}}"
 }

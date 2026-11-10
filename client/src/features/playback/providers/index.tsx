@@ -14,6 +14,7 @@ import { PlaybackStartupProvider } from './playback-startup-provider';
 import { PlaybackThemeProvider } from './playback-theme-context';
 import { PlaybackTranscriptProvider } from './playback-transcript-context';
 import { PlaybackTransportProvider } from './playback-transport-context';
+import { RoomPlaybackProvider } from './room-playback-provider';
 
 type PlaybackProvidersProps = {
   song: Song;
@@ -30,11 +31,13 @@ export function PlaybackProviders({ song, config, players, children }: PlaybackP
       initialMasterVolume={config?.master_volume ?? 1}
     >
       <PlaybackThemeProvider song={song} config={config}>
-        <PlaybackMicProvider config={config} players={players}>
-          <PlaybackTranscriptProvider fileHash={song.file_hash}>
-            <PlaybackStartupProvider>{children}</PlaybackStartupProvider>
-          </PlaybackTranscriptProvider>
-        </PlaybackMicProvider>
+        <RoomPlaybackProvider>
+          <PlaybackMicProvider config={config} players={players}>
+            <PlaybackTranscriptProvider fileHash={song.file_hash}>
+              <PlaybackStartupProvider>{children}</PlaybackStartupProvider>
+            </PlaybackTranscriptProvider>
+          </PlaybackMicProvider>
+        </RoomPlaybackProvider>
       </PlaybackThemeProvider>
     </PlaybackTransportProvider>
   );

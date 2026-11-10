@@ -847,8 +847,12 @@
   "rooms.node.roomsUsed": "{{used}} of {{capacity}} rooms",
   "rooms.room.color": "Color",
   "rooms.room.pickColor": "Pick a color",
-  "rooms.room.arming": "Waiting for {{loaded}}/{{total}} to load the track",
   "rooms.room.skipIntro": "Skip intro",
   "rooms.room.skipOutro": "Skip outro",
-  "rooms.deny.colorTaken": "That color is taken."
+  "rooms.deny.colorTaken": "That color is taken.",
+  "rooms.room.armingNames": "Waiting for {{names}} to finish loading",
+  "rooms.room.starting": "Starting…",
+  "rooms.room.songs": "Songs",
+  "rooms.room.total": "Total",
+  "rooms.room.pausedBy": "Paused by {{name}}"
 }

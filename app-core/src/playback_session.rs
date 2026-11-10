@@ -72,8 +72,8 @@ impl PlaybackSession {
             {
                 return Err("room playback needs a node, room, member, and token".to_string());
             }
-            if room.start_at_ms <= 0 {
-                return Err("room playback needs a start timestamp".to_string());
+            if room.start_at_ms < 0 {
+                return Err("room playback needs a valid start timestamp".to_string());
             }
         }
         if self.players.is_empty() {

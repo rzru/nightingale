@@ -108,6 +108,8 @@ struct Member {
     has_track: bool,
     loaded: bool,
     score: i64,
+    songs: i64,
+    total: i64,
     color: PlayerColor,
     /// Live sockets for this member. The room screen and the playback surface
     /// each hold one.
@@ -128,6 +130,8 @@ impl Member {
             has_track: false,
             loaded: false,
             score: 0,
+            songs: 0,
+            total: 0,
             color: PlayerColor::Rose,
             sockets: 0,
             last_seen: Instant::now(),
@@ -144,6 +148,9 @@ struct RoomState {
     phase: Phase,
     arming_since: Option<Instant>,
     start_at_ms: Option<i64>,
+    paused: bool,
+    paused_by: Option<String>,
+    paused_position_ms: i64,
 }
 
 impl RoomState {
@@ -163,6 +170,8 @@ impl RoomState {
                     loaded: member.loaded,
                     color: member.color,
                     score: member.score,
+                    songs: member.songs,
+                    total: member.total,
                     host: member.id == self.host,
                 })
                 .collect(),
@@ -170,8 +179,20 @@ impl RoomState {
             track: self.track.clone(),
             phase: self.phase,
             start_at_ms: self.start_at_ms,
+            paused: self.paused,
+            paused_by: self.paused_by.clone(),
+            position_ms: self.position_ms(),
             locked: self.password.is_some(),
         }
+    }
+
+    fn position_ms(&self) -> i64 {
+        if self.paused {
+            return self.paused_position_ms;
+        }
+
+        self.start_at_ms
+            .map_or(0, |start| (now_ms() - start).max(0))
     }
 
     fn summary(&self, id: &str) -> RoomSummary {
@@ -214,6 +235,20 @@ impl RoomState {
         self.phase = Phase::Playing;
         self.arming_since = None;
         self.start_at_ms = Some(now_ms() + START_LEAD_MS);
+        self.paused = false;
+        self.paused_by = None;
+        self.paused_position_ms = 0;
+    }
+
+    /// Bank the song's points and clear the per-song counters.
+    fn finish_song(&mut self) {
+        for member in &mut self.members {
+            if member.score > 0 {
+                member.songs += 1;
+                member.total += member.score;
+            }
+            member.score = 0;
+        }
     }
 
     fn member_mut(&mut self, id: &str) -> Result<&mut Member, RoomError> {
@@ -437,6 +472,10 @@ impl Room {
             state.phase = Phase::Lobby;
             state.arming_since = None;
             state.start_at_ms = None;
+            state.paused = false;
+            state.paused_by = None;
+            state.paused_position_ms = 0;
+            state.finish_song();
             state.clear_ready();
             for member in &mut state.members {
                 member.loaded = false;
@@ -503,6 +542,10 @@ impl Room {
                 state.phase = Phase::Lobby;
                 state.start_at_ms = None;
                 state.arming_since = None;
+                state.paused = false;
+                state.paused_by = None;
+                state.paused_position_ms = 0;
+                state.finish_song();
                 state.clear_ready();
                 for member in &mut state.members {
                     member.loaded = false;
@@ -513,6 +556,47 @@ impl Room {
         self.broadcast_view().await;
 
         Ok(position)
+    }
+
+    /// Any singer can pause; the paused position becomes the resume anchor.
+    pub(crate) async fn pause(&self, member_id: &str) -> Result<(), RoomError> {
+        {
+            let mut state = self.state.write().await;
+            if state.phase != Phase::Playing {
+                return Err(RoomError::InPlayback);
+            }
+            if state.paused {
+                return Ok(());
+            }
+            let position = state.position_ms();
+            let name = state.member_mut(member_id)?.name.clone();
+            state.paused = true;
+            state.paused_by = Some(name);
+            state.paused_position_ms = position;
+        }
+        self.broadcast_view().await;
+
+        Ok(())
+    }
+
+    pub(crate) async fn resume(&self, member_id: &str) -> Result<(), RoomError> {
+        {
+            let mut state = self.state.write().await;
+            if state.phase != Phase::Playing {
+                return Err(RoomError::InPlayback);
+            }
+            if !state.paused {
+                return Ok(());
+            }
+            let position = state.paused_position_ms;
+            state.member_mut(member_id)?;
+            state.paused = false;
+            state.paused_by = None;
+            state.start_at_ms = Some(now_ms() - position);
+        }
+        self.broadcast_view().await;
+
+        Ok(())
     }
 
     pub(crate) async fn add_score(&self, member_id: &str, delta: i64) -> Result<(), RoomError> {
@@ -662,6 +746,9 @@ impl RoomStore {
                 phase: Phase::Lobby,
                 arming_since: None,
                 start_at_ms: None,
+                paused: false,
+                paused_by: None,
+                paused_position_ms: 0,
             },
         ));
 

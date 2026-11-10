@@ -29,9 +29,13 @@ import {
   usePlaybackTransportActions,
   usePlaybackTransportState,
 } from './playback-transport-context';
+import type { RoomPlaybackView, RoomRemotePlayer } from './room-playback-context';
+import { useRoomPlaybackView } from './room-playback-hooks';
 
 export type PlaybackPlayerMicState = {
   id: string;
+  /** A singer in a room: no local microphone, pitch arrives over the socket. */
+  remote?: boolean;
   profile: string | null;
   microphoneId: string | null;
   color: PlayerColor;
@@ -80,6 +84,8 @@ type PlaybackMicProviderProps = {
 };
 
 type MicPlayerConfig = {
+  /** Remote singers have no microphone; their pitch arrives over the room. */
+  remote?: boolean;
   present: boolean;
   id: string;
   profile: string | null;
@@ -96,6 +102,8 @@ type PlayerMicInput = {
   emitAudio: boolean;
   source: PitchScoringSource;
   latencySec: number;
+  /** Present for room singers: their pitch and score arrive over the socket. */
+  remote?: RoomRemotePlayer;
 };
 
 type CaptureSettings = {
@@ -112,28 +120,54 @@ const combineMultiChannel = (config: AppConfig | null, multiplayer: boolean): bo
     ? (config?.multiplayer_combine_multi_channel ?? true)
     : (config?.combine_multi_channel ?? true);
 
+/** The local singer: from the session in local multiplayer, from the room in a
+ * room, or a plain solo seat in both. */
+function localConfigs(
+  players: readonly PlaybackPlayer[],
+  selectedMicId: string | null,
+  room: RoomPlaybackView | null,
+): MicPlayerConfig[] {
+  if (players.length > 0) {
+    return players.map((player) => ({
+      present: true,
+      id: player.id,
+      profile: player.profile,
+      microphoneId: player.microphoneId,
+      color: player.color,
+    }));
+  }
+
+  const self = room?.self ?? null;
+
+  return [
+    {
+      present: true,
+      id: self?.id ?? 'solo',
+      profile: self?.name ?? null,
+      microphoneId: selectedMicId,
+      color: self?.color ?? defaultPlayerColor(0),
+    },
+  ];
+}
+
+/** Remote singers: no microphone, pitch and score arrive over the room. */
+function remoteConfigs(room: RoomPlaybackView | null): MicPlayerConfig[] {
+  return [...(room?.remote.entries() ?? [])].map(([id, player]) => ({
+    present: true,
+    id,
+    profile: null,
+    microphoneId: null,
+    color: player.color,
+    remote: true,
+  }));
+}
+
 function playerConfigs(
   players: readonly PlaybackPlayer[],
   selectedMicId: string | null,
+  room: RoomPlaybackView | null,
 ): MicPlayerConfig[] {
-  if (players.length === 0) {
-    return [
-      {
-        present: true,
-        id: 'solo',
-        profile: null,
-        microphoneId: selectedMicId,
-        color: defaultPlayerColor(0),
-      },
-    ];
-  }
-  return players.map((player) => ({
-    present: true,
-    id: player.id,
-    profile: player.profile,
-    microphoneId: player.microphoneId,
-    color: player.color,
-  }));
+  return [...localConfigs(players, selectedMicId, room), ...remoteConfigs(room)];
 }
 
 function playerAt(players: readonly MicPlayerConfig[], index: number): MicPlayerConfig {
@@ -178,9 +212,11 @@ function usePlayerMic({
   emitAudio,
   source,
   latencySec,
+  remote,
 }: PlayerMicInput): InternalPlayerMicState {
-  const shouldCapture = captureEnabled && player.present;
-  const shouldTrackPitch = pitchEnabled && player.present;
+  const isRemote = player.remote === true;
+  const shouldCapture = captureEnabled && player.present && !isRemote;
+  const shouldTrackPitch = pitchEnabled && player.present && !isRemote;
   const captureOptions = useMemo(() => ({ emit_audio: emitAudio }), [emitAudio]);
   const { active: micCaptureActive, error: micCaptureError } = useMicCapture({
     captureId: player.id,
@@ -198,25 +234,52 @@ function usePlayerMic({
     latestPitch,
     latencySec,
   );
-  const micReady = micCaptureActive && micPitchActive;
+  return playerMicState(player, remote, {
+    micReady: micCaptureActive && micPitchActive,
+    score,
+    series,
+    error: micCaptureError ?? micPitchError,
+  });
+}
+
+/** Remote singers take their score and series from the room instead of capture. */
+const playerMicState = (
+  player: MicPlayerConfig,
+  remote: RoomRemotePlayer | undefined,
+  local: { micReady: boolean; score: number; series: PitchSeries; error: string | null },
+): InternalPlayerMicState => {
+  if (player.remote === true) {
+    return {
+      ...player,
+      micName: '',
+      pitchScore: remote?.score ?? null,
+      rawScore: remote?.score ?? 0,
+      series: remote?.series ?? local.series,
+      micCaptureActive: false,
+      micPitchActive: false,
+      micReady: remote !== undefined,
+      error: local.error,
+    };
+  }
 
   return {
     ...player,
     micName: '',
-    pitchScore: micReady ? score : null,
-    rawScore: score,
-    series,
-    micCaptureActive,
-    micPitchActive,
-    micReady,
-    error: micCaptureError ?? micPitchError,
+    pitchScore: local.micReady ? local.score : null,
+    rawScore: local.score,
+    series: local.series,
+    micCaptureActive: local.micReady,
+    micPitchActive: local.micReady,
+    micReady: local.micReady,
+    error: local.error,
   };
-}
+};
 
 function namePlayer(player: InternalPlayerMicState, devices: readonly MicDevice[]) {
   const device = devices.find((candidate) => candidate.deviceId === player.microphoneId);
   return {
     id: player.id,
+    remote: player.remote === true,
     profile: player.profile,
     microphoneId: player.microphoneId,
     color: player.color,
@@ -282,12 +345,44 @@ function micState(input: MicStateInput): PlaybackMicState {
   };
 }
 
+const reactiveInput = (slot: InternalPlayerMicState) => ({
+  captureId: slot.id,
+  enabled: slot.micReady && slot.remote !== true,
+});
+
+const isMultiplayer = (
+  players: readonly PlaybackPlayer[],
+  room: RoomPlaybackView | null,
+): boolean => players.length > 0 || (room !== null && room.remote.size > 0);
+
+const makePlayerInput =
+  (input: {
+    configs: MicPlayerConfig[];
+    latencySec: number;
+    room: RoomPlaybackView | null;
+    settings: CaptureSettings;
+    source: PitchScoringSource;
+  }) =>
+  (index: number): PlayerMicInput => {
+    const player = playerAt(input.configs, index);
+    const remote = player.remote === true ? input.room?.remote.get(player.id) : undefined;
+
+    return {
+      player,
+      ...input.settings,
+      source: input.source,
+      latencySec: input.latencySec,
+      remote,
+    };
+  };
+
 export function PlaybackMicProvider({ config, players, children }: PlaybackMicProviderProps) {
   const sessionPlayers = players ?? EMPTY_PLAYERS;
   const { isReady, isPlaying, paused, duration } = usePlaybackTransportState();
   const { subscribe, getScoringBuffer } = usePlaybackTransportActions();
   const persistConfig = usePlaybackConfigPersist(config);
-  const multiplayer = sessionPlayers.length > 0;
+  const room = useRoomPlaybackView();
+  const multiplayer = isMultiplayer(sessionPlayers, room);
   const [micUserEnabled, setMicUserEnabled] = useState(config?.mic_active ?? true);
   const [micMonitorUserEnabled, setMicMonitorUserEnabled] = useState(
     config?.mic_monitoring ?? false,
@@ -304,14 +399,9 @@ export function PlaybackMicProvider({ config, players, children }: PlaybackMicPr
     () => ({ isReady, duration, getReferenceBuffer: getScoringBuffer, subscribe }),
     [duration, getScoringBuffer, isReady, subscribe],
   );
-  const configs = playerConfigs(sessionPlayers, selectedMicId);
+  const configs = playerConfigs(sessionPlayers, selectedMicId, room);
   const latencySec = latencyCompensation(config);
-  const playerInput = (index: number): PlayerMicInput => ({
-    player: playerAt(configs, index),
-    ...settings,
-    source,
-    latencySec,
-  });
+  const playerInput = makePlayerInput({ configs, settings, source, latencySec, room });
   const slotOne = usePlayerMic(playerInput(0));
   const slotTwo = usePlayerMic(playerInput(1));
   const slotThree = usePlayerMic(playerInput(2));
@@ -320,11 +410,12 @@ export function PlaybackMicProvider({ config, players, children }: PlaybackMicPr
     .filter((player) => player.present)
     .map((player) => namePlayer(player, micDevices));
   const primary = namedPlayers[0];
+  // Remote singers have no local capture to subscribe to.
   const reactiveRef = useMicReactive([
-    { captureId: slotOne.id, enabled: slotOne.micReady },
-    { captureId: slotTwo.id, enabled: slotTwo.micReady },
-    { captureId: slotThree.id, enabled: slotThree.micReady },
-    { captureId: slotFour.id, enabled: slotFour.micReady },
+    reactiveInput(slotOne),
+    reactiveInput(slotTwo),
+    reactiveInput(slotThree),
+    reactiveInput(slotFour),
   ]);
 
   const shownErrors = useRef(new Set<string>());
@@ -360,7 +451,13 @@ export function PlaybackMicProvider({ config, players, children }: PlaybackMicPr
       }
       return next;
     });
-  }, [micMonitorUserEnabled, multiplayer, persistConfig]);
+  }, [
+    micMonitorUserEnabled,
+    multiplayer,
+    persistConfig,
+    setMicMonitorUserEnabled,
+    setMicUserEnabled,
+  ]);
 
   const selectMic = useCallback(
     (deviceId: string) => {
@@ -370,7 +467,7 @@ export function PlaybackMicProvider({ config, players, children }: PlaybackMicPr
       setSelectedMicId(deviceId);
       persistConfig({ preferred_mic: deviceId });
     },
-    [micDevices, multiplayer, persistConfig],
+    [micDevices, multiplayer, persistConfig, setSelectedMicId],
   );
 
   const handleCycleMic = useCallback(() => {
@@ -392,7 +489,7 @@ export function PlaybackMicProvider({ config, players, children }: PlaybackMicPr
       }
       return next;
     });
-  }, [micUserEnabled, multiplayer, persistConfig]);
+  }, [micUserEnabled, multiplayer, persistConfig, setMicMonitorUserEnabled, setMicUserEnabled]);
 
   const stateValue = useMemo(
     () =>

@@ -131,6 +131,8 @@ const MemberTable = ({
         <TableHead className="w-28">{t('rooms.room.color')}</TableHead>
         <TableHead className="w-24">{t('rooms.room.readyColumn')}</TableHead>
         <TableHead className="w-20 text-right">{t('rooms.room.score')}</TableHead>
+        <TableHead className="w-16 text-right">{t('rooms.room.songs')}</TableHead>
+        <TableHead className="w-20 text-right">{t('rooms.room.total')}</TableHead>
       </TableRow>
     </TableHeader>
     <TableBody>
@@ -145,6 +147,12 @@ const MemberTable = ({
             <TableCell>{readyLabel(member)}</TableCell>
             <TableCell className="text-right tabular-nums">
               {member === undefined ? '—' : member.score}
+            </TableCell>
+            <TableCell className="text-right tabular-nums text-muted-foreground">
+              {member === undefined ? '—' : member.songs}
+            </TableCell>
+            <TableCell className="text-right tabular-nums">
+              {member === undefined ? '—' : member.total}
             </TableCell>
           </TableRow>
         );
@@ -376,6 +384,7 @@ const RoomSessionBridge = ({
   useRoomLaunch({
     session,
     trackHash: state.track?.hash ?? null,
+    live: state.phase === 'arming' || state.phase === 'playing',
     startAtMs: state.startAtMs,
     memberName: me?.name ?? '',
     color: me?.color ?? 'rose',
@@ -390,12 +399,17 @@ const ArmingStatus = ({ state }: { state: RoomViewState }) => {
     return null;
   }
 
-  const singers = state.members.filter((member) => member.host || member.hasTrack);
-  const loaded = singers.filter((member) => member.loaded).length;
+  const waiting = state.members
+    .filter((member) => (member.host || member.hasTrack) && !member.loaded)
+    .map((member) => member.name);
+
+  if (waiting.length === 0) {
+    return <output className="text-sm text-muted-foreground">{t('rooms.room.starting')}</output>;
+  }
 
   return (
     <output className="text-sm text-muted-foreground">
-      {t('rooms.room.arming', { loaded, total: singers.length })}
+      {t('rooms.room.armingNames', { names: waiting.join(', ') })}
     </output>
   );
 };

@@ -8,7 +8,7 @@
 
 import { useCallback } from 'react';
 
-import type { PlaybackOptions, PlaybackProgress } from '@/bridge/playback-remote';
+import type { PlaybackControl, PlaybackOptions, PlaybackProgress } from '@/bridge/playback-remote';
 import type { PlaybackPlayer } from '@/bridge/playback-session';
 import type { PlaybackCommand, PlaybackStatus } from '@/bridge/playback-status';
 import { isTauri } from '@/bridge/runtime';
@@ -52,6 +52,82 @@ import { t } from '@/i18n';
 import type { AppConfig } from '@/types/AppConfig';
 import type { RoomPlayback } from '@/types/RoomPlayback';
 import type { Song } from '@/types/Song';
+
+type RemoteControlDeps = {
+  duration: number;
+  handleToggleMic: () => void;
+  handleToggleMicMonitor: () => void;
+  micSelect: (deviceId: string) => void;
+  persistGuideVolume: (volume: number) => void;
+  room: RoomPlayback | undefined;
+  roomSkip: (kind: 'intro' | 'outro') => void;
+  seek: (time: number) => void;
+  selectFlavor: (key: string) => void;
+  selectTheme: (key: string) => void;
+  setGuideVolume: (volume: number) => void;
+  skipIntro: () => void;
+  skipOutro: () => void;
+};
+
+/** In a room the clock owns the position: seeking is refused and skips broadcast. */
+const handleRoomControl = (control: PlaybackControl, deps: RemoteControlDeps): boolean => {
+  if (deps.room === undefined) {
+    return false;
+  }
+
+  if (control.type === 'seek') {
+    return true;
+  }
+
+  if (control.type === 'skip-intro' || control.type === 'skip-outro') {
+    deps.roomSkip(control.type === 'skip-intro' ? 'intro' : 'outro');
+
+    return true;
+  }
+
+  return false;
+};
+
+const runSoloControl = (control: PlaybackControl, deps: RemoteControlDeps): void => {
+  switch (control.type) {
+    case 'seek':
+      deps.seek(Math.max(0, Math.min(deps.duration, control.positionMs / 1000)));
+      return;
+    case 'set-guide-volume': {
+      const volume = Math.max(0, Math.min(1, control.volume));
+      deps.setGuideVolume(volume);
+      deps.persistGuideVolume(volume);
+      return;
+    }
+    case 'toggle-mic':
+      deps.handleToggleMic();
+      return;
+    case 'select-mic':
+      deps.micSelect(control.deviceId);
+      return;
+    case 'toggle-monitoring':
+      deps.handleToggleMicMonitor();
+      return;
+    case 'select-theme':
+      deps.selectTheme(control.key);
+      return;
+    case 'select-flavor':
+      deps.selectFlavor(control.key);
+      return;
+    case 'skip-intro':
+      deps.skipIntro();
+      return;
+    case 'skip-outro':
+      deps.skipOutro();
+      return;
+  }
+};
+
+const runRemoteControl = (control: PlaybackControl, deps: RemoteControlDeps): void => {
+  if (!handleRoomControl(control, deps)) {
+    runSoloControl(control, deps);
+  }
+};
 
 export type PlaybackInnerProps = {
   song: Song;
@@ -108,7 +184,13 @@ function PlaybackLayout({
   // the surface until the node says everyone finished loading.
   const roomSync = useRoomPlayback(
     room ?? null,
-    { pauseAudio, seek, startPlayback },
+    {
+      getCurrentTime,
+      pauseAudio,
+      resume: handleContinue,
+      seek,
+      startPlayback,
+    },
     {
       score: mic.pitchScore,
       series: mic.series,
@@ -145,10 +227,18 @@ function PlaybackLayout({
     (command: PlaybackCommand) => {
       switch (command) {
         case 'pause':
-          handlePause();
+          if (room === undefined) {
+            handlePause();
+          } else {
+            roomSync.requestPause();
+          }
           return;
         case 'resume':
-          handleContinue();
+          if (room === undefined) {
+            handleContinue();
+          } else {
+            roomSync.requestResume();
+          }
           return;
         case 'next':
           result.onNext?.();
@@ -157,12 +247,12 @@ function PlaybackLayout({
           handleExit();
       }
     },
-    [handleContinue, handleExit, handlePause, result],
+    [handleContinue, handleExit, handlePause, result, room, roomSync],
   );
 
   usePlaybackRemote(status, {
-    pause: handlePause,
-    resume: handleContinue,
+    pause: () => (room === undefined ? handlePause() : roomSync.requestPause()),
+    resume: () => (room === undefined ? handleContinue() : roomSync.requestResume()),
     next: () => result.onNext?.(),
     exit: handleExit,
   });
@@ -215,40 +305,23 @@ function PlaybackLayout({
 
   usePlaybackRemotePublisher(readProgress, remoteOptions, subscribe);
 
-  usePlaybackRemoteControls((control) => {
-    switch (control.type) {
-      case 'seek':
-        seek(Math.max(0, Math.min(duration, control.positionMs / 1000)));
-        return;
-      case 'skip-intro':
-        transcriptActions.handleSkipIntro();
-        return;
-      case 'skip-outro':
-        transcriptActions.handleSkipOutro();
-        return;
-      case 'set-guide-volume': {
-        const volume = Math.max(0, Math.min(1, control.volume));
-        setGuideVolume(volume);
-        persistConfig({ guide_volume: volume });
-        return;
-      }
-      case 'toggle-mic':
-        micActions.handleToggleMic();
-        return;
-      case 'select-mic':
-        micActions.selectMic(control.deviceId);
-        return;
-      case 'toggle-monitoring':
-        micActions.handleToggleMicMonitor();
-        return;
-      case 'select-theme':
-        themeActions.selectTheme(control.key);
-        return;
-      case 'select-flavor':
-        themeActions.selectFlavor(control.key);
-        return;
-    }
-  });
+  usePlaybackRemoteControls((control) =>
+    runRemoteControl(control, {
+      duration,
+      handleToggleMic: micActions.handleToggleMic,
+      handleToggleMicMonitor: micActions.handleToggleMicMonitor,
+      micSelect: micActions.selectMic,
+      persistGuideVolume: (volume) => persistConfig({ guide_volume: volume }),
+      room,
+      roomSkip: roomSync.requestSkip,
+      seek,
+      selectFlavor: themeActions.selectFlavor,
+      selectTheme: themeActions.selectTheme,
+      setGuideVolume,
+      skipIntro: transcriptActions.handleSkipIntro,
+      skipOutro: transcriptActions.handleSkipOutro,
+    }),
+  );
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-black" style={{ contain: 'strict' }}>
@@ -259,14 +332,10 @@ function PlaybackLayout({
         config={config}
         position={hudPosition}
         windowControls={sessionWindowControls}
+        locked={room !== undefined}
       />
       {!isPitchGuideTheme(theme) && (
-        <PitchGraph
-          series={mic.series}
-          position={hudPosition}
-          scale={pitchGraphScale}
-          extraPlayers={roomSync.players}
-        />
+        <PitchGraph series={mic.series} position={hudPosition} scale={pitchGraphScale} />
       )}
       <LyricsDisplay
         segments={segments}

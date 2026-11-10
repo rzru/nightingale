@@ -139,6 +139,8 @@ async fn dispatch(
             deny_on_error(room, room.set_color(member_id, &color).await)
         }
         ClientFrame::Loaded => deny_on_error(room, room.set_loaded(member_id).await),
+        ClientFrame::Pause => deny_on_error(room, room.pause(member_id).await),
+        ClientFrame::Resume => deny_on_error(room, room.resume(member_id).await),
         ClientFrame::SkipIntro => skip(room, member_id, false).await,
         ClientFrame::SkipOutro => skip(room, member_id, true).await,
         ClientFrame::Start => deny_on_error(room, room.start(member_id).await),

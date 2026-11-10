@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 
 import {
   type PitchGraphNotes,
-  type PitchGraphPlayer,
   pitchNoteIndex,
   renderPitchGraph,
 } from '@/features/playback/components/pitch-graph-canvas';
@@ -20,7 +19,6 @@ type StableNoteState = {
 };
 
 const NOTE_STABILITY_SECONDS = 0.18;
-const NO_PLAYERS: PitchGraphPlayer[] = [];
 const NOTE_HOLD_SECONDS = 0.25;
 
 function newStableNoteState(): StableNoteState {
@@ -125,16 +123,11 @@ type PitchGraphProps = {
   series: PitchSeries;
   position?: 'top' | 'bottom';
   scale?: number | null;
-  /** Remote singers in a room. Empty for solo and local multiplayer playback. */
-  extraPlayers?: PitchGraphPlayer[];
 };
 
-export function PitchGraph({ series, position = 'top', scale = 1, extraPlayers }: PitchGraphProps) {
+export function PitchGraph({ series, position = 'top', scale = 1 }: PitchGraphProps) {
   const { micReady, multiplayer, players } = usePlaybackMicState();
-  const extras = extraPlayers ?? NO_PLAYERS;
-  const visible = multiplayer
-    ? players.some((player) => player.micReady)
-    : micReady || extras.length > 0;
+  const visible = multiplayer ? players.some((player) => player.micReady) : micReady;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stableNotesRef = useRef(new Map<string, StableNoteState>());
   const { height: windowHeight, width: windowWidth } = useWindowSize();
@@ -152,19 +145,16 @@ export function PitchGraph({ series, position = 'top', scale = 1, extraPlayers }
       scale: clampPlaybackScale(scale),
       series,
       players: multiplayer
-        ? [
-            ...players
-              .filter((player) => player.micReady)
-              .map((player) => ({
-                series: player.series,
-                color: playerColorOption(player.color).rgb,
-              })),
-            ...extras,
-          ]
-        : extras,
+        ? players
+            .filter((player) => player.micReady)
+            .map((player) => ({
+              series: player.series,
+              color: playerColorOption(player.color).rgb,
+            }))
+        : [],
       notes: currentNotes(multiplayer, players, series, stableNotesRef.current),
     });
-  }, [multiplayer, players, series, visible, windowHeight, windowWidth, scale, extras]);
+  }, [multiplayer, players, series, visible, windowHeight, windowWidth, scale]);
 
   if (!visible) {
     return null;

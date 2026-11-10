@@ -75,6 +75,8 @@ export const roomMemberSchema = z.object({
   hasTrack: z.boolean(),
   loaded: z.boolean(),
   score: z.number().min(0).max(MAX_SCORE),
+  songs: z.number().min(0),
+  total: z.number().min(0),
   host: z.boolean(),
   color: playerColorSchema,
 });
@@ -90,6 +92,9 @@ export const roomViewSchema = z.object({
   track: roomTrackSchema.nullable(),
   phase: phaseSchema,
   startAtMs: z.number().nullable(),
+  paused: z.boolean(),
+  pausedBy: label(MAX_NAME).nullable(),
+  positionMs: z.number().min(0),
   locked: z.boolean(),
 });
 
@@ -158,6 +163,8 @@ export type RoomClientFrame =
   | { type: 'room.leave' }
   | { type: 'room.color'; color: RoomColor }
   | { type: 'room.loaded' }
+  | { type: 'room.pause' }
+  | { type: 'room.resume' }
   | { type: 'room.skip_intro' }
   | { type: 'room.skip_outro' }
   | { type: 'room.start' }

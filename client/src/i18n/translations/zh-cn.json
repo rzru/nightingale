@@ -847,8 +847,12 @@
   "rooms.node.roomsUsed": "{{used}}/{{capacity}} 个房间",
   "rooms.room.color": "颜色",
   "rooms.room.pickColor": "选择颜色",
-  "rooms.room.arming": "正在等待 {{loaded}}/{{total}} 加载曲目",
   "rooms.room.skipIntro": "跳过前奏",
   "rooms.room.skipOutro": "跳过尾声",
-  "rooms.deny.colorTaken": "该颜色已被占用。"
+  "rooms.deny.colorTaken": "该颜色已被占用。",
+  "rooms.room.armingNames": "正在等待 {{names}} 加载完成",
+  "rooms.room.starting": "即将开始…",
+  "rooms.room.songs": "曲目",
+  "rooms.room.total": "总计",
+  "rooms.room.pausedBy": "{{name}} 暂停"
 }

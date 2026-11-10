@@ -55,7 +55,11 @@ pub(crate) struct MemberView {
     pub(crate) has_track: bool,
     /// Set once this client finished loading the track.
     pub(crate) loaded: bool,
+    /// Points for the song being sung right now.
     pub(crate) score: i64,
+    /// Songs finished in this room, and points banked from them.
+    pub(crate) songs: i64,
+    pub(crate) total: i64,
     pub(crate) host: bool,
     pub(crate) color: PlayerColor,
 }
@@ -80,6 +84,11 @@ pub(crate) struct RoomView {
     /// Unix milliseconds of the shared start. While it lies in the future the
     /// room is counting down; clients schedule their own audio against it.
     pub(crate) start_at_ms: Option<i64>,
+    /// Paused by any singer pauses for the whole room.
+    pub(crate) paused: bool,
+    pub(crate) paused_by: Option<String>,
+    /// Where the room is right now, so a late joiner lands in the same place.
+    pub(crate) position_ms: i64,
     pub(crate) locked: bool,
 }
 
@@ -160,6 +169,10 @@ pub(crate) enum ClientFrame {
     SkipIntro,
     #[serde(rename = "room.skip_outro")]
     SkipOutro,
+    #[serde(rename = "room.pause")]
+    Pause,
+    #[serde(rename = "room.resume")]
+    Resume,
     #[serde(rename = "room.start")]
     Start,
     #[serde(rename = "room.end")]
