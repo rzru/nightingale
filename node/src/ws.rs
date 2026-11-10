@@ -135,6 +135,12 @@ async fn dispatch(
 
             false
         }
+        ClientFrame::Color { color } => {
+            deny_on_error(room, room.set_color(member_id, &color).await)
+        }
+        ClientFrame::Loaded => deny_on_error(room, room.set_loaded(member_id).await),
+        ClientFrame::SkipIntro => skip(room, member_id, false).await,
+        ClientFrame::SkipOutro => skip(room, member_id, true).await,
         ClientFrame::Start => deny_on_error(room, room.start(member_id).await),
         ClientFrame::End => deny_on_error(room, room.end(member_id).await),
         ClientFrame::Pitch { hz, rms } => {
@@ -150,6 +156,25 @@ async fn dispatch(
                     server_ms: now_ms(),
                 })
                 .await;
+
+            true
+        }
+    }
+}
+
+/// Skipping is host-only and broadcast, so every singer jumps together.
+async fn skip(room: &Room, member_id: &str, outro: bool) -> bool {
+    match room.skip(member_id, outro).await {
+        Ok(position) => {
+            room.announce(ServerFrame::Skip {
+                kind: if outro { "outro" } else { "intro" }.to_owned(),
+                position_ms: position,
+            });
+
+            true
+        }
+        Err(error) => {
+            room.deny(&error);
 
             true
         }

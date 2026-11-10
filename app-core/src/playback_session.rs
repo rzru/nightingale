@@ -39,6 +39,8 @@ pub struct RoomPlayback {
     pub token: String,
     pub member_id: String,
     pub member_name: String,
+    /// The singer's room colour, so trails stay consistent across machines.
+    pub color: String,
     /// Unix milliseconds the room agreed to start at.
     #[ts(type = "number")]
     pub start_at_ms: i64,

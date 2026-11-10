@@ -844,5 +844,11 @@
   "rooms.nodes.trust": "Only connect to nodes you trust.",
   "rooms.nodes.plaintext": "Plain http is unencrypted. Use it only on a network you trust, such as your LAN or a Tailscale network.",
   "rooms.room.pickTrackFor": "Pick {{value1}}",
-  "rooms.node.roomsUsed": "{{used}} of {{capacity}} rooms"
+  "rooms.node.roomsUsed": "{{used}} of {{capacity}} rooms",
+  "rooms.room.color": "Color",
+  "rooms.room.pickColor": "Pick a color",
+  "rooms.room.arming": "Waiting for {{loaded}}/{{total}} to load the track",
+  "rooms.room.skipIntro": "Skip intro",
+  "rooms.room.skipOutro": "Skip outro",
+  "rooms.deny.colorTaken": "That color is taken."
 }

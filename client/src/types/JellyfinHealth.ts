@@ -4,10 +4,4 @@
  * Public ping payload surfaced to the UI. Renders the small "online / offline"
  * pill next to the Jellyfin source in the sidebar.
  */
-export type JellyfinHealth = {
-  reachable: boolean;
-  server_name?: string;
-  version?: string;
-  server_id?: string;
-  error?: string;
-};
+export type JellyfinHealth = { reachable: boolean, server_name?: string, version?: string, server_id?: string, error?: string, };

@@ -16,7 +16,34 @@ pub(crate) const PROTOCOL: u32 = 1;
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum Phase {
     Lobby,
+    /// Everyone is loading the track; playback starts when the slowest client
+    /// reports ready, or when the arming timeout expires.
+    Arming,
     Playing,
+}
+
+/// Mirrors `client/src/shared/player-colors.ts`; four colors for four seats.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum PlayerColor {
+    Rose,
+    Fuchsia,
+    Amber,
+    Emerald,
+}
+
+impl PlayerColor {
+    pub(crate) const ALL: [Self; 4] = [Self::Rose, Self::Fuchsia, Self::Amber, Self::Emerald];
+
+    pub(crate) fn parse(value: &str) -> Option<Self> {
+        match value {
+            "rose" => Some(Self::Rose),
+            "fuchsia" => Some(Self::Fuchsia),
+            "amber" => Some(Self::Amber),
+            "emerald" => Some(Self::Emerald),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -26,8 +53,11 @@ pub(crate) struct MemberView {
     pub(crate) name: String,
     pub(crate) ready: bool,
     pub(crate) has_track: bool,
+    /// Set once this client finished loading the track.
+    pub(crate) loaded: bool,
     pub(crate) score: i64,
     pub(crate) host: bool,
+    pub(crate) color: PlayerColor,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -104,6 +134,9 @@ pub(crate) enum ServerFrame {
     Deny { reason: &'static str },
     #[serde(rename = "room.closed")]
     Closed { reason: &'static str },
+    /// The host skipped; every client seeks to this position.
+    #[serde(rename = "room.skip")]
+    Skip { kind: String, position_ms: i64 },
     #[serde(rename = "time.pong")]
     Pong { client_ms: i64, server_ms: i64 },
 }
@@ -119,6 +152,14 @@ pub(crate) enum ClientFrame {
     Track { hash: String, title: String },
     #[serde(rename = "room.leave")]
     Leave,
+    #[serde(rename = "room.color")]
+    Color { color: String },
+    #[serde(rename = "room.loaded")]
+    Loaded,
+    #[serde(rename = "room.skip_intro")]
+    SkipIntro,
+    #[serde(rename = "room.skip_outro")]
+    SkipOutro,
     #[serde(rename = "room.start")]
     Start,
     #[serde(rename = "room.end")]

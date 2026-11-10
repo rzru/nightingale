@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 
+import type { RoomColor } from '@/bridge/rooms';
 import { usePlaybackLauncher } from '@/features/playback/hooks/use-playback-launcher';
 
 import { markPlaybackLaunch } from '../lib/playback-launch';
@@ -19,6 +20,7 @@ type RoomLaunchInput = {
   trackHash: string | null;
   startAtMs: number | null;
   memberName: string;
+  color: RoomColor;
   offsetMs: number;
 };
 
@@ -27,6 +29,7 @@ export const useRoomLaunch = ({
   trackHash,
   startAtMs,
   memberName,
+  color,
   offsetMs,
 }: RoomLaunchInput): void => {
   const { launch, reserveTarget } = usePlaybackLauncher();
@@ -60,11 +63,12 @@ export const useRoomLaunch = ({
           token: session.joining.token,
           memberId: session.joining.memberId,
           memberName,
+          color,
           startAtMs,
           offsetMs,
         },
       },
       target,
     );
-  }, [session, trackHash, startAtMs, memberName, offsetMs, songs, launch, reserveTarget]);
+  }, [session, trackHash, startAtMs, memberName, color, offsetMs, songs, launch, reserveTarget]);
 };

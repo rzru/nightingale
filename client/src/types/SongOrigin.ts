@@ -10,39 +10,23 @@
  * the active `AppConfig.library_source` and would otherwise go stale the next
  * time the user reconnects to a different host.
  */
-export type SongOrigin =
-  | { kind: "local_file" }
-  | {
-      kind: "jellyfin";
-      item_id: string;
-      container: string | null;
-      /**
-       * Jellyfin's `ImageTags.Primary` for this item, captured at scan
-       * time. We re-fetch the cover only when this value changes.
-       */
-      cover_tag: string | null;
-    }
-  | {
-      kind: "navidrome";
-      item_id: string;
-      container: string | null;
-      /**
-       * Subsonic `coverArt` id for this song, captured at scan time. We
-       * re-fetch the cover only when this value changes.
-       */
-      cover_tag: string | null;
-    }
-  | {
-      kind: "plex";
-      item_id: string;
-      /**
-       * Server-relative original-media part key. Keeping it relative lets
-       * the backend authenticate without exposing a token-bearing URL.
-       */
-      part_key: string;
-      container: string | null;
-      /**
-       * Server-relative Plex thumb path used for cover invalidation.
-       */
-      cover_tag: string | null;
-    };
+export type SongOrigin = { "kind": "local_file" } | { "kind": "jellyfin", item_id: string, container: string | null, 
+/**
+ * Jellyfin's `ImageTags.Primary` for this item, captured at scan
+ * time. We re-fetch the cover only when this value changes.
+ */
+cover_tag: string | null, } | { "kind": "navidrome", item_id: string, container: string | null, 
+/**
+ * Subsonic `coverArt` id for this song, captured at scan time. We
+ * re-fetch the cover only when this value changes.
+ */
+cover_tag: string | null, } | { "kind": "plex", item_id: string, 
+/**
+ * Server-relative original-media part key. Keeping it relative lets
+ * the backend authenticate without exposing a token-bearing URL.
+ */
+part_key: string, container: string | null, 
+/**
+ * Server-relative Plex thumb path used for cover invalidation.
+ */
+cover_tag: string | null, };

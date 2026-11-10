@@ -23,12 +23,14 @@ use argon2::{
 use tokio::sync::{broadcast, RwLock};
 
 use crate::proto::{
-    MemberView, Phase, RoomSummary, RoomView, ServerFrame, TrackView, ROOM_CAPACITY,
+    MemberView, Phase, PlayerColor, RoomSummary, RoomView, ServerFrame, TrackView, ROOM_CAPACITY,
 };
 
-/// Lead time broadcast with [`Phase::Playing`] so every client can load the
-/// track, align its clock, and start on the same beat.
-const COUNTDOWN_MS: i64 = 8_000;
+/// Lead time broadcast with [`Phase::Playing`] once everyone has loaded, so the
+/// last client still has a moment to align its clock and seek to zero.
+const START_LEAD_MS: i64 = 3_000;
+/// A client that never finishes loading must not hold the room forever.
+const ARMING_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// A singer keeps their seat while they move between the room screen and the
 /// playback surface, which are separate sockets (and, on desktop, separate
@@ -57,6 +59,7 @@ pub(crate) enum RoomError {
     NoTrack,
     TrackUnset,
     NotReady,
+    ColorTaken,
     BadPassword,
     Denied,
     RateLimited,
@@ -76,6 +79,7 @@ impl RoomError {
             Self::NoTrack => "no-track",
             Self::TrackUnset => "track-unset",
             Self::NotReady => "not-ready",
+            Self::ColorTaken => "color-taken",
             Self::BadPassword => "bad-password",
             Self::Denied => "denied",
             Self::RateLimited => "rate-limited",
@@ -102,7 +106,9 @@ struct Member {
     token: String,
     ready: bool,
     has_track: bool,
+    loaded: bool,
     score: i64,
+    color: PlayerColor,
     /// Live sockets for this member. The room screen and the playback surface
     /// each hold one.
     sockets: u32,
@@ -120,7 +126,9 @@ impl Member {
             token,
             ready: false,
             has_track: false,
+            loaded: false,
             score: 0,
+            color: PlayerColor::Rose,
             sockets: 0,
             last_seen: Instant::now(),
         })
@@ -134,6 +142,7 @@ struct RoomState {
     members: Vec<Member>,
     track: Option<TrackView>,
     phase: Phase,
+    arming_since: Option<Instant>,
     start_at_ms: Option<i64>,
 }
 
@@ -151,6 +160,8 @@ impl RoomState {
                     name: member.name.clone(),
                     ready: Self::is_ready(member, &self.host),
                     has_track: member.has_track,
+                    loaded: member.loaded,
+                    color: member.color,
                     score: member.score,
                     host: member.id == self.host,
                 })
@@ -186,6 +197,25 @@ impl RoomState {
         }
     }
 
+    fn free_color(&self) -> PlayerColor {
+        PlayerColor::ALL
+            .into_iter()
+            .find(|color| !self.members.iter().any(|member| member.color == *color))
+            .unwrap_or(PlayerColor::Rose)
+    }
+
+    /// A member who has the track (or the host, who owns it) must finish
+    /// loading before the room starts.
+    fn must_load(&self, member: &Member) -> bool {
+        member.id == self.host || member.has_track
+    }
+
+    fn begin(&mut self) {
+        self.phase = Phase::Playing;
+        self.arming_since = None;
+        self.start_at_ms = Some(now_ms() + START_LEAD_MS);
+    }
+
     fn member_mut(&mut self, id: &str) -> Result<&mut Member, RoomError> {
         self.members
             .iter_mut()
@@ -193,11 +223,17 @@ impl RoomState {
             .ok_or(RoomError::Denied)
     }
 
-    /// Host-only mutations that make no sense mid-playback.
-    fn host_lobby(&mut self, member_id: &str) -> Result<(), RoomError> {
+    fn host_only(&self, member_id: &str) -> Result<(), RoomError> {
         if self.host != member_id {
             return Err(RoomError::NotHost);
         }
+
+        Ok(())
+    }
+
+    /// Host-only mutations that make no sense mid-playback.
+    fn host_lobby(&mut self, member_id: &str) -> Result<(), RoomError> {
+        self.host_only(member_id)?;
         if self.phase != Phase::Lobby {
             return Err(RoomError::InPlayback);
         }
@@ -290,6 +326,10 @@ impl Room {
         });
     }
 
+    pub(crate) fn announce(&self, frame: ServerFrame) {
+        self.send(&frame);
+    }
+
     pub(crate) fn deny(&self, error: &RoomError) {
         self.send(&ServerFrame::Deny {
             reason: error.reason(),
@@ -378,8 +418,12 @@ impl Room {
             if state.members.iter().any(|member| state.gates_start(member)) {
                 return Err(RoomError::NotReady);
             }
-            state.phase = Phase::Playing;
-            state.start_at_ms = Some(now_ms() + COUNTDOWN_MS);
+            state.phase = Phase::Arming;
+            state.arming_since = Some(Instant::now());
+            state.start_at_ms = None;
+            for member in &mut state.members {
+                member.loaded = false;
+            }
         }
         self.broadcast_view().await;
 
@@ -389,14 +433,86 @@ impl Room {
     pub(crate) async fn end(&self, member_id: &str) -> Result<(), RoomError> {
         {
             let mut state = self.state.write().await;
-            state.host_lobby(member_id)?;
+            state.host_only(member_id)?;
             state.phase = Phase::Lobby;
+            state.arming_since = None;
             state.start_at_ms = None;
             state.clear_ready();
+            for member in &mut state.members {
+                member.loaded = false;
+            }
         }
         self.broadcast_view().await;
 
         Ok(())
+    }
+
+    /// A client finished loading the track. When the last singer who owns the
+    /// track reports in, the room starts its short countdown.
+    pub(crate) async fn set_loaded(&self, member_id: &str) -> Result<(), RoomError> {
+        {
+            let mut state = self.state.write().await;
+            let member = state.member_mut(member_id)?;
+            member.loaded = true;
+            let ready = state.phase == Phase::Arming
+                && state
+                    .members
+                    .iter()
+                    .all(|member| !state.must_load(member) || member.loaded);
+            if ready {
+                state.begin();
+            }
+        }
+        self.broadcast_view().await;
+
+        Ok(())
+    }
+
+    pub(crate) async fn set_color(&self, member_id: &str, color: &str) -> Result<(), RoomError> {
+        let wanted = PlayerColor::parse(color).ok_or(RoomError::Invalid)?;
+        {
+            let mut state = self.state.write().await;
+            if state
+                .members
+                .iter()
+                .any(|member| member.id != member_id && member.color == wanted)
+            {
+                return Err(RoomError::ColorTaken);
+            }
+            let member = state.member_mut(member_id)?;
+            member.color = wanted;
+        }
+        self.broadcast_view().await;
+
+        Ok(())
+    }
+
+    /// Host-only: returns the position everyone should seek to.
+    pub(crate) async fn skip(&self, member_id: &str, outro: bool) -> Result<i64, RoomError> {
+        let position = {
+            let mut state = self.state.write().await;
+            if state.host != member_id {
+                return Err(RoomError::NotHost);
+            }
+            if state.phase != Phase::Playing {
+                return Err(RoomError::InPlayback);
+            }
+            let start = state.start_at_ms.ok_or(RoomError::InPlayback)?;
+            let position = (now_ms() - start).max(0);
+            if outro {
+                state.phase = Phase::Lobby;
+                state.start_at_ms = None;
+                state.arming_since = None;
+                state.clear_ready();
+                for member in &mut state.members {
+                    member.loaded = false;
+                }
+            }
+            position
+        };
+        self.broadcast_view().await;
+
+        Ok(position)
     }
 
     pub(crate) async fn add_score(&self, member_id: &str, delta: i64) -> Result<(), RoomError> {
@@ -456,6 +572,20 @@ impl Room {
 
     /// Drop seats whose sockets are all gone, and hand the room to the next
     /// singer instead of killing it when the host leaves.
+    /// Start anyway once a client has been stuck loading for too long.
+    async fn arm_timed_out(&self) -> bool {
+        let mut state = self.state.write().await;
+        let timed_out = state.phase == Phase::Arming
+            && state
+                .arming_since
+                .is_some_and(|since| since.elapsed() > ARMING_TIMEOUT);
+        if timed_out {
+            state.begin();
+        }
+
+        timed_out
+    }
+
     async fn prune_members(&self) -> bool {
         let mut state = self.state.write().await;
         let before = state.members.len();
@@ -530,6 +660,7 @@ impl RoomStore {
                 members: vec![host],
                 track: None,
                 phase: Phase::Lobby,
+                arming_since: None,
                 start_at_ms: None,
             },
         ));
@@ -581,7 +712,7 @@ impl RoomStore {
             }
         }
 
-        let member = Member::new(name)?;
+        let mut member = Member::new(name)?;
         let issued = Issued {
             room_id: room.id.clone(),
             member_id: member.id.clone(),
@@ -593,6 +724,7 @@ impl RoomStore {
             if state.members.len() >= ROOM_CAPACITY {
                 return Err(RoomError::Full);
             }
+            member.color = state.free_color();
             // A room that lost its host (or emptied) adopts the joiner, so the
             // lobby can always be started.
             if !state
@@ -664,6 +796,9 @@ impl RoomStore {
             for room in rooms.values() {
                 if room.prune_members().await {
                     orphaned.push(Arc::clone(room));
+                }
+                if room.arm_timed_out().await {
+                    room.broadcast_view().await;
                 }
             }
         }

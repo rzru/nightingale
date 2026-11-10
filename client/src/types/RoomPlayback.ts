@@ -6,6 +6,10 @@
  */
 export type RoomPlayback = { nodeUrl: string, roomId: string, token: string, memberId: string, memberName: string, 
 /**
+ * The singer's room colour, so trails stay consistent across machines.
+ */
+color: string, 
+/**
  * Unix milliseconds the room agreed to start at.
  */
 startAtMs: number, 

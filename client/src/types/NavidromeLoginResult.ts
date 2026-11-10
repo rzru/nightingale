@@ -3,10 +3,4 @@
 /**
  * Public auth response surfaced to the UI after a successful login.
  */
-export type NavidromeLoginResult = {
-  server_url: string;
-  server_name: string | null;
-  server_version: string | null;
-  username: string;
-  password: string;
-};
+export type NavidromeLoginResult = { server_url: string, server_name: string | null, server_version: string | null, username: string, password: string, };

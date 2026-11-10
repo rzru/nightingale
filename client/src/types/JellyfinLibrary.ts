@@ -3,12 +3,9 @@
 /**
  * A Jellyfin library (user view) the user can pick from at connect time.
  */
-export type JellyfinLibrary = {
-  id: string;
-  name: string;
-  /**
-   * Jellyfin's `CollectionType` (e.g. `music`, `movies`, `tvshows`). Absent
-   * for mixed-content libraries.
-   */
-  collection_type?: string;
-};
+export type JellyfinLibrary = { id: string, name: string, 
+/**
+ * Jellyfin's `CollectionType` (e.g. `music`, `movies`, `tvshows`). Absent
+ * for mixed-content libraries.
+ */
+collection_type?: string, };

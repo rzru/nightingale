@@ -2,10 +2,4 @@
 import type { LibraryMenuFilters } from "./LibraryMenuFilters";
 import type { SongSort } from "./SongSort";
 
-export type LoadSongsParams = {
-  search: string | null;
-  filters: LibraryMenuFilters;
-  sort: SongSort[] | null;
-  skip: number;
-  take: number;
-};
+export type LoadSongsParams = { search: string | null, filters: LibraryMenuFilters, sort: Array<SongSort> | null, skip: number, take: number, };

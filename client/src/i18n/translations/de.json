@@ -844,5 +844,11 @@
   "rooms.nodes.trust": "Verbinde dich nur mit Knoten, denen du vertraust.",
   "rooms.nodes.plaintext": "Reines http ist unverschlüsselt. Nutze es nur in einem Netz, dem du vertraust, etwa im LAN oder in einem Tailscale-Netz.",
   "rooms.room.pickTrackFor": "{{value1}} wählen",
-  "rooms.node.roomsUsed": "{{used}} von {{capacity}} Räumen"
+  "rooms.node.roomsUsed": "{{used}} von {{capacity}} Räumen",
+  "rooms.room.color": "Farbe",
+  "rooms.room.pickColor": "Farbe wählen",
+  "rooms.room.arming": "Warte auf {{loaded}}/{{total}} beim Laden des Titels",
+  "rooms.room.skipIntro": "Intro überspringen",
+  "rooms.room.skipOutro": "Outro überspringen",
+  "rooms.deny.colorTaken": "Diese Farbe ist schon vergeben."
 }

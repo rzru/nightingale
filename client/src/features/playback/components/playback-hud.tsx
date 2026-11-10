@@ -379,6 +379,8 @@ type PlaybackHudProps = {
   config: AppConfig | null;
   position?: PlaybackHudPosition;
   windowControls?: boolean;
+  /** Room playback is clock-driven: nobody seeks. */
+  locked?: boolean;
 };
 
 function PlaybackHudImpl({
@@ -387,6 +389,7 @@ function PlaybackHudImpl({
   config,
   position = 'top',
   windowControls = false,
+  locked = false,
 }: PlaybackHudProps) {
   useTranslation();
   const { duration, guideVolume, guideAvailable } = usePlaybackTransportState();
@@ -460,7 +463,7 @@ function PlaybackHudImpl({
           <p className="line-clamp-1 [overflow-wrap:anywhere] text-sm text-white/70 md:text-base">
             {artist}
           </p>
-          <PlaybackTransportControls duration={duration} segments={segments} />
+          {!locked && <PlaybackTransportControls duration={duration} segments={segments} />}
           <output
             ref={gapCaptionRef}
             aria-live="polite"

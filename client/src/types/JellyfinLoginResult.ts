@@ -4,16 +4,9 @@ import type { JellyfinLibrary } from "./JellyfinLibrary";
 /**
  * Public auth response surfaced to the UI after a successful login.
  */
-export type JellyfinLoginResult = {
-  server_url: string;
-  server_name: string | null;
-  user_id: string;
-  username: string;
-  access_token: string;
-  device_id: string;
-  /**
-   * Libraries the authenticated user can see, so the connect dialog can let
-   * them narrow the import. Empty if the listing call failed.
-   */
-  libraries: Array<JellyfinLibrary>;
-};
+export type JellyfinLoginResult = { server_url: string, server_name: string | null, user_id: string, username: string, access_token: string, device_id: string, 
+/**
+ * Libraries the authenticated user can see, so the connect dialog can let
+ * them narrow the import. Empty if the listing call failed.
+ */
+libraries: Array<JellyfinLibrary>, };

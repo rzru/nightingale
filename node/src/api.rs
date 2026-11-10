@@ -150,6 +150,7 @@ impl IntoResponse for ApiError {
             RoomError::Full | RoomError::AtCapacity => StatusCode::CONFLICT,
             RoomError::BadPassword | RoomError::Denied => StatusCode::UNAUTHORIZED,
             RoomError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
+            RoomError::ColorTaken => StatusCode::CONFLICT,
             RoomError::InPlayback
             | RoomError::NotHost
             | RoomError::NoTrack

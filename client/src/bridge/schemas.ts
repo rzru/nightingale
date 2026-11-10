@@ -253,6 +253,7 @@ export const roomPlaybackSchema = z.object({
   token: z.string(),
   memberId: z.string(),
   memberName: z.string(),
+  color: z.enum(['rose', 'fuchsia', 'amber', 'emerald']),
   startAtMs: z.number(),
   offsetMs: z.number(),
 });

@@ -4,62 +4,43 @@
  * Where the user wants Nightingale to source songs from. Persisted in
  * `config.json` and consumed by both the scanner and the analyzer.
  */
-export type LibrarySource =
-  | { kind: "folder"; path: string }
-  | {
-      kind: "jellyfin";
-      base_url: string;
-      user_id: string;
-      username: string;
-      /**
-       * Access token returned by `/Users/AuthenticateByName`. At rest in
-       * `config.json` this value is an encrypted envelope; in-memory and
-       * over IPC it's the plaintext token. See `secret.rs` for the on-disk
-       * format + migration semantics.
-       */
-      access_token: string;
-      /**
-       * Stable per-install identifier we hand to Jellyfin in the
-       * `X-Emby-Authorization` header. Generated once at connect time.
-       */
-      device_id: string;
-      /**
-       * Ids of the Jellyfin libraries (user views) the scan is restricted
-       * to. Empty means "every library" — preserves the pre-selection
-       * behaviour for configs written before this field existed.
-       */
-      library_ids: Array<string>;
-    }
-  | {
-      kind: "navidrome";
-      base_url: string;
-      username: string;
-      /**
-       * Subsonic user password. Same secret-at-rest envelope as the
-       * Jellyfin `access_token` (encrypted in `config.json`, plaintext
-       * in-memory). Required at request time because the Subsonic auth
-       * token is `MD5(password + salt)` with a fresh salt per call.
-       */
-      password: string;
-    }
-  | {
-      kind: "plex";
-      base_url: string;
-      server_name: string;
-      machine_id: string;
-      username: string;
-      /**
-       * PMS access token obtained through hosted PIN linking or entered in
-       * the advanced manual flow. It is encrypted in `config.json` and is
-       * never placed in provider/media URLs.
-       */
-      access_token: string;
-      /**
-       * Stable install identity sent in Plex request headers.
-       */
-      client_id: string;
-      /**
-       * One or more explicitly selected Plex music section keys.
-       */
-      section_ids: Array<string>;
-    };
+export type LibrarySource = { "kind": "folder", path: string, } | { "kind": "jellyfin", base_url: string, user_id: string, username: string, 
+/**
+ * Access token returned by `/Users/AuthenticateByName`. At rest in
+ * `config.json` this value is an encrypted envelope; in-memory and
+ * over IPC it's the plaintext token. See `secret.rs` for the on-disk
+ * format + migration semantics.
+ */
+access_token: string, 
+/**
+ * Stable per-install identifier we hand to Jellyfin in the
+ * `X-Emby-Authorization` header. Generated once at connect time.
+ */
+device_id: string, 
+/**
+ * Ids of the Jellyfin libraries (user views) the scan is restricted
+ * to. Empty means "every library" — preserves the pre-selection
+ * behaviour for configs written before this field existed.
+ */
+library_ids: Array<string>, } | { "kind": "navidrome", base_url: string, username: string, 
+/**
+ * Subsonic user password. Same secret-at-rest envelope as the
+ * Jellyfin `access_token` (encrypted in `config.json`, plaintext
+ * in-memory). Required at request time because the Subsonic auth
+ * token is `MD5(password + salt)` with a fresh salt per call.
+ */
+password: string, } | { "kind": "plex", base_url: string, server_name: string, machine_id: string, username: string, 
+/**
+ * PMS access token obtained through hosted PIN linking or entered in
+ * the advanced manual flow. It is encrypted in `config.json` and is
+ * never placed in provider/media URLs.
+ */
+access_token: string, 
+/**
+ * Stable install identity sent in Plex request headers.
+ */
+client_id: string, 
+/**
+ * One or more explicitly selected Plex music section keys.
+ */
+section_ids: Array<string>, };

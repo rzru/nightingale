@@ -5,4 +5,4 @@
  * token is unguessable per-process so a webpage / co-tenant process cannot
  * fish files off the local-file route by enumerating localhost ports.
  */
-export type MediaEndpoint = { port: number; session_token: string };
+export type MediaEndpoint = { port: number, session_token: string, };

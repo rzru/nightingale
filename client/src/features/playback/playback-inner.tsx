@@ -99,18 +99,22 @@ function PlaybackLayout({
   const { segments } = transcript;
   const transcriptActions = usePlaybackTranscriptActions();
   const { started } = usePlaybackStartupState();
+
   const { theme, themes, videoFlavor } = usePlaybackThemeState();
   const themeActions = usePlaybackThemeActions();
   const mic = usePlaybackMicState();
   const micActions = usePlaybackMicActions();
-  // Inert for solo playback: the hook returns no extra players and never opens
-  // a socket unless the session carries a room.
+  // Inert for solo playback: no extra players, no socket. Room playback holds
+  // the surface until the node says everyone finished loading.
   const roomSync = useRoomPlayback(
     room ?? null,
     { pauseAudio, seek, startPlayback },
     {
       score: mic.pitchScore,
       series: mic.series,
+      loaded: started,
+      skipIntro: transcriptActions.handleSkipIntro,
+      skipOutro: transcriptActions.handleSkipOutro,
     },
   );
   const persistConfig = usePlaybackConfigPersist(config);

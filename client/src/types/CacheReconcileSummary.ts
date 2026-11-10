@@ -5,4 +5,4 @@
  * a transcript in the cache, of which `updated` were marked analyzed and
  * `skipped` were left alone because the entry is incomplete.
  */
-export type CacheReconcileSummary = { matched: number; updated: number; skipped: number };
+export type CacheReconcileSummary = { matched: number, updated: number, skipped: number, };

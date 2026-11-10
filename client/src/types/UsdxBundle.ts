@@ -5,10 +5,4 @@
  * parent directory. Stored on the Song row and consulted by playback to bypass the
  * stem-cache lookup entirely.
  */
-export type UsdxBundle = {
-  txt_path: string;
-  audio: string;
-  vocals: string | null;
-  instrumental: string | null;
-  video: string | null;
-};
+export type UsdxBundle = { txt_path: string, audio: string, vocals: string | null, instrumental: string | null, video: string | null, };

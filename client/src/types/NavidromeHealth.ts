@@ -4,9 +4,4 @@
  * Public ping payload surfaced to the UI. Renders the small "online / offline"
  * pill next to the Navidrome source in the sidebar.
  */
-export type NavidromeHealth = {
-  reachable: boolean;
-  server_name?: string;
-  version?: string;
-  error?: string;
-};
+export type NavidromeHealth = { reachable: boolean, server_name?: string, version?: string, error?: string, };

@@ -51,7 +51,7 @@ export const nodeInfoSchema = z.object({
 
 export type NodeInfo = z.infer<typeof nodeInfoSchema>;
 
-const phaseSchema = z.enum(['lobby', 'playing']);
+const phaseSchema = z.enum(['lobby', 'arming', 'playing']);
 
 export const roomTrackSchema = z.object({
   hash: label(MAX_ID),
@@ -60,13 +60,23 @@ export const roomTrackSchema = z.object({
 
 export type RoomTrack = z.infer<typeof roomTrackSchema>;
 
+export const playerColorSchema = z.enum(['rose', 'fuchsia', 'amber', 'emerald']);
+
+export type RoomColor = z.infer<typeof playerColorSchema>;
+
+/** Payloads carry colours as plain strings; anything unknown falls back. */
+export const toRoomColor = (value: string): RoomColor =>
+  playerColorSchema.catch('rose').parse(value);
+
 export const roomMemberSchema = z.object({
   id: label(MAX_ID),
   name: label(MAX_NAME),
   ready: z.boolean(),
   hasTrack: z.boolean(),
+  loaded: z.boolean(),
   score: z.number().min(0).max(MAX_SCORE),
   host: z.boolean(),
+  color: playerColorSchema,
 });
 
 export type RoomMember = z.infer<typeof roomMemberSchema>;
@@ -128,6 +138,11 @@ export const roomEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('room.deny'), reason: label(MAX_ID) }),
   z.object({ type: z.literal('room.closed'), reason: label(MAX_ID) }),
   z.object({
+    type: z.literal('room.skip'),
+    kind: z.enum(['intro', 'outro']),
+    positionMs: z.number().min(0),
+  }),
+  z.object({
     type: z.literal('time.pong'),
     clientMs: z.number().min(0),
     serverMs: z.number().min(0),
@@ -141,6 +156,10 @@ export type RoomClientFrame =
   | { type: 'room.has_track'; hasTrack: boolean }
   | { type: 'room.track'; hash: string; title: string }
   | { type: 'room.leave' }
+  | { type: 'room.color'; color: RoomColor }
+  | { type: 'room.loaded' }
+  | { type: 'room.skip_intro' }
+  | { type: 'room.skip_outro' }
   | { type: 'room.start' }
   | { type: 'room.end' }
   | { type: 'room.pitch'; hz: number | null; rms: number | null }

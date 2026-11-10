@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { SearchIcon, XIcon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
-import type { RoomMember, RoomView as RoomViewState } from '@/bridge/rooms';
+import type { RoomColor, RoomMember, RoomView as RoomViewState } from '@/bridge/rooms';
 import { loadSongs } from '@/bridge/songs';
 import { AlbumArt } from '@/features/library/components/song/album-art';
 import { t } from '@/i18n';
@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/shared/components/ui/table';
+import { PLAYER_COLOR_OPTIONS, playerColorOption } from '@/shared/player-colors';
 import { SONGS } from '@/shared/query-keys';
 import { cn } from '@/shared/utils/cn';
 import type { LibraryMenuFilters } from '@/types/LibraryMenuFilters';
@@ -50,12 +51,84 @@ const readyLabel = (member: RoomMember | undefined): string => {
   return member.host || member.ready ? t('rooms.room.ready') : t('rooms.room.notReady');
 };
 
-const MemberTable = ({ capacity, members }: { capacity: number; members: RoomMember[] }) => (
+const ColorSwatches = ({
+  member,
+  members,
+  onColor,
+}: {
+  member: RoomMember;
+  members: RoomMember[];
+  onColor: (color: RoomColor) => void;
+}) => {
+  const taken = new Set(
+    members.filter((other) => other.id !== member.id).map((other) => other.color),
+  );
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      {PLAYER_COLOR_OPTIONS.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          aria-label={t(option.label)}
+          aria-pressed={member.color === option.value}
+          disabled={taken.has(option.value)}
+          onClick={() => onColor(option.value)}
+          className={cn(
+            'size-3.5 rounded-full transition-transform',
+            option.className,
+            member.color === option.value &&
+              'ring-2 ring-ring/60 ring-offset-1 ring-offset-background',
+            taken.has(option.value) && 'cursor-not-allowed opacity-20',
+          )}
+        />
+      ))}
+    </span>
+  );
+};
+
+const colorCell = (
+  member: RoomMember | undefined,
+  me: RoomMember | null,
+  members: RoomMember[],
+  onColor: (color: RoomColor) => void,
+): ReactNode => {
+  if (member === undefined) {
+    return '—';
+  }
+
+  if (member.id === me?.id) {
+    return <ColorSwatches member={member} members={members} onColor={onColor} />;
+  }
+
+  const option = playerColorOption(member.color);
+
+  return (
+    <span
+      className={cn('size-3.5 rounded-full', option.className)}
+      title={t(option.label)}
+      aria-label={t(option.label)}
+    />
+  );
+};
+
+const MemberTable = ({
+  capacity,
+  me,
+  members,
+  onColor,
+}: {
+  capacity: number;
+  me: RoomMember | null;
+  members: RoomMember[];
+  onColor: (color: RoomColor) => void;
+}) => (
   <Table>
     <TableHeader>
       <TableRow>
         <TableHead>{t('rooms.room.singer')}</TableHead>
         <TableHead className="w-24">{t('rooms.room.role')}</TableHead>
+        <TableHead className="w-28">{t('rooms.room.color')}</TableHead>
         <TableHead className="w-24">{t('rooms.room.readyColumn')}</TableHead>
         <TableHead className="w-20 text-right">{t('rooms.room.score')}</TableHead>
       </TableRow>
@@ -68,6 +141,7 @@ const MemberTable = ({ capacity, members }: { capacity: number; members: RoomMem
           <TableRow key={slot} className={cn(member === undefined && 'text-muted-foreground')}>
             <TableCell className="truncate">{member?.name ?? t('rooms.room.emptySlot')}</TableCell>
             <TableCell>{member?.host === true ? t('rooms.room.host') : '—'}</TableCell>
+            <TableCell>{colorCell(member, me, members, onColor)}</TableCell>
             <TableCell>{readyLabel(member)}</TableCell>
             <TableCell className="text-right tabular-nums">
               {member === undefined ? '—' : member.score}
@@ -233,6 +307,7 @@ const RoomActions = ({
   canStart,
   hasTrack,
   isHost,
+  lobby,
   onEnd,
   onLeave,
   onReady,
@@ -243,6 +318,7 @@ const RoomActions = ({
   canStart: boolean;
   hasTrack: boolean | null;
   isHost: boolean;
+  lobby: boolean;
   onEnd: () => void;
   onLeave: () => void;
   onReady: () => void;
@@ -256,7 +332,7 @@ const RoomActions = ({
     </Button>
     {isHost ? (
       <>
-        <Button disabled={!canStart} onClick={onStart}>
+        <Button disabled={!canStart || !lobby} onClick={onStart}>
           {t('rooms.room.start')}
         </Button>
         {playing && (
@@ -268,7 +344,7 @@ const RoomActions = ({
     ) : (
       <Button
         variant={ready ? 'outline' : 'default'}
-        disabled={hasTrack !== true || playing}
+        disabled={!lobby || hasTrack !== true}
         onClick={onReady}
       >
         {ready ? t('rooms.room.notReady') : t('rooms.room.ready')}
@@ -302,17 +378,35 @@ const RoomSessionBridge = ({
     trackHash: state.track?.hash ?? null,
     startAtMs: state.startAtMs,
     memberName: me?.name ?? '',
+    color: me?.color ?? 'rose',
     offsetMs,
   });
 
   return null;
 };
 
+const ArmingStatus = ({ state }: { state: RoomViewState }) => {
+  if (state.phase !== 'arming') {
+    return null;
+  }
+
+  const singers = state.members.filter((member) => member.host || member.hasTrack);
+  const loaded = singers.filter((member) => member.loaded).length;
+
+  return (
+    <output className="text-sm text-muted-foreground">
+      {t('rooms.room.arming', { loaded, total: singers.length })}
+    </output>
+  );
+};
+
 const RoomBody = ({
   denied,
   hasTrack,
   isHost,
+  me,
   offsetMs,
+  onColor,
   onPick,
   playing,
   state,
@@ -320,19 +414,23 @@ const RoomBody = ({
   denied: string | null;
   hasTrack: boolean | null;
   isHost: boolean;
+  me: RoomMember | null;
   offsetMs: number;
+  onColor: (color: RoomColor) => void;
   onPick: (hash: string, title: string) => void;
   playing: boolean;
   state: RoomViewState;
 }) => (
   <div className="flex flex-col gap-4">
-    <MemberTable capacity={state.capacity} members={state.members} />
+    <MemberTable capacity={state.capacity} me={me} members={state.members} onColor={onColor} />
 
     {denied !== null && (
       <p className="text-xs text-destructive" role="alert">
         {t(denyMessage(denied))}
       </p>
     )}
+
+    <ArmingStatus state={state} />
 
     <RoomStatus offsetMs={offsetMs} playing={playing} startAtMs={state.startAtMs} />
 
@@ -371,6 +469,7 @@ export function RoomView({ onLeave, session }: { onLeave: () => void; session: R
           canStart={canStart}
           hasTrack={hasTrack}
           isHost={isHost}
+          lobby={state.phase === 'lobby'}
           playing={playing}
           ready={ready}
           onLeave={onLeave}
@@ -384,7 +483,9 @@ export function RoomView({ onLeave, session }: { onLeave: () => void; session: R
         denied={denied}
         hasTrack={hasTrack}
         isHost={isHost}
+        me={me}
         offsetMs={offsetMs}
+        onColor={(color) => send({ type: 'room.color', color })}
         playing={playing}
         state={state}
         onPick={(hash, title) => send({ type: 'room.track', hash, title })}

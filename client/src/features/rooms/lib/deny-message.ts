@@ -2,6 +2,7 @@ import type { TranslationKey } from '@/i18n';
 
 const MESSAGES: Record<string, TranslationKey> = {
   'at-capacity': 'rooms.deny.atCapacity',
+  'color-taken': 'rooms.deny.colorTaken',
   'bad-password': 'rooms.deny.badPassword',
   denied: 'rooms.deny.denied',
   full: 'rooms.deny.full',

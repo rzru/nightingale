@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { openRoomSocket, type Joining } from '@/bridge/rooms';
+import { openRoomSocket, toRoomColor, type Joining, type RoomView } from '@/bridge/rooms';
 import type { PitchGraphPlayer } from '@/features/playback/components/pitch-graph-canvas';
 import { freqToSemitone, type PitchSeries } from '@/features/playback/lib/pitch/state';
+import { playerColorOption } from '@/shared/player-colors';
 import type { RoomPlayback } from '@/types/RoomPlayback';
 
 /** Lead time before the shared start, so `seek` + `play` land on the beat. */
@@ -14,14 +15,6 @@ const PITCH_INTERVAL_MS = 100;
 const SCORE_INTERVAL_MS = 5000;
 const REPAINT_INTERVAL_MS = 250;
 const MAX_REMOTE_SAMPLES = 400;
-
-/** Fixed palette for remote singers; the local singer keeps their own colour. */
-const REMOTE_COLORS = [
-  { r: 244, g: 114, b: 182 },
-  { r: 245, g: 158, b: 11 },
-  { r: 16, g: 185, b: 129 },
-  { r: 139, g: 92, b: 246 },
-];
 
 type RemoteTrack = {
   times: number[];
@@ -57,30 +50,54 @@ type RoomTransport = {
   startPlayback: () => void;
 };
 
-export type RoomPlaybackSync = { players: PitchGraphPlayer[] };
+type RoomLocal = {
+  score: number | null;
+  series: PitchSeries;
+  /** Local load finished; the room starts once every owner reports in. */
+  loaded: boolean;
+  skipIntro: () => void;
+  skipOutro: () => void;
+};
+
+export type RoomPlaybackSync = {
+  players: PitchGraphPlayer[];
+  /** Host-only in practice: the node rejects skips from anyone else. */
+  requestSkip: (kind: 'intro' | 'outro') => void;
+};
 
 const NO_PLAYERS: PitchGraphPlayer[] = [];
 
+const clampedStart = (startAtMs: number, now: number): number => {
+  if (!Number.isFinite(startAtMs)) {
+    return now;
+  }
+
+  return Math.min(Math.max(startAtMs, now - MAX_PAST_MS), now + MAX_FUTURE_MS);
+};
+
 /**
- * Room-only playback behaviour: hold until the shared start, keep the local
- * singer's pitch and score flowing to the node, and fold everyone else's pitch
- * into graph trails.
+ * Room-only playback behaviour: hold until the node says the room is playing,
+ * keep the local singer's pitch and score flowing, follow the host's skips, and
+ * fold every singer's pitch into coloured graph trails.
  *
  * Solo playback passes no room, gets no players back, and opens no socket.
  */
 export const useRoomPlayback = (
   room: RoomPlayback | null,
   transport: RoomTransport,
-  local: { score: number | null; series: PitchSeries },
+  local: RoomLocal,
 ): RoomPlaybackSync => {
   const socketRef = useRef<ReturnType<typeof openRoomSocket> | null>(null);
   const offset = useRef(room?.offsetMs ?? 0);
   const started = useRef(false);
+  const sentLoaded = useRef(false);
   const sentScore = useRef(0);
   const pending = useRef(new Map<string, RemoteTrack>());
+  const view = useRef<RoomView | null>(null);
   const localRef = useRef(local);
   const transportRef = useRef(transport);
   const [remote, setRemote] = useState<Record<string, RemoteTrack>>({});
+  const [roomState, setRoomState] = useState<RoomView | null>(null);
 
   useEffect(() => {
     localRef.current = local;
@@ -94,6 +111,7 @@ export const useRoomPlayback = (
 
     pending.current = new Map();
     started.current = false;
+    sentLoaded.current = false;
     sentScore.current = 0;
     offset.current = room.offsetMs;
 
@@ -107,6 +125,23 @@ export const useRoomPlayback = (
         offset.current = measured;
       },
       onEvent: (event) => {
+        if (event.type === 'room.state') {
+          view.current = event.state;
+          setRoomState(event.state);
+
+          return;
+        }
+
+        if (event.type === 'room.skip') {
+          if (event.kind === 'intro') {
+            transportRef.current.seek(event.positionMs / 1000);
+          } else {
+            localRef.current.skipOutro();
+          }
+
+          return;
+        }
+
         if (event.type !== 'room.pitch' || event.memberId === room.memberId) {
           return;
         }
@@ -119,23 +154,22 @@ export const useRoomPlayback = (
     });
 
     socketRef.current = socket;
-    // The surface auto-starts when it is ready; hold it for the room instead.
+    // The surface auto-starts when it is ready; the room decides when instead.
     transportRef.current.pauseAudio();
-
-    // Clamp the node's timestamp to a plausible window: far-future becomes
-    // "start now", far-past becomes "start from the top" instead of a seek to
-    // an hour into a three-minute song.
-    const initial = Date.now() + offset.current;
-    const startAt = Number.isFinite(room.startAtMs)
-      ? Math.min(Math.max(room.startAtMs, initial - MAX_PAST_MS), initial + MAX_FUTURE_MS)
-      : initial;
 
     const startTimer = setInterval(() => {
       if (started.current) {
         return;
       }
 
+      const current = view.current;
+
+      if (current === null || current.phase !== 'playing' || current.startAtMs === null) {
+        return;
+      }
+
       const now = Date.now() + offset.current;
+      const startAt = clampedStart(current.startAtMs, now);
 
       if (now >= startAt - START_LEAD_MS) {
         started.current = true;
@@ -169,28 +203,56 @@ export const useRoomPlayback = (
       clearInterval(scoreTimer);
       clearInterval(repaintTimer);
       socketRef.current = null;
+      view.current = null;
+      setRoomState(null);
       socket.close();
     };
   }, [room]);
 
-  const series = local.series;
-
-  return useMemo<RoomPlaybackSync>(() => {
-    if (room === null) {
-      return { players: NO_PLAYERS };
+  useEffect(() => {
+    if (room === null || !local.loaded || sentLoaded.current) {
+      return;
     }
 
-    const players = Object.entries(remote).map(([, track], index) => ({
-      color: REMOTE_COLORS[index % REMOTE_COLORS.length] ?? REMOTE_COLORS[0],
-      series: {
-        ...series,
-        userPitches: track.userPitches,
-        displaySemitones: track.displaySemitones,
-        similarities: track.similarities,
-        times: track.times.map((time) => time / 1000),
-      },
-    }));
+    sentLoaded.current = true;
+    socketRef.current?.send({ type: 'room.loaded' });
+  }, [room, local.loaded]);
 
-    return { players };
-  }, [room, remote, series]);
+  const requestSkip = useMemo(
+    () => (kind: 'intro' | 'outro') => {
+      socketRef.current?.send({ type: kind === 'intro' ? 'room.skip_intro' : 'room.skip_outro' });
+    },
+    [],
+  );
+
+  const series = local.series;
+
+  const players = useMemo<PitchGraphPlayer[]>(() => {
+    if (room === null) {
+      return NO_PLAYERS;
+    }
+
+    const members = roomState?.members ?? [];
+    const known = new Set(members.map((member) => member.id));
+    const colors = new Map(members.map((member) => [member.id, member.color]));
+    const own = toRoomColor(room.color);
+
+    return [
+      { color: playerColorOption(own).rgb, series },
+      ...Object.entries(remote)
+        .filter(([id]) => known.has(id))
+        .map(([id, track]) => ({
+          color: playerColorOption(colors.get(id) ?? own).rgb,
+          series: {
+            ...series,
+            userPitches: track.userPitches,
+            displaySemitones: track.displaySemitones,
+            similarities: track.similarities,
+            times: track.times.map((time) => time / 1000),
+          },
+        })),
+    ];
+  }, [room, remote, roomState, series]);
+
+  return { players, requestSkip };
 };

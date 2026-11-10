@@ -2,4 +2,4 @@
 import type { SongSortColumn } from "./SongSortColumn";
 import type { SortDirection } from "./SortDirection";
 
-export type SongSort = { column: SongSortColumn; direction: SortDirection };
+export type SongSort = { column: SongSortColumn, direction: SortDirection, };

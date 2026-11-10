@@ -3,4 +3,4 @@
 /**
  * Start and end of a lyric line, in seconds on the original-tempo timeline.
  */
-export type LineWindow = { start: number; end: number };
+export type LineWindow = { start: number, end: number, };
