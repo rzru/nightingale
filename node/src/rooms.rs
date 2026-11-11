@@ -236,10 +236,10 @@ impl RoomState {
             .unwrap_or(PlayerColor::Rose)
     }
 
-    /// A member who has the track (or the host, who owns it) must finish
-    /// loading before the room starts.
+    /// Only participating singers must finish loading: the host and the
+    /// singers who readied with the track. Everyone else stays in the room.
     fn must_load(&self, member: &Member) -> bool {
-        member.id == self.host || member.has_track
+        member.id == self.host || (member.has_track && member.ready)
     }
 
     fn begin(&mut self) {
@@ -368,10 +368,6 @@ impl RoomState {
     /// spectator, not a blocker.
     fn is_ready(member: &Member, host: &str) -> bool {
         member.id == host || member.ready
-    }
-
-    fn gates_start(&self, member: &Member) -> bool {
-        member.id != self.host && member.has_track && !member.ready
     }
 }
 
@@ -544,7 +540,12 @@ impl Room {
             if state.track.is_none() {
                 return Err(RoomError::TrackUnset);
             }
-            if state.members.iter().any(|member| state.gates_start(member)) {
+            // One other singer must be ready; the host counts as ready.
+            if !state
+                .members
+                .iter()
+                .any(|member| member.id != state.host && member.ready)
+            {
                 return Err(RoomError::NotReady);
             }
             state.phase = Phase::Arming;
@@ -573,6 +574,33 @@ impl Room {
                     .all(|member| !state.must_load(member) || member.loaded);
             if ready {
                 state.begin();
+            }
+        }
+        self.broadcast_view().await;
+
+        Ok(())
+    }
+
+    /// Host-only: hand the room's controls to another singer.
+    pub(crate) async fn transfer_host(
+        &self,
+        member_id: &str,
+        target_id: &str,
+    ) -> Result<(), RoomError> {
+        {
+            let mut state = self.state.write().await;
+            state.host_only(member_id)?;
+            if !state.members.iter().any(|member| member.id == target_id) {
+                return Err(RoomError::Denied);
+            }
+            if state.host != target_id {
+                let previous = state.host.clone();
+                state.host = target_id.to_owned();
+                // The host is ready by definition, so the former host keeps
+                // that seat without forcing a fresh ready-up.
+                if let Some(member) = state.members.iter_mut().find(|m| m.id == previous) {
+                    member.ready = true;
+                }
             }
         }
         self.broadcast_view().await;
@@ -628,7 +656,7 @@ impl Room {
         Ok(position)
     }
 
-    /// Any singer can pause; only the singer who paused can resume.
+    /// Any singer can pause; the singer who paused or the host can resume.
     pub(crate) async fn pause(&self, member_id: &str) -> Result<(), RoomError> {
         {
             let mut state = self.state.write().await;
@@ -660,8 +688,9 @@ impl Room {
                 return Ok(());
             }
             let position = state.paused_position_ms;
+            let is_host = state.host == member_id;
             state.member_mut(member_id)?;
-            if state.paused_by_id.as_deref() != Some(member_id) {
+            if !is_host && state.paused_by_id.as_deref() != Some(member_id) {
                 return Err(RoomError::NotPauser);
             }
             state.clear_pause();

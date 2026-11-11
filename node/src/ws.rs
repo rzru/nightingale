@@ -138,6 +138,9 @@ async fn dispatch(
         ClientFrame::Color { color } => {
             deny_on_error(room, room.set_color(member_id, &color).await)
         }
+        ClientFrame::TransferHost { member_id: target } => {
+            deny_on_error(room, room.transfer_host(member_id, &target).await)
+        }
         ClientFrame::Loaded => deny_on_error(room, room.set_loaded(member_id).await),
         ClientFrame::Pause => deny_on_error(room, room.pause(member_id).await),
         ClientFrame::Resume => deny_on_error(room, room.resume(member_id).await),

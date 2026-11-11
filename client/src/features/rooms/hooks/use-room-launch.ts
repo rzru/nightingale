@@ -20,10 +20,18 @@ type RoomLaunchInput = {
   trackHash: string | null;
   /** Arming already opens the surface; the start time arrives over the socket. */
   phase: RoomView['phase'];
+  /** Only the host and singers who readied up join the playback. */
+  participating: boolean;
   offsetMs: number;
 };
 
-export const useRoomLaunch = ({ session, trackHash, phase, offsetMs }: RoomLaunchInput): void => {
+export const useRoomLaunch = ({
+  session,
+  trackHash,
+  phase,
+  participating,
+  offsetMs,
+}: RoomLaunchInput): void => {
   const { launch, reserveTarget } = usePlaybackLauncher();
   const launched = useRef<string | null>(null);
   const { data: songs } = useRoomSongs(trackHash === null ? [] : [trackHash]);
@@ -47,7 +55,7 @@ export const useRoomLaunch = ({ session, trackHash, phase, offsetMs }: RoomLaunc
     if (phase !== 'arming' && phase !== 'playing') {
       return;
     }
-    if (isPlaybackExit(trackHash)) {
+    if (!participating || isPlaybackExit(trackHash)) {
       return;
     }
 
@@ -77,5 +85,5 @@ export const useRoomLaunch = ({ session, trackHash, phase, offsetMs }: RoomLaunc
       },
       target,
     );
-  }, [session, trackHash, phase, offsetMs, songs, launch, reserveTarget]);
+  }, [session, trackHash, phase, participating, offsetMs, songs, launch, reserveTarget]);
 };

@@ -170,6 +170,9 @@ pub(crate) enum ClientFrame {
     Leave,
     #[serde(rename = "room.color")]
     Color { color: String },
+    /// Hand the room to another singer. Host-only.
+    #[serde(rename = "room.transfer_host")]
+    TransferHost { member_id: String },
     #[serde(rename = "room.loaded")]
     Loaded,
     /// The host's own intro target, so every client seeks to the same place.

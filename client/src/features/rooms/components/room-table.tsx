@@ -1,5 +1,6 @@
 import { DoorOpenIcon } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 import {
   createRoom,
@@ -169,7 +170,6 @@ const JoinRoomDialog = ({
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>{room?.name}</DialogTitle>
-          <DialogDescription>{t('rooms.join.description')}</DialogDescription>
         </DialogHeader>
         {room?.locked === true && (
           <div className="space-y-1">
@@ -214,6 +214,7 @@ export function RoomTable({
   singerName: string;
 }) {
   const [joinTarget, setJoinTarget] = useState<RoomSummary | null>(null);
+  const [joiningId, setJoiningId] = useState<string | null>(null);
   const { data: songs } = useRoomSongs(
     rooms.flatMap((room) =>
       room.trackHash === undefined || room.trackHash === null ? [] : [room.trackHash],
@@ -226,6 +227,20 @@ export function RoomTable({
     const local = hash === null ? undefined : localTitles.get(hash);
 
     return local ?? room.trackTitle ?? t('rooms.room.noTrackYet');
+  };
+
+  // Open rooms join straight away; only a locked room needs the password step.
+  const joinOpenRoom = async (room: RoomSummary) => {
+    setJoiningId(room.id);
+
+    try {
+      const joining = await joinRoom(node.url, room.id, { name: singerName, password: null });
+      onJoined(joining);
+    } catch (cause) {
+      toast.error(t(denyMessage(reasonOf(cause))));
+    } finally {
+      setJoiningId(null);
+    }
   };
 
   return (
@@ -277,8 +292,14 @@ export function RoomTable({
                     <Button
                       variant={full ? 'secondary' : 'outline'}
                       size="sm"
-                      disabled={full}
-                      onClick={() => setJoinTarget(room)}
+                      disabled={full || joiningId === room.id}
+                      onClick={() => {
+                        if (room.locked) {
+                          setJoinTarget(room);
+                          return;
+                        }
+                        void joinOpenRoom(room);
+                      }}
                     >
                       {full ? t('rooms.deny.full') : t('rooms.rooms.join')}
                     </Button>

@@ -103,7 +103,9 @@ function deriveRoom(state: RoomView | null, room: RoomPlayback | null): RoomDeri
     return EMPTY_ROOM_DERIVED;
   }
 
-  const required = state.members.filter((member) => member.host || member.hasTrack);
+  const required = state.members.filter(
+    (member) => member.host || (member.hasTrack && member.ready),
+  );
 
   return {
     isHost: room !== null && state.hostId === room.memberId,

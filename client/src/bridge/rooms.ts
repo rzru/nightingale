@@ -167,6 +167,7 @@ export type RoomClientFrame =
   | { type: 'room.track'; hash: string; title: string }
   | { type: 'room.leave' }
   | { type: 'room.color'; color: RoomColor }
+  | { type: 'room.transfer_host'; memberId: string }
   | { type: 'room.loaded' }
   | { type: 'room.pause' }
   | { type: 'room.resume' }

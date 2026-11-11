@@ -309,6 +309,15 @@ function waitOnLoadingScreen(started: boolean, inRoom: boolean, roomStarted: boo
   return !started || (inRoom && !roomStarted);
 }
 
+function canResumePlayback(
+  inRoom: boolean,
+  isHost: boolean,
+  pausedById: string | null,
+  memberId: string | undefined,
+): boolean {
+  return !inRoom || isHost || pausedById === memberId;
+}
+
 function roomLoadingCounts(
   inRoom: boolean,
   loaded: number,
@@ -428,7 +437,7 @@ function PlaybackLayout({
 
   const inRoom = room !== undefined;
   const canControl = !inRoom || roomSync.isHost;
-  const canResume = !inRoom || roomSync.pausedById === room.memberId;
+  const canResume = canResumePlayback(inRoom, roomSync.isHost, roomSync.pausedById, room?.memberId);
   // The loading screen stays until the room's shared start, then never returns.
   const roomStarted = useRoomStarted(roomSync.playing);
   const showLoading = waitOnLoadingScreen(started, inRoom, roomStarted);

@@ -24,8 +24,9 @@ import type { LibraryMenuFilters } from '@/types/LibraryMenuFilters';
 import type { RoomSession } from '../hooks/use-room';
 import { useRoom } from '../hooks/use-room';
 import { useRoomLaunch } from '../hooks/use-room-launch';
-import { songLabel, useRoomSongs } from '../hooks/use-room-song';
+import { songLabel } from '../hooks/use-room-song';
 import { denyMessage } from '../lib/deny-message';
+import { TrackBanner } from './track-banner';
 
 const TRACK_FILTERS: LibraryMenuFilters = {
   artist: null,
@@ -112,16 +113,38 @@ const colorCell = (
   );
 };
 
+const hostActionCell = (
+  member: RoomMember | undefined,
+  isHost: boolean,
+  onTransferHost: (memberId: string) => void,
+): ReactNode => {
+  if (!isHost || member === undefined || member.host) {
+    return null;
+  }
+
+  return (
+    <TableCell className="text-right">
+      <Button variant="outline" size="sm" onClick={() => onTransferHost(member.id)}>
+        {t('rooms.room.makeHost')}
+      </Button>
+    </TableCell>
+  );
+};
+
 const MemberTable = ({
   capacity,
+  isHost,
   me,
   members,
   onColor,
+  onTransferHost,
 }: {
   capacity: number;
+  isHost: boolean;
   me: RoomMember | null;
   members: RoomMember[];
   onColor: (color: RoomColor) => void;
+  onTransferHost: (memberId: string) => void;
 }) => (
   <Table>
     <TableHeader>
@@ -132,6 +155,7 @@ const MemberTable = ({
         <TableHead className="w-24">{t('rooms.room.readyColumn')}</TableHead>
         <TableHead className="w-16 text-right">{t('rooms.room.songs')}</TableHead>
         <TableHead className="w-20 text-right">{t('rooms.room.total')}</TableHead>
+        {isHost && <TableHead className="w-28 text-right">{t('rooms.room.actions')}</TableHead>}
       </TableRow>
     </TableHeader>
     <TableBody>
@@ -150,6 +174,7 @@ const MemberTable = ({
             <TableCell className="text-right tabular-nums">
               {member === undefined ? '—' : member.total}
             </TableCell>
+            {hostActionCell(member, isHost, onTransferHost)}
           </TableRow>
         );
       })}
@@ -290,23 +315,6 @@ const Waiting = ({ closed, onLeave }: { closed: boolean; onLeave: () => void }) 
   </div>
 );
 
-/** The node names the track; the local library is what actually plays. */
-const TrackLine = ({ hash, title }: { hash: string | null; title: string | null }) => {
-  const { data: songs } = useRoomSongs(hash === null ? [] : [hash]);
-  const local = songs?.at(0);
-
-  if (hash === null) {
-    return <p className="text-xs text-muted-foreground">{t('rooms.room.noTrackYet')}</p>;
-  }
-
-  return (
-    <p className="text-xs text-muted-foreground">
-      {local === undefined ? (title ?? t('rooms.room.noTrackYet')) : songLabel(local)}
-      <span className="ml-1.5 tabular-nums opacity-60">#{hash.slice(0, 8)}</span>
-    </p>
-  );
-};
-
 const RoomActions = ({
   canStart,
   hasTrack,
@@ -330,7 +338,7 @@ const RoomActions = ({
   playing: boolean;
   ready: boolean;
 }) => (
-  <div className="flex items-center gap-2">
+  <div className="flex shrink-0 items-center gap-2">
     <Button variant="outline" onClick={onLeave}>
       {t('rooms.room.leave')}
     </Button>
@@ -367,11 +375,15 @@ const MissingTrackHint = ({ hasTrack, isHost }: { hasTrack: boolean | null; isHo
 
 /** Launches this singer's playback when the room starts a track. */
 const RoomSessionBridge = ({
+  isHost,
   offsetMs,
+  ready,
   session,
   state,
 }: {
+  isHost: boolean;
   offsetMs: number;
+  ready: boolean;
   session: RoomSession;
   state: RoomViewState;
 }) => {
@@ -379,6 +391,7 @@ const RoomSessionBridge = ({
     session,
     trackHash: state.track?.hash ?? null,
     phase: state.phase,
+    participating: isHost || ready,
     offsetMs,
   });
 
@@ -391,7 +404,7 @@ const ArmingStatus = ({ state }: { state: RoomViewState }) => {
   }
 
   const waiting = state.members
-    .filter((member) => (member.host || member.hasTrack) && !member.loaded)
+    .filter((member) => (member.host || (member.hasTrack && member.ready)) && !member.loaded)
     .map((member) => member.name);
 
   if (waiting.length === 0) {
@@ -412,7 +425,7 @@ const RoomBody = ({
   me,
   offsetMs,
   onColor,
-  onPick,
+  onTransferHost,
   playing,
   state,
 }: {
@@ -422,12 +435,19 @@ const RoomBody = ({
   me: RoomMember | null;
   offsetMs: number;
   onColor: (color: RoomColor) => void;
-  onPick: (hash: string, title: string) => void;
+  onTransferHost: (memberId: string) => void;
   playing: boolean;
   state: RoomViewState;
 }) => (
   <div className="flex flex-col gap-4">
-    <MemberTable capacity={state.capacity} me={me} members={state.members} onColor={onColor} />
+    <MemberTable
+      capacity={state.capacity}
+      isHost={isHost}
+      me={me}
+      members={state.members}
+      onColor={onColor}
+      onTransferHost={onTransferHost}
+    />
 
     {denied !== null && (
       <p className="text-xs text-destructive" role="alert">
@@ -440,8 +460,6 @@ const RoomBody = ({
     <RoomStatus offsetMs={offsetMs} playing={playing} startAtMs={state.startAtMs} />
 
     <MissingTrackHint hasTrack={hasTrack} isHost={isHost} />
-
-    {isHost && <TrackPicker disabled={playing} onPick={onPick} />}
   </div>
 );
 
@@ -454,22 +472,31 @@ export function RoomView({ onLeave, session }: { onLeave: () => void; session: R
 
   const playing = state.phase === 'playing';
   const ready = me?.ready === true;
-  // The host is always ready, and a singer without the track is a spectator:
-  // neither should block the start.
+  // The host counts as ready; one more singer must ready up to start.
   const canStart =
-    isHost &&
-    state.track !== null &&
-    state.members.every((member) => member.host || !member.hasTrack || member.ready);
+    isHost && state.track !== null && state.members.some((member) => !member.host && member.ready);
 
   return (
     <div className="flex flex-col gap-4">
-      <RoomSessionBridge offsetMs={offsetMs} session={session} state={state} />
+      <RoomSessionBridge
+        isHost={isHost}
+        offsetMs={offsetMs}
+        ready={ready}
+        session={session}
+        state={state}
+      />
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h2 className="text-base font-medium">{state.name}</h2>
-          <TrackLine hash={state.track?.hash ?? null} title={state.track?.title ?? null} />
-        </div>
+      {isHost && (
+        <TrackPicker
+          disabled={playing}
+          onPick={(hash, title) => send({ type: 'room.track', hash, title })}
+        />
+      )}
+
+      <TrackBanner hash={state.track?.hash ?? null} title={state.track?.title ?? null} />
+
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="m-0 min-w-0 truncate text-base font-medium">{state.name}</h2>
         <RoomActions
           canStart={canStart}
           hasTrack={hasTrack}
@@ -491,9 +518,9 @@ export function RoomView({ onLeave, session }: { onLeave: () => void; session: R
         me={me}
         offsetMs={offsetMs}
         onColor={(color) => send({ type: 'room.color', color })}
+        onTransferHost={(memberId) => send({ type: 'room.transfer_host', memberId })}
         playing={playing}
         state={state}
-        onPick={(hash, title) => send({ type: 'room.track', hash, title })}
       />
     </div>
   );
