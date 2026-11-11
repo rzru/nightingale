@@ -185,8 +185,6 @@ pub(crate) enum ClientFrame {
     Resume,
     #[serde(rename = "room.start")]
     Start,
-    #[serde(rename = "room.end")]
-    End,
     #[serde(rename = "room.pitch")]
     Pitch {
         hz: Option<f32>,

@@ -130,7 +130,6 @@ const MemberTable = ({
         <TableHead className="w-24">{t('rooms.room.role')}</TableHead>
         <TableHead className="w-28">{t('rooms.room.color')}</TableHead>
         <TableHead className="w-24">{t('rooms.room.readyColumn')}</TableHead>
-        <TableHead className="w-20 text-right">{t('rooms.room.score')}</TableHead>
         <TableHead className="w-16 text-right">{t('rooms.room.songs')}</TableHead>
         <TableHead className="w-20 text-right">{t('rooms.room.total')}</TableHead>
       </TableRow>
@@ -145,9 +144,6 @@ const MemberTable = ({
             <TableCell>{member?.host === true ? t('rooms.room.host') : '—'}</TableCell>
             <TableCell>{colorCell(member, me, members, onColor)}</TableCell>
             <TableCell>{readyLabel(member)}</TableCell>
-            <TableCell className="text-right tabular-nums">
-              {member === undefined ? '—' : member.score}
-            </TableCell>
             <TableCell className="text-right tabular-nums text-muted-foreground">
               {member === undefined ? '—' : member.songs}
             </TableCell>
@@ -483,7 +479,7 @@ export function RoomView({ onLeave, session }: { onLeave: () => void; session: R
           ready={ready}
           onLeave={onLeave}
           onStart={() => send({ type: 'room.start' })}
-          onEnd={() => send({ type: 'room.end' })}
+          onEnd={() => send({ type: 'room.skip_outro' })}
           onReady={() => send({ type: 'room.ready', ready: !ready })}
         />
       </div>

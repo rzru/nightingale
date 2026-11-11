@@ -1,4 +1,13 @@
-import { forwardRef, memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 import { usePlaybackConfigPersist } from '@/features/playback/hooks/use-playback-config-persist';
 import type { VideoFlavor } from '@/features/playback/lib/video-flavor';
@@ -349,14 +358,74 @@ function PlayerScore({
   );
 }
 
+/** Missing score sorts below zero, so an unready singer stays at the bottom. */
+const NO_SCORE = -1;
+const REORDER_MS = 280;
+
+const byScore = (left: PlaybackPlayerMicState, right: PlaybackPlayerMicState): number =>
+  (right.pitchScore ?? NO_SCORE) - (left.pitchScore ?? NO_SCORE);
+
+/** Highest score first; ties keep their incoming order. */
+function sortedPlayers(players: PlaybackPlayerMicState[]): PlaybackPlayerMicState[] {
+  return players.toSorted(byScore);
+}
+
 function MultiplayerScores({ players }: { players: PlaybackPlayerMicState[] }) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const offsets = useRef(new Map<string, number>());
+  const sorted = sortedPlayers(players);
+  const order = sorted.map((player) => player.id).join('|');
+
+  // FLIP: keep layout offsets, then animate each row from its old place to the
+  // new one whenever the score order changes.
+  useLayoutEffect(() => {
+    const list = listRef.current;
+
+    if (!list) {
+      return;
+    }
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const previous = offsets.current;
+    const next = new Map<string, number>();
+
+    for (const id of order.split('|')) {
+      const row = list.querySelector<HTMLElement>(`[data-player-id="${CSS.escape(id)}"]`);
+
+      if (row === null) {
+        continue;
+      }
+
+      const offset = row.offsetTop;
+      const before = previous.get(id);
+      next.set(id, offset);
+
+      if (reduced || before === undefined || before === offset) {
+        continue;
+      }
+
+      row.style.transition = 'none';
+      row.style.transform = `translateY(${before - offset}px)`;
+      void row.offsetHeight;
+      row.style.transition = `transform ${REORDER_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+      row.style.transform = '';
+    }
+
+    offsets.current = next;
+  }, [listRef, offsets, order]);
+
   return (
     <div
-      className="grid justify-items-end gap-1"
+      ref={listRef}
+      className="relative grid justify-items-end gap-1"
       aria-label={t('playback.playbackHud.playerScores')}
     >
-      {players.map((player) => (
-        <div key={player.id} className="flex items-center justify-end gap-2">
+      {sorted.map((player) => (
+        <div
+          key={player.id}
+          data-player-id={player.id}
+          className="flex items-center justify-end gap-2"
+        >
           <PlayerScore player={player} players={players} />
           <span
             className={`size-2 rounded-full ${playerColorOption(player.color).className}`}

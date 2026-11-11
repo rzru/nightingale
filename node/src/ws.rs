@@ -149,7 +149,6 @@ async fn dispatch(
             deny_on_error(room, room.seek(member_id, position_ms).await)
         }
         ClientFrame::Start => deny_on_error(room, room.start(member_id).await),
-        ClientFrame::End => deny_on_error(room, room.end(member_id).await),
         ClientFrame::Pitch {
             hz,
             semitone,

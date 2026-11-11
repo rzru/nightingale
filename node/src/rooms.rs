@@ -284,7 +284,7 @@ impl RoomState {
         self.start_position_ms = 0;
         self.clear_pause();
         self.finish_song();
-        self.clear_ready();
+        self.reset_ready();
         for member in &mut self.members {
             member.loaded = false;
         }
@@ -353,6 +353,14 @@ impl RoomState {
         for member in &mut self.members {
             member.ready = false;
             member.has_track = false;
+        }
+    }
+
+    /// Reset only the ready gate. Used when the song ends or the host changes:
+    /// the track stays the same, so a client's presence is still valid.
+    fn reset_ready(&mut self) {
+        for member in &mut self.members {
+            member.ready = false;
         }
     }
 
@@ -551,17 +559,6 @@ impl Room {
         Ok(())
     }
 
-    pub(crate) async fn end(&self, member_id: &str) -> Result<(), RoomError> {
-        {
-            let mut state = self.state.write().await;
-            state.host_only(member_id)?;
-            state.reset_playback();
-        }
-        self.broadcast_view().await;
-
-        Ok(())
-    }
-
     /// A client finished loading the track. When the last singer who owns the
     /// track reports in, the room starts its short countdown.
     pub(crate) async fn set_loaded(&self, member_id: &str) -> Result<(), RoomError> {
@@ -713,7 +710,7 @@ impl Room {
                 .members
                 .first()
                 .map_or_else(String::new, |member| member.id.clone());
-            state.clear_ready();
+            state.reset_ready();
         }
         let emptied = state.members.is_empty();
         drop(state);
@@ -765,7 +762,7 @@ impl Room {
                 .members
                 .first()
                 .map_or_else(String::new, |member| member.id.clone());
-            state.clear_ready();
+            state.reset_ready();
         }
         let emptied = state.members.is_empty();
         drop(state);
@@ -905,7 +902,7 @@ impl RoomStore {
                 .any(|existing| existing.id == state.host)
             {
                 state.host = member.id.clone();
-                state.clear_ready();
+                state.reset_ready();
             }
             state.members.push(member);
         }

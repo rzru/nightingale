@@ -408,6 +408,11 @@ function PlaybackLayout({
     // Leaving mid-song must not reopen this track's surface on the way up.
     if (roomSync.playing) {
       markPlaybackExit(song.file_hash);
+
+      // The host leaving ends the song for everyone instead of stalling the room.
+      if (roomSync.isHost) {
+        roomSync.requestSkip('outro');
+      }
     }
 
     handleExit({
@@ -417,7 +422,7 @@ function PlaybackLayout({
         joining: { roomId: room.roomId, memberId: room.memberId, token: room.token },
       }),
     });
-  }, [handleExit, room, roomSync.playing, song.file_hash]);
+  }, [handleExit, room, roomSync, song.file_hash]);
 
   const result = usePlaybackResult(song, queuePlayback, players ?? [], exitPlayback);
 

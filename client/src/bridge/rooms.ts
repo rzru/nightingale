@@ -174,7 +174,6 @@ export type RoomClientFrame =
   | { type: 'room.skip_outro' }
   | { type: 'room.seek'; positionMs: number }
   | { type: 'room.start' }
-  | { type: 'room.end' }
   | {
       type: 'room.pitch';
       hz: number | null;
