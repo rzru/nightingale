@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub(crate) const ROOM_CAPACITY: usize = 4;
 
 /// Bump whenever a client would misread frames from the other side.
-pub(crate) const PROTOCOL: u32 = 2;
+pub(crate) const PROTOCOL: u32 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]

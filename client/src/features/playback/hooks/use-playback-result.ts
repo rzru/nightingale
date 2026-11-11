@@ -87,6 +87,8 @@ export function usePlaybackResult(
   song: Song,
   queuePlayback: boolean,
   players: readonly PlaybackPlayer[],
+  /** Room playback overrides this to return to its room instead of the menu. */
+  onExit?: () => void,
 ): PlaybackResult {
   const fileHash = song.file_hash;
   const queryClient = useQueryClient();
@@ -96,6 +98,7 @@ export function usePlaybackResult(
 
   const { isFinished } = usePlaybackTransportState();
   const { handleExit } = usePlaybackTransportActions();
+  const exit = onExit ?? handleExit;
   const { rawScore, players: micPlayers, multiplayer } = usePlaybackMicState();
   const { skipOutroPending } = usePlaybackTranscriptState();
   const { clearSkipOutroPending } = usePlaybackTranscriptActions();
@@ -124,7 +127,7 @@ export function usePlaybackResult(
       multiplayer || queuePlayback || finalResults.some((result) => result.score > 0);
 
     if (!shouldShowResult) {
-      handleExit();
+      exit();
       return;
     }
 
@@ -153,7 +156,7 @@ export function usePlaybackResult(
   }, [
     clearSkipOutroPending,
     fileHash,
-    handleExit,
+    exit,
     isFinished,
     micPlayersRef,
     multiplayer,
@@ -181,8 +184,8 @@ export function usePlaybackResult(
 
   const onBack = useCallback(() => {
     setShowResult(false);
-    handleExit();
-  }, [handleExit]);
+    exit();
+  }, [exit]);
   const onNext = useCallback(
     (nextPlayers: readonly PlaybackPlayer[] = players) => playNext([...nextPlayers]),
     [playNext, players],

@@ -63,6 +63,8 @@ export type TransportControlsProps = {
   getCurrentTime: () => number;
   seek: (seconds: number) => void;
   lines: TransportLines;
+  /** False keeps the time readout but locks every seek affordance. */
+  seekable?: boolean;
   className?: string;
 };
 
@@ -76,6 +78,7 @@ export function TransportControls({
   getCurrentTime,
   seek,
   lines,
+  seekable = true,
   className,
 }: TransportControlsProps) {
   const timerRef = useRef<HTMLParagraphElement>(null);
@@ -98,13 +101,13 @@ export function TransportControls({
 
       const available = lines.isAvailable();
       if (previousLineRef.current) {
-        previousLineRef.current.disabled = !available.previous;
+        previousLineRef.current.disabled = !seekable || !available.previous;
       }
       if (nextLineRef.current) {
-        nextLineRef.current.disabled = !available.next;
+        nextLineRef.current.disabled = !seekable || !available.next;
       }
     },
-    [duration, lines],
+    [duration, lines, seekable],
   );
 
   useEffect(() => {
@@ -122,11 +125,21 @@ export function TransportControls({
 
   const commitSeek = useCallback(() => {
     draggingRef.current = false;
-    seek(Math.max(0, Math.min(duration, Number(sliderRef.current?.value ?? 0))));
-  }, [duration, seek]);
 
-  const seekRelative = (seconds: number) =>
+    if (!seekable) {
+      return;
+    }
+
+    seek(Math.max(0, Math.min(duration, Number(sliderRef.current?.value ?? 0))));
+  }, [duration, seek, seekable]);
+
+  const seekRelative = (seconds: number) => {
+    if (!seekable) {
+      return;
+    }
+
     seek(Math.max(0, Math.min(duration, getCurrentTime() + seconds)));
+  };
 
   return (
     <div
@@ -142,22 +155,26 @@ export function TransportControls({
             icon={SkipBackIcon}
             label={t('playback.playbackTransportControls.previousLyricLine')}
             buttonRef={previousLineRef}
+            disabled={!seekable}
             onClick={() => lines.seek(-1)}
           />
           <TransportButton
             icon={RotateCcwIcon}
             label={t('playback.playbackTransportControls.jump1SecondBack')}
+            disabled={!seekable}
             onClick={() => seekRelative(-1)}
           />
           <TransportButton
             icon={RotateCwIcon}
             label={t('playback.playbackTransportControls.jump1SecondForward')}
+            disabled={!seekable}
             onClick={() => seekRelative(1)}
           />
           <TransportButton
             icon={SkipForwardIcon}
             label={t('playback.playbackTransportControls.nextLyricLine')}
             buttonRef={nextLineRef}
+            disabled={!seekable}
             onClick={() => lines.seek(1)}
           />
         </div>
@@ -169,6 +186,7 @@ export function TransportControls({
         max={duration}
         step={0.1}
         defaultValue={0}
+        disabled={!seekable}
         aria-label={t('playback.playbackTransportControls.seekThroughTrack')}
         onInput={previewSeek}
         onPointerUp={commitSeek}
@@ -180,7 +198,7 @@ export function TransportControls({
         }}
         onKeyUp={(event) => isSeekKey(event.key) && commitSeek()}
         onBlur={() => draggingRef.current && commitSeek()}
-        className="seek-slider block h-[14px] w-full cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f3ead7] [@media(any-pointer:coarse)]:h-[24px]"
+        className="seek-slider block h-[14px] w-full cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f3ead7] disabled:cursor-not-allowed disabled:opacity-40 [@media(any-pointer:coarse)]:h-[24px]"
       />
     </div>
   );
@@ -191,11 +209,14 @@ export function PlaybackTransportControls({
   duration,
   segments,
   onSeek,
+  seekable = true,
 }: {
   duration: number;
   segments: Segment[];
   /** Room playback routes a host's seek through the room instead of locally. */
   onSeek?: (time: number) => void;
+  /** Room guests see the clock but cannot move it. */
+  seekable?: boolean;
 }) {
   const { subscribe, getCurrentTime, seek } = usePlaybackTransportActions();
   const hintRef = useRef(0);
@@ -233,6 +254,7 @@ export function PlaybackTransportControls({
       getCurrentTime={getCurrentTime}
       seek={seekTo}
       lines={lines}
+      seekable={seekable}
     />
   );
 }

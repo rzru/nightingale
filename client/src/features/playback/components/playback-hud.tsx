@@ -543,9 +543,12 @@ function PlaybackHudImpl({
           <p className="line-clamp-1 [overflow-wrap:anywhere] text-sm text-white/70 md:text-base">
             {artist}
           </p>
-          {seekable && (
-            <PlaybackTransportControls duration={duration} segments={segments} onSeek={onSeek} />
-          )}
+          <PlaybackTransportControls
+            duration={duration}
+            segments={segments}
+            onSeek={onSeek}
+            seekable={seekable}
+          />
           <output
             ref={gapCaptionRef}
             aria-live="polite"

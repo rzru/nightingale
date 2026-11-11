@@ -41,6 +41,8 @@ export type PlaybackTransportState = {
   error: string | null;
 };
 
+export type PlaybackExitTarget = { path: string; state?: unknown };
+
 export type PlaybackTransportActions = {
   subscribe: (fn: TimeSubscriber) => () => void;
   getCurrentTime: () => number;
@@ -56,7 +58,8 @@ export type PlaybackTransportActions = {
   pauseAudio: () => void;
   handlePause: () => void;
   handleContinue: () => void;
-  handleExit: () => void;
+  /** Leaves the surface; a target lets room playback return to its room. */
+  handleExit: (target?: PlaybackExitTarget) => void;
 };
 
 const TransportStateContext = createContext<PlaybackTransportState | null>(null);
@@ -155,14 +158,17 @@ export function PlaybackTransportProvider({
     [audio],
   );
 
-  const handleExit = useCallback(() => {
-    audio.cleanup();
-    if (isSessionPlayback()) {
-      void closePlaybackWindow();
-      return;
-    }
-    void navigate('/', { replace: true });
-  }, [audio, navigate]);
+  const handleExit = useCallback(
+    (target?: PlaybackExitTarget) => {
+      audio.cleanup();
+      if (isSessionPlayback()) {
+        void closePlaybackWindow();
+        return;
+      }
+      void navigate(target?.path ?? '/', { replace: true, state: target?.state });
+    },
+    [audio, navigate],
+  );
 
   const stateValue = useMemo<PlaybackTransportState>(
     () => ({

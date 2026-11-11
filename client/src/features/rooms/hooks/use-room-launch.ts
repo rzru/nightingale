@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 
+import type { RoomView } from '@/bridge/rooms';
 import { usePlaybackLauncher } from '@/features/playback/hooks/use-playback-launcher';
 
-import { markPlaybackLaunch } from '../lib/playback-launch';
+import { clearPlaybackExit, isPlaybackExit, markPlaybackLaunch } from '../lib/playback-launch';
 import type { RoomSession } from './use-room';
 import { useRoomSongs } from './use-room-song';
 
@@ -18,17 +19,35 @@ type RoomLaunchInput = {
   session: RoomSession | null;
   trackHash: string | null;
   /** Arming already opens the surface; the start time arrives over the socket. */
-  live: boolean;
+  phase: RoomView['phase'];
   offsetMs: number;
 };
 
-export const useRoomLaunch = ({ session, trackHash, live, offsetMs }: RoomLaunchInput): void => {
+export const useRoomLaunch = ({ session, trackHash, phase, offsetMs }: RoomLaunchInput): void => {
   const { launch, reserveTarget } = usePlaybackLauncher();
   const launched = useRef<string | null>(null);
   const { data: songs } = useRoomSongs(trackHash === null ? [] : [trackHash]);
 
+  // A new arming is a fresh song: stop suppressing the track we just left.
+  // The lobby ends a song, so the same track may be picked again.
   useEffect(() => {
-    if (session === null || trackHash === null || !live || songs === undefined) {
+    if (phase === 'arming') {
+      clearPlaybackExit();
+    }
+    if (phase === 'lobby') {
+      launched.current = null;
+      clearPlaybackExit();
+    }
+  }, [phase]);
+
+  useEffect(() => {
+    if (session === null || trackHash === null || songs === undefined) {
+      return;
+    }
+    if (phase !== 'arming' && phase !== 'playing') {
+      return;
+    }
+    if (isPlaybackExit(trackHash)) {
       return;
     }
 
@@ -58,5 +77,5 @@ export const useRoomLaunch = ({ session, trackHash, live, offsetMs }: RoomLaunch
       },
       target,
     );
-  }, [session, trackHash, live, offsetMs, songs, launch, reserveTarget]);
+  }, [session, trackHash, phase, offsetMs, songs, launch, reserveTarget]);
 };

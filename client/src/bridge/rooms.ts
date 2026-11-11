@@ -4,7 +4,7 @@ import { z } from 'zod';
  * Client half of the node protocol. The node lives in `node/src/proto.rs`; both
  * sides are expected to change together, which is what `PROTOCOL` guards.
  */
-export const ROOMS_PROTOCOL = 2;
+export const ROOMS_PROTOCOL = 1;
 
 /**
  * Trust boundary. A node is an untrusted peer: everything it sends is capped

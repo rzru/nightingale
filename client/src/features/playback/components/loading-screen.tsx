@@ -1,14 +1,22 @@
 import { memo } from 'react';
 
 import { AlbumArt } from '@/features/library/components/song/album-art';
+import { t } from '@/i18n';
 import { Spinner } from '@/shared/components/ui/spinner';
 import type { Song } from '@/types/Song';
 
 type LoadingScreenProps = {
   song: Song;
+  /** Room playback: singers who finished loading, and how many must load. */
+  roomLoaded?: number;
+  roomTotal?: number;
 };
 
-export const LoadingScreen = memo(function LoadingScreen({ song }: LoadingScreenProps) {
+export const LoadingScreen = memo(function LoadingScreen({
+  song,
+  roomLoaded = 0,
+  roomTotal = 0,
+}: LoadingScreenProps) {
   return (
     <div
       className="fixed inset-0 z-50 overflow-hidden bg-[#05030d]"
@@ -54,6 +62,11 @@ export const LoadingScreen = memo(function LoadingScreen({ song }: LoadingScreen
         </div>
         <Spinner className="size-6 text-white/70" />
       </div>
+      {roomTotal > 0 && (
+        <output className="absolute inset-x-0 bottom-6 block text-center text-sm tabular-nums text-white/60">
+          {t('playback.loadingScreen.roomLoaded', { loaded: roomLoaded, total: roomTotal })}
+        </output>
+      )}
     </div>
   );
 });

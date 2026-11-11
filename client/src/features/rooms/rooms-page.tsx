@@ -1,5 +1,6 @@
 import { ArrowUpRightIcon, ChevronRightIcon, InfoIcon, PlusIcon } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 
 import { openUrl } from '@/bridge/opener';
 import type { Joining, RoomSummary } from '@/bridge/rooms';
@@ -15,8 +16,10 @@ import { NodeVersion, Ping } from './components/ping';
 import { RoomTable } from './components/room-table';
 import { RoomView } from './components/room-view';
 import { useNodes, type RoomNode } from './hooks/use-nodes';
-import { useRooms } from './hooks/use-room';
+import { useRooms, type RoomSession } from './hooks/use-room';
 import { forgetNode, rememberNode } from './lib/known-nodes';
+import { clearPlaybackExit } from './lib/playback-launch';
+import { readRoomReturn } from './lib/room-return';
 
 const NODE_DOCS_URL = 'https://nightingale.cafe/docs/rooms/#run-a-node';
 
@@ -216,10 +219,21 @@ const NodeLevel = ({
 
 export const RoomsPage = () => {
   const { setMode } = useDialog();
+  const location = useLocation();
+  const navigate = useNavigate();
   const profile = useCurrentProfile();
   const { data: nodes = [], refetch } = useNodes();
   const [openNodeUrl, setOpenNodeUrl] = useState<string | null>(null);
-  const [session, setSession] = useState<{ joining: Joining; nodeUrl: string } | null>(null);
+  // Playback hands the seat back so a finished song returns to its room.
+  const [session, setSession] = useState<RoomSession | null>(() => readRoomReturn(location.state));
+
+  useEffect(() => {
+    if (readRoomReturn(location.state) === null) {
+      return;
+    }
+
+    void navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate]);
 
   const openNode = useMemo(
     () => nodes.find((node) => node.url === openNodeUrl) ?? null,
@@ -234,7 +248,15 @@ export const RoomsPage = () => {
     }
 
     if (session !== null) {
-      return <RoomView session={session} onLeave={() => setSession(null)} />;
+      return (
+        <RoomView
+          session={session}
+          onLeave={() => {
+            clearPlaybackExit();
+            setSession(null);
+          }}
+        />
+      );
     }
 
     if (openNode !== null) {

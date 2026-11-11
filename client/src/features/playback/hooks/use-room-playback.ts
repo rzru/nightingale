@@ -71,17 +71,49 @@ type RoomLocal = {
   skipOutro: () => void;
 };
 
-export type RoomPlaybackSync = {
+type RoomDerived = {
+  isHost: boolean;
+  playing: boolean;
+  pausedById: string | null;
+  pausedByName: string | null;
+  /** Singers who must load before the room starts, and how many already did. */
+  loaded: number;
+  total: number;
+};
+
+export type RoomPlaybackSync = RoomDerived & {
   requestPause: () => void;
   requestResume: () => void;
   requestSeek: (time: number) => void;
   /** Transport intents go through the room so every machine follows. */
   requestSkip: (kind: 'intro' | 'outro') => void;
-  isHost: boolean;
-  /** `null` until the first room snapshot arrives. */
-  pausedById: string | null;
-  pausedByName: string | null;
 };
+
+const EMPTY_ROOM_DERIVED: RoomDerived = {
+  isHost: false,
+  playing: false,
+  pausedById: null,
+  pausedByName: null,
+  loaded: 0,
+  total: 0,
+};
+
+function deriveRoom(state: RoomView | null, room: RoomPlayback | null): RoomDerived {
+  if (state === null) {
+    return EMPTY_ROOM_DERIVED;
+  }
+
+  const required = state.members.filter((member) => member.host || member.hasTrack);
+
+  return {
+    isHost: room !== null && state.hostId === room.memberId,
+    playing: state.phase === 'playing',
+    pausedById: state.pausedById,
+    pausedByName: state.pausedBy,
+    loaded: required.filter((member) => member.loaded).length,
+    total: required.length,
+  };
+}
 
 /**
  * Room-only playback behaviour: hold until the node schedules the shared start,
@@ -389,9 +421,7 @@ export const useRoomPlayback = (
     });
   }, [room, roomState, remote, series, setRoomPlayback]);
 
-  const isHost = room !== null && roomState?.hostId === room.memberId;
-  const pausedById = roomState?.pausedById ?? null;
-  const pausedByName = roomState?.pausedBy ?? null;
+  const derived = useMemo(() => deriveRoom(roomState, room), [room, roomState]);
 
   return useMemo(
     () => ({
@@ -399,10 +429,8 @@ export const useRoomPlayback = (
       requestResume,
       requestSeek,
       requestSkip,
-      isHost,
-      pausedById,
-      pausedByName,
+      ...derived,
     }),
-    [isHost, pausedById, pausedByName, requestPause, requestResume, requestSeek, requestSkip],
+    [derived, requestPause, requestResume, requestSeek, requestSkip],
   );
 };

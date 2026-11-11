@@ -382,7 +382,7 @@ const RoomSessionBridge = ({
   useRoomLaunch({
     session,
     trackHash: state.track?.hash ?? null,
-    live: state.phase === 'arming' || state.phase === 'playing',
+    phase: state.phase,
     offsetMs,
   });
 

@@ -6,7 +6,7 @@
  * presentational tree that consumes the playback contexts via hooks.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import type { PlaybackControl, PlaybackOptions, PlaybackProgress } from '@/bridge/playback-remote';
 import type { PlaybackPlayer } from '@/bridge/playback-session';
@@ -53,7 +53,9 @@ import {
 } from '@/features/playback/providers';
 import { usePlaybackStartupState } from '@/features/playback/providers/playback-startup-context';
 import { findCurrentSegment } from '@/features/playback/utils/lyrics-gap';
-import { t } from '@/i18n';
+import { markPlaybackExit } from '@/features/rooms/lib/playback-launch';
+import { roomReturnState } from '@/features/rooms/lib/room-return';
+import { t, type TranslationKey } from '@/i18n';
 import type { AppConfig } from '@/types/AppConfig';
 import type { RoomPlayback } from '@/types/RoomPlayback';
 import type { Song } from '@/types/Song';
@@ -287,8 +289,43 @@ function hudPositionFor(lyricsVerticalPosition: string): 'top' | 'bottom' {
   return lyricsVerticalPosition === 'top' ? 'bottom' : 'top';
 }
 
-function roomActions(status: PlaybackStatus, canResume: boolean): PlaybackAction[] {
-  return playbackActions(status).filter((action) => action.command !== 'resume' || canResume);
+function roomActions(
+  status: PlaybackStatus,
+  canResume: boolean,
+  exitLabel: TranslationKey,
+): PlaybackAction[] {
+  return playbackActions(status)
+    .filter((action) => action.command !== 'resume' || canResume)
+    .map((action) =>
+      action.command === 'exit' ? Object.assign({}, action, { labelKey: exitLabel }) : action,
+    );
+}
+
+function exitKeyFor(inRoom: boolean, status: PlaybackStatus): TranslationKey {
+  return inRoom ? 'playback.actions.backToRoom' : playbackExitLabelKey(status);
+}
+
+function waitOnLoadingScreen(started: boolean, inRoom: boolean, roomStarted: boolean): boolean {
+  return !started || (inRoom && !roomStarted);
+}
+
+function roomLoadingCounts(
+  inRoom: boolean,
+  loaded: number,
+  total: number,
+): { loaded: number; total: number } {
+  return inRoom ? { loaded, total } : { loaded: 0, total: 0 };
+}
+
+/** One-way latch: the loading screen must never return after the song started. */
+function useRoomStarted(playing: boolean): boolean {
+  const [started, setStarted] = useState(false);
+
+  if (playing && !started) {
+    setStarted(true);
+  }
+
+  return started;
 }
 
 function themeOptions(
@@ -361,11 +398,36 @@ function PlaybackLayout({
   const hudPosition = hudPositionFor(lyricsVerticalPosition);
   const sessionWindowControls = sessionPlayback && isTauri;
 
-  const result = usePlaybackResult(song, queuePlayback, players ?? []);
+  // A room keeps the seat: leaving playback returns to the room, not the menu.
+  const exitPlayback = useCallback(() => {
+    if (room === undefined) {
+      handleExit();
+      return;
+    }
+
+    // Leaving mid-song must not reopen this track's surface on the way up.
+    if (roomSync.playing) {
+      markPlaybackExit(song.file_hash);
+    }
+
+    handleExit({
+      path: '/rooms',
+      state: roomReturnState({
+        nodeUrl: room.nodeUrl,
+        joining: { roomId: room.roomId, memberId: room.memberId, token: room.token },
+      }),
+    });
+  }, [handleExit, room, roomSync.playing, song.file_hash]);
+
+  const result = usePlaybackResult(song, queuePlayback, players ?? [], exitPlayback);
 
   const inRoom = room !== undefined;
   const canControl = !inRoom || roomSync.isHost;
   const canResume = !inRoom || roomSync.pausedById === room.memberId;
+  // The loading screen stays until the room's shared start, then never returns.
+  const roomStarted = useRoomStarted(roomSync.playing);
+  const showLoading = waitOnLoadingScreen(started, inRoom, roomStarted);
+  const roomCounts = roomLoadingCounts(inRoom, roomSync.loaded, roomSync.total);
   const { pause, resume, seekTo, skipIntro, skipOutro } = usePlaybackIntents({
     inRoom,
     isHost: roomSync.isHost,
@@ -389,23 +451,24 @@ function PlaybackLayout({
     hasNext: result.onNext !== undefined,
     sessionPlayback,
   };
-  const actions = roomActions(status, canResume);
+  const exitLabelKey: TranslationKey = exitKeyFor(inRoom, status);
+  const actions = roomActions(status, canResume, exitLabelKey);
   const runCommand = useCallback(
     (command: PlaybackCommand) =>
       runPlaybackCommand(command, {
         pause,
         resume,
         next: () => result.onNext?.(),
-        exit: handleExit,
+        exit: exitPlayback,
       }),
-    [handleExit, pause, result, resume],
+    [exitPlayback, pause, result, resume],
   );
 
   usePlaybackRemote(status, {
     pause,
     resume,
     next: () => result.onNext?.(),
-    exit: handleExit,
+    exit: exitPlayback,
   });
 
   // The phone mirrors this snapshot: position and time-derived skip flags are
@@ -485,7 +548,9 @@ function PlaybackLayout({
         romanizationMode={lyricsRomanizationMode}
       />
 
-      {!started && <LoadingScreen song={song} />}
+      {showLoading && (
+        <LoadingScreen song={song} roomLoaded={roomCounts.loaded} roomTotal={roomCounts.total} />
+      )}
 
       <PauseOverlay
         open={paused && !result.open}
@@ -501,7 +566,7 @@ function PlaybackLayout({
         song={song}
         scores={result.scores}
         nextPending={result.nextPending}
-        exitLabel={t(playbackExitLabelKey(status))}
+        exitLabel={t(exitLabelKey)}
         autoContinue={config?.auto_continue_queue === true}
         onAutoContinueChange={(next) => persistConfig({ auto_continue_queue: next })}
         onBack={result.onBack}

@@ -11,3 +11,20 @@ export const markPlaybackLaunch = (): void => {
 };
 
 export const isPlaybackLaunch = (): boolean => Date.now() - launchedAt < WINDOW_MS;
+
+/**
+ * The track a singer just left. Returning to the room screen while the song is
+ * still playing must not reopen the surface immediately; the next arming
+ * clears it.
+ */
+let exitedTrack: string | null = null;
+
+export const markPlaybackExit = (trackHash: string): void => {
+  exitedTrack = trackHash;
+};
+
+export const clearPlaybackExit = (): void => {
+  exitedTrack = null;
+};
+
+export const isPlaybackExit = (trackHash: string): boolean => exitedTrack === trackHash;
