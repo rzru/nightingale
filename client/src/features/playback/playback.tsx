@@ -51,13 +51,14 @@ export const Playback = () => {
     return <Navigate to="/" replace />;
   }
 
-  const { song, queuePlayback = false, playbackId, players } = parsedState.data;
-  return (
-    <PlaybackSessionView
-      session={{ song, queuePlayback, playbackId, players }}
-      sessionPlayback={false}
-    />
-  );
+  // Spread the parsed session: rebuilding it field by field has already
+  // dropped `room` once, which silently turned room playback into solo.
+  const session: PlaybackSession = {
+    ...parsedState.data,
+    queuePlayback: parsedState.data.queuePlayback ?? false,
+  };
+
+  return <PlaybackSessionView session={session} sessionPlayback={false} />;
 };
 
 const SessionPlayback = () => {
