@@ -4,7 +4,7 @@ import { z } from 'zod';
  * Client half of the node protocol. The node lives in `node/src/proto.rs`; both
  * sides are expected to change together, which is what `PROTOCOL` guards.
  */
-export const ROOMS_PROTOCOL = 1;
+export const ROOMS_PROTOCOL = 2;
 
 /**
  * Trust boundary. A node is an untrusted peer: everything it sends is capped
@@ -25,6 +25,7 @@ const MAX_FRAME_BYTES = 64 * 1024;
 const MAX_FRAMES_PER_SECOND = 120;
 /** Clock offsets beyond this are noise or a lie, not a measurement. */
 const MAX_CLOCK_OFFSET_MS = 5000;
+const MAX_POSITION_MS = 24 * 60 * 60 * 1000;
 const STATE_COALESCE_MS = 33;
 
 const label = (max: number) => z.string().max(max);
@@ -92,8 +93,10 @@ export const roomViewSchema = z.object({
   track: roomTrackSchema.nullable(),
   phase: phaseSchema,
   startAtMs: z.number().nullable(),
+  startPositionMs: z.number().min(0).max(MAX_POSITION_MS),
   paused: z.boolean(),
   pausedBy: label(MAX_NAME).nullable(),
+  pausedById: label(MAX_ID).nullable(),
   positionMs: z.number().min(0),
   locked: z.boolean(),
 });
@@ -138,7 +141,9 @@ export const roomEventSchema = z.discriminatedUnion('type', [
     type: z.literal('room.pitch'),
     memberId: label(MAX_ID),
     hz: z.number().min(MIN_HZ).max(MAX_HZ).nullable(),
-    rms: z.number().min(0).max(1).nullable(),
+    semitone: z.number().min(0).max(144).nullable(),
+    similarity: z.number().min(0).max(1),
+    positionMs: z.number().min(0).max(MAX_POSITION_MS),
   }),
   z.object({ type: z.literal('room.deny'), reason: label(MAX_ID) }),
   z.object({ type: z.literal('room.closed'), reason: label(MAX_ID) }),
@@ -165,12 +170,19 @@ export type RoomClientFrame =
   | { type: 'room.loaded' }
   | { type: 'room.pause' }
   | { type: 'room.resume' }
-  | { type: 'room.skip_intro' }
+  | { type: 'room.skip_intro'; positionMs: number }
   | { type: 'room.skip_outro' }
+  | { type: 'room.seek'; positionMs: number }
   | { type: 'room.start' }
   | { type: 'room.end' }
-  | { type: 'room.pitch'; hz: number | null; rms: number | null }
-  | { type: 'room.score'; delta: number }
+  | {
+      type: 'room.pitch';
+      hz: number | null;
+      semitone: number | null;
+      similarity: number;
+      positionMs: number;
+    }
+  | { type: 'room.score'; score: number }
   | { type: 'time.ping'; clientMs: number };
 
 /** A node refused the request; `reason` mirrors `RoomError::reason()`. */

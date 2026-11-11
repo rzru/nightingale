@@ -2,6 +2,8 @@ import { t } from '@/i18n';
 
 type DisplayPlayer = {
   id: string;
+  /** Room singers carry a member name instead of a profile. */
+  name?: string | null;
   profile: string | null;
 };
 
@@ -11,6 +13,10 @@ export function playerDisplayName(
 ): string {
   if (player.profile !== null) {
     return player.profile;
+  }
+
+  if (player.name !== null && player.name !== undefined && player.name !== '') {
+    return player.name;
   }
 
   const guests = players

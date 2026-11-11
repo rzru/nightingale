@@ -82,7 +82,24 @@ function handleKeyboardShortcut(event: KeyboardEvent, actions: KeyboardActions):
  * needs from the playback contexts; only the app config is passed in so we can
  * persist guide-volume changes without coupling this hook to the config query.
  */
-export function usePlaybackInput(config: AppConfig | null, enabled = true) {
+export type PlaybackInputOverrides = {
+  pause: () => void;
+  resume: () => void;
+  skipIntro: () => void;
+  skipOutro: () => void;
+};
+
+/**
+ * Wires keyboard + gamepad input for the playback session. Reads everything it
+ * needs from the playback contexts; only the app config is passed in so we can
+ * persist guide-volume changes without coupling this hook to the config query.
+ * Room playback passes overrides so the same keys follow the room's rules.
+ */
+export function usePlaybackInput(
+  config: AppConfig | null,
+  enabled = true,
+  overrides?: PlaybackInputOverrides,
+) {
   const { paused, isReady, guideVolume, guideAvailable } = usePlaybackTransportState();
   const { getCurrentTime, setGuideVolume, handlePause, handleContinue } =
     usePlaybackTransportActions();
@@ -95,6 +112,15 @@ export function usePlaybackInput(config: AppConfig | null, enabled = true) {
   const persistConfig = usePlaybackConfigPersist(config);
 
   const pausedRef = useLatestRef(paused);
+  const pauseRef = useLatestRef(overrides?.pause ?? handlePause);
+  const resumeRef = useLatestRef(overrides?.resume ?? handleContinue);
+  const skipIntroRef = useLatestRef(overrides?.skipIntro ?? handleSkipIntro);
+  const skipOutroRef = useLatestRef(overrides?.skipOutro ?? handleSkipOutro);
+
+  const pause = useCallback(() => pauseRef.current(), [pauseRef]);
+  const resume = useCallback(() => resumeRef.current(), [resumeRef]);
+  const skipIntro = useCallback(() => skipIntroRef.current(), [skipIntroRef]);
+  const skipOutro = useCallback(() => skipOutroRef.current(), [skipOutroRef]);
 
   // Gamepad: nav.back = pause/resume, nav.confirm = skip intro/outro
   useNavInput(
@@ -105,9 +131,9 @@ export function usePlaybackInput(config: AppConfig | null, enabled = true) {
         }
         if (action.back) {
           if (pausedRef.current) {
-            handleContinue();
+            resume();
           } else {
-            handlePause();
+            pause();
           }
           return;
         }
@@ -122,24 +148,24 @@ export function usePlaybackInput(config: AppConfig | null, enabled = true) {
           }
           const t = getCurrentTime();
           if (t < firstSegmentStart - introSkipLeadSec) {
-            handleSkipIntro();
+            skipIntro();
           } else if (t > lastSegmentEnd + 1) {
-            handleSkipOutro();
+            skipOutro();
           }
         }
       },
       [
         enabled,
-        handlePause,
-        handleContinue,
         pausedRef,
+        pause,
+        resume,
         isReady,
         getCurrentTime,
         firstSegmentStart,
         lastSegmentEnd,
         introSkipLeadSec,
-        handleSkipIntro,
-        handleSkipOutro,
+        skipIntro,
+        skipOutro,
       ],
     ),
   );
@@ -155,8 +181,8 @@ export function usePlaybackInput(config: AppConfig | null, enabled = true) {
       guideAvailable,
       setGuideVolume,
       persistConfig,
-      handlePause,
-      handleContinue,
+      handlePause: pause,
+      handleContinue: resume,
       cycleTheme,
       cycleFlavor,
       handleToggleMic,
@@ -177,8 +203,8 @@ export function usePlaybackInput(config: AppConfig | null, enabled = true) {
     cycleTheme,
     cycleFlavor,
     persistConfig,
-    handlePause,
-    handleContinue,
+    pause,
+    resume,
     handleToggleMic,
     handleCycleMic,
     handleToggleMicMonitor,

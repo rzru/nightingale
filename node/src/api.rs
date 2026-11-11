@@ -153,6 +153,7 @@ impl IntoResponse for ApiError {
             RoomError::ColorTaken => StatusCode::CONFLICT,
             RoomError::InPlayback
             | RoomError::NotHost
+            | RoomError::NotPauser
             | RoomError::NoTrack
             | RoomError::TrackUnset
             | RoomError::NotReady

@@ -50,6 +50,8 @@ export type PlaybackTransportActions = {
   getScoringBuffer: AudioPlayer['getScoringBuffer'];
   getAudioContext: AudioPlayer['getAudioContext'];
   startPlayback: () => void;
+  /** Seeks and starts on a shared clock, `delaySec` in the future. */
+  startPlaybackAt: (time: number, delaySec: number) => boolean;
   /** Raw audio-engine pause; does NOT raise the `paused` UI flag. */
   pauseAudio: () => void;
   handlePause: () => void;
@@ -144,6 +146,15 @@ export function PlaybackTransportProvider({
     audio.resume();
   }, [audio]);
 
+  const startPlaybackAt = useCallback(
+    (time: number, delaySec: number): boolean => {
+      setPaused(false);
+
+      return audio.playAt(time, delaySec);
+    },
+    [audio],
+  );
+
   const handleExit = useCallback(() => {
     audio.cleanup();
     if (isSessionPlayback()) {
@@ -186,6 +197,7 @@ export function PlaybackTransportProvider({
       getScoringBuffer: audio.getScoringBuffer,
       getAudioContext: audio.getAudioContext,
       startPlayback: audio.play,
+      startPlaybackAt,
       pauseAudio: audio.pause,
       handlePause,
       handleContinue,
@@ -204,6 +216,7 @@ export function PlaybackTransportProvider({
       handlePause,
       handleContinue,
       handleExit,
+      startPlaybackAt,
     ],
   );
 

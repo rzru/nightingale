@@ -101,7 +101,9 @@ function currentNotes(
   states: Map<string, StableNoteState>,
 ): PitchGraphNotes {
   const activePlayers = multiplayer ? players.filter((player) => player.micReady) : [];
-  const referenceSeries = activePlayers[0]?.series ?? series;
+  // The reference line and its badges always come from the local clock, even
+  // when the first active player in a room is a remote singer.
+  const referenceSeries = series;
   const time = referenceSeries.currentTime;
   const reference = stableNote(states, 'reference', referenceSeries.refPitches.at(-1), time);
 

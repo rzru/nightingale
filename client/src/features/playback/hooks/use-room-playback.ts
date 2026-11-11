@@ -1,181 +1,93 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { openRoomSocket, toRoomColor, type Joining, type RoomView } from '@/bridge/rooms';
-import { freqToSemitone, type PitchSeries } from '@/features/playback/lib/pitch/state';
+import type { PitchSeries } from '@/features/playback/lib/pitch/state';
 import { useSetRoomPlayback } from '@/features/playback/providers/room-playback-hooks';
 import type { RoomPlayback } from '@/types/RoomPlayback';
 
-/** Lead time before the shared start, so `seek` + `play` land on the beat. */
-const START_LEAD_MS = 150;
-/** A node may not schedule a start far in the future, or force a big seek. */
-const MAX_FUTURE_MS = 5 * 60 * 1000;
-const MAX_PAST_MS = 60 * 1000;
-const PITCH_INTERVAL_MS = 100;
-const SCORE_INTERVAL_MS = 5000;
-const REPAINT_INTERVAL_MS = 250;
+/** Pitch samples fan out at 20 Hz: dense enough for the graph, cheap for a node. */
+const PITCH_INTERVAL_MS = 50;
+const SCORE_INTERVAL_MS = 1000;
+const REPAINT_INTERVAL_MS = 100;
+/** Retry the shared start until the buffers exist and the clock was scheduled. */
+const ALIGN_RETRY_MS = 100;
+const DRIFT_CHECK_MS = 1000;
+/** Corrections before this would fight the scheduling itself. */
+const DRIFT_SETTLE_MS = 2000;
+const MAX_DRIFT_SEC = 0.35;
 const MAX_REMOTE_SAMPLES = 400;
 
 type RemoteTrack = {
+  /** Song position in seconds, so the graph can place remote samples. */
   times: number[];
-  userPitches: (number | null)[];
-  displaySemitones: (number | null)[];
+  pitches: (number | null)[];
+  semitones: (number | null)[];
   similarities: number[];
+};
+
+type RemoteSample = {
+  hz: number | null;
+  semitone: number | null;
+  similarity: number;
+  positionMs: number;
 };
 
 const newTrack = (): RemoteTrack => ({
   times: [],
-  userPitches: [],
-  displaySemitones: [],
+  pitches: [],
+  semitones: [],
   similarities: [],
 });
 
-const pushSample = (track: RemoteTrack, hz: number | null, atMs: number): void => {
+const pushSample = (track: RemoteTrack, sample: RemoteSample): void => {
   if (track.times.length >= MAX_REMOTE_SAMPLES) {
     track.times.shift();
-    track.userPitches.shift();
-    track.displaySemitones.shift();
+    track.pitches.shift();
+    track.semitones.shift();
     track.similarities.shift();
   }
 
-  track.times.push(atMs);
-  track.userPitches.push(hz);
-  track.displaySemitones.push(hz === null ? null : freqToSemitone(hz) - 69);
-  track.similarities.push(0);
-};
-
-type RoomEventContext = {
-  local: RoomLocal;
-  transport: RoomTransport;
-  pending: Map<string, RemoteTrack>;
-  setRoomState: (state: RoomView | null) => void;
-  view: RoomView | null;
-};
-
-const applyState = (next: RoomView, previous: RoomView | null, transport: RoomTransport): void => {
-  if (next.phase === 'playing' && next.paused) {
-    transport.pauseAudio();
-
-    return;
-  }
-
-  if (previous?.paused === true && !next.paused) {
-    transport.seek(next.positionMs / 1000);
-    transport.resume();
-  }
-};
-
-const applySkip = (
-  kind: 'intro' | 'outro',
-  positionMs: number,
-  transport: RoomTransport,
-  local: RoomLocal,
-): void => {
-  if (kind === 'intro') {
-    transport.seek(positionMs / 1000);
-
-    return;
-  }
-
-  local.skipOutro();
-};
-
-const driftTarget = (
-  state: RoomView | null,
-  now: number,
-  positionSec: number,
-  settled: boolean,
-): number | null => {
-  if (!settled || state === null || state.phase !== 'playing' || state.paused) {
-    return null;
-  }
-
-  if (state.startAtMs === null) {
-    return null;
-  }
-
-  const expected = (now - state.startAtMs) / 1000;
-
-  if (expected < 0 || Math.abs(positionSec - expected) <= MAX_DRIFT_SEC) {
-    return null;
-  }
-
-  return expected;
-};
-
-const collectPitch = (
-  memberId: string,
-  hz: number | null,
-  pending: Map<string, RemoteTrack>,
-): void => {
-  const track = pending.get(memberId) ?? newTrack();
-  pushSample(track, hz, Date.now());
-  pending.set(memberId, track);
-};
-
-const roomEvents = (
-  event: Parameters<Parameters<typeof openRoomSocket>[2]['onEvent']>[0],
-  ctx: RoomEventContext,
-): void => {
-  if (event.type === 'room.state') {
-    applyState(event.state, ctx.view, ctx.transport);
-    ctx.setRoomState(event.state);
-
-    return;
-  }
-
-  if (event.type === 'room.skip') {
-    applySkip(event.kind, event.positionMs, ctx.transport, ctx.local);
-
-    return;
-  }
-
-  if (event.type === 'room.pitch') {
-    collectPitch(event.memberId, event.hz, ctx.pending);
-  }
+  track.times.push(sample.positionMs / 1000);
+  track.pitches.push(sample.hz);
+  track.semitones.push(sample.semitone);
+  track.similarities.push(sample.similarity);
 };
 
 type RoomTransport = {
   getCurrentTime: () => number;
-  pauseAudio: () => void;
-  resume: () => void;
-  seek: (time: number) => void;
-  startPlayback: () => void;
+  /** Pauses the engine and raises the pause overlay, like a local pause. */
+  handlePause: () => void;
+  /** Seeks to `time` and starts on the shared clock, `delaySec` from now. */
+  startAt: (time: number, delaySec: number) => boolean;
 };
 
-/** Beyond this the singers are audibly apart; below it, seeking would be worse. */
-const MAX_DRIFT_SEC = 0.35;
-const DRIFT_CHECK_MS = 1000;
-const DRIFT_SETTLE_MS = 2000;
-
 type RoomLocal = {
-  score: number | null;
+  score: number;
   series: PitchSeries;
   /** Local load finished; the room starts once every owner reports in. */
   loaded: boolean;
-  skipIntro: () => void;
+  /** Where a local intro skip should land, in seconds. */
+  introTargetSec: number;
   skipOutro: () => void;
 };
 
 export type RoomPlaybackSync = {
-  /** Host-only in practice: the node rejects skips from anyone else. */
-  requestSkip: (kind: 'intro' | 'outro') => void;
-  /** Transport intents go through the room so every machine follows. */
   requestPause: () => void;
   requestResume: () => void;
-};
-
-const clampedStart = (startAtMs: number, now: number): number => {
-  if (!Number.isFinite(startAtMs)) {
-    return now;
-  }
-
-  return Math.min(Math.max(startAtMs, now - MAX_PAST_MS), now + MAX_FUTURE_MS);
+  requestSeek: (time: number) => void;
+  /** Transport intents go through the room so every machine follows. */
+  requestSkip: (kind: 'intro' | 'outro') => void;
+  isHost: boolean;
+  /** `null` until the first room snapshot arrives. */
+  pausedById: string | null;
+  pausedByName: string | null;
 };
 
 /**
- * Room-only playback behaviour: hold until the node says the room is playing,
- * keep the local singer's pitch and score flowing, follow the host's skips, and
- * fold every singer's pitch into coloured graph trails.
+ * Room-only playback behaviour: hold until the node schedules the shared start,
+ * align against its clock, keep the local singer's pitch and score flowing,
+ * follow the host's skips and seeks, and fold every singer's pitch into
+ * coloured graph trails.
  *
  * Solo playback passes no room, gets no players back, and opens no socket.
  */
@@ -186,13 +98,17 @@ export const useRoomPlayback = (
 ): RoomPlaybackSync => {
   const socketRef = useRef<ReturnType<typeof openRoomSocket> | null>(null);
   const offset = useRef(room?.offsetMs ?? 0);
-  const started = useRef(false);
-  const sentLoaded = useRef(false);
-  const sentScore = useRef(0);
+  /** `startAt:startPosition` of the timeline this client already scheduled. */
+  const alignedKey = useRef<string | null>(null);
+  const clockMeasured = useRef(false);
+  const pauseApplied = useRef(false);
   const pending = useRef(new Map<string, RemoteTrack>());
   const view = useRef<RoomView | null>(null);
   const localRef = useRef(local);
   const transportRef = useRef(transport);
+  const lastSentPosition = useRef(-1);
+  const sentScore = useRef(0);
+  const loadedSent = useRef(false);
   const [remote, setRemote] = useState<Map<string, RemoteTrack>>(new Map());
   const [roomState, setRoomState] = useState<RoomView | null>(null);
 
@@ -207,10 +123,46 @@ export const useRoomPlayback = (
     }
 
     pending.current = new Map();
-    started.current = false;
-    sentLoaded.current = false;
+    alignedKey.current = null;
+    clockMeasured.current = false;
+    pauseApplied.current = false;
+    lastSentPosition.current = -1;
     sentScore.current = 0;
+    loadedSent.current = false;
     offset.current = room.offsetMs;
+    view.current = null;
+
+    const align = (): void => {
+      const state = view.current;
+
+      if (!clockMeasured.current) {
+        return;
+      }
+      if (state === null || state.phase !== 'playing' || state.paused) {
+        return;
+      }
+      if (state.startAtMs === null) {
+        return;
+      }
+
+      const key = `${state.startAtMs}:${state.startPositionMs}`;
+
+      if (alignedKey.current === key) {
+        return;
+      }
+
+      const now = Date.now() + offset.current;
+      const delay = (state.startAtMs - now) / 1000;
+      const offsetSec = state.startPositionMs / 1000 + Math.max(0, -delay);
+
+      if (!transportRef.current.startAt(offsetSec, Math.max(0, delay))) {
+        return;
+      }
+
+      alignedKey.current = key;
+      // A seek or skip rewinds the song clock; stale samples must not block pitch.
+      lastSentPosition.current = -1;
+    };
 
     const joining: Joining = {
       roomId: room.roomId,
@@ -220,84 +172,123 @@ export const useRoomPlayback = (
     const socket = openRoomSocket(room.nodeUrl, joining, {
       onClock: (measured) => {
         offset.current = measured;
+        clockMeasured.current = true;
+        align();
       },
       onEvent: (event) => {
-        if (event.type === 'room.pitch' && event.memberId === room.memberId) {
+        if (event.type === 'room.pitch') {
+          if (event.memberId === room.memberId) {
+            return;
+          }
+
+          const track = pending.current.get(event.memberId) ?? newTrack();
+          pushSample(track, event);
+          pending.current.set(event.memberId, track);
+
           return;
         }
 
         if (event.type === 'room.state') {
           view.current = event.state;
+          setRoomState(event.state);
+
+          if (event.state.phase === 'playing' && event.state.paused) {
+            if (!pauseApplied.current) {
+              pauseApplied.current = true;
+              transportRef.current.handlePause();
+            }
+
+            return;
+          }
+
+          pauseApplied.current = false;
+          align();
+
+          return;
         }
 
-        roomEvents(event, {
-          view: view.current,
-          local: localRef.current,
-          transport: transportRef.current,
-          pending: pending.current,
-          setRoomState,
-        });
+        if (event.type === 'room.skip' && event.kind === 'outro') {
+          localRef.current.skipOutro();
+        }
       },
       onClose: () => undefined,
     });
 
     socketRef.current = socket;
-    // The surface auto-starts when it is ready; the room decides when instead.
-    transportRef.current.pauseAudio();
 
-    const startTimer = setInterval(() => {
-      if (started.current) {
-        return;
+    const alignTimer = setInterval(() => {
+      const state = view.current;
+
+      // `room.loaded` only counts after the snapshot proves the socket is open.
+      if (!loadedSent.current && localRef.current.loaded && state?.phase === 'arming') {
+        loadedSent.current = true;
+        socketRef.current?.send({ type: 'room.loaded' });
       }
 
-      const current = view.current;
+      align();
+    }, ALIGN_RETRY_MS);
 
-      if (current === null || current.phase !== 'playing' || current.startAtMs === null) {
+    // Safety net only: the scheduled start keeps singers within a few ms, but a
+    // long suspension or a slow decode must not leave one machine adrift.
+    const driftTimer = setInterval(() => {
+      const state = view.current;
+
+      if (state === null || state.phase !== 'playing' || state.paused) {
+        return;
+      }
+      if (state.startAtMs === null) {
         return;
       }
 
       const now = Date.now() + offset.current;
-      const startAt = clampedStart(current.startAtMs, now);
 
-      if (now >= startAt - START_LEAD_MS) {
-        started.current = true;
-        transportRef.current.seek(Math.max(0, (now - startAt) / 1000));
-        transportRef.current.startPlayback();
-      }
-    }, 50);
-
-    let startedAt = 0;
-    const driftTimer = setInterval(() => {
-      if (started.current && startedAt === 0) {
-        startedAt = Date.now();
+      if (now < state.startAtMs + DRIFT_SETTLE_MS) {
+        return;
       }
 
-      const settled = startedAt > 0 && Date.now() - startedAt >= DRIFT_SETTLE_MS;
-      const target = driftTarget(
-        view.current,
-        Date.now() + offset.current,
-        transportRef.current.getCurrentTime(),
-        settled,
-      );
+      const target = state.startPositionMs / 1000 + (now - state.startAtMs) / 1000;
 
-      if (target !== null) {
-        transportRef.current.seek(target);
+      if (Math.abs(transportRef.current.getCurrentTime() - target) <= MAX_DRIFT_SEC) {
+        return;
       }
+
+      alignedKey.current = null;
+      align();
     }, DRIFT_CHECK_MS);
 
     const pitchTimer = setInterval(() => {
-      const hz = localRef.current.series.userPitches.at(-1) ?? null;
-      socketRef.current?.send({ type: 'room.pitch', hz, rms: null });
+      const series = localRef.current.series;
+      const index = series.times.length - 1;
+
+      if (index < 0) {
+        return;
+      }
+
+      const positionMs = Math.round((series.times.at(-1) ?? 0) * 1000);
+
+      if (positionMs <= lastSentPosition.current) {
+        return;
+      }
+
+      lastSentPosition.current = positionMs;
+      socketRef.current?.send({
+        type: 'room.pitch',
+        hz: series.userPitches.at(-1) ?? null,
+        semitone: series.displaySemitones.at(-1) ?? null,
+        similarity: series.similarities.at(-1) ?? 0,
+        positionMs,
+      });
     }, PITCH_INTERVAL_MS);
 
     const scoreTimer = setInterval(() => {
-      const total = Math.round(localRef.current.score ?? 0);
-      const delta = total - sentScore.current;
+      const total = Math.round(localRef.current.score);
 
-      if (delta > 0) {
-        sentScore.current = total;
-        socketRef.current?.send({ type: 'room.score', delta });
+      if (total === sentScore.current) {
+        return;
       }
+
+      sentScore.current = total;
+      socketRef.current?.send({ type: 'room.score', score: total });
     }, SCORE_INTERVAL_MS);
 
     const repaintTimer = setInterval(() => {
@@ -305,7 +296,7 @@ export const useRoomPlayback = (
     }, REPAINT_INTERVAL_MS);
 
     return () => {
-      clearInterval(startTimer);
+      clearInterval(alignTimer);
       clearInterval(driftTimer);
       clearInterval(pitchTimer);
       clearInterval(scoreTimer);
@@ -317,35 +308,33 @@ export const useRoomPlayback = (
     };
   }, [room]);
 
-  useEffect(() => {
-    if (room === null || !local.loaded || sentLoaded.current) {
+  const requestPause = useCallback(() => {
+    socketRef.current?.send({ type: 'room.pause' });
+  }, []);
+
+  const requestResume = useCallback(() => {
+    socketRef.current?.send({ type: 'room.resume' });
+  }, []);
+
+  const requestSeek = useCallback((time: number) => {
+    socketRef.current?.send({
+      type: 'room.seek',
+      positionMs: Math.round(Math.max(0, time) * 1000),
+    });
+  }, []);
+
+  const requestSkip = useCallback((kind: 'intro' | 'outro') => {
+    if (kind === 'outro') {
+      socketRef.current?.send({ type: 'room.skip_outro' });
+
       return;
     }
 
-    sentLoaded.current = true;
-    socketRef.current?.send({ type: 'room.loaded' });
-  }, [room, local.loaded]);
-
-  const requestSkip = useMemo(
-    () => (kind: 'intro' | 'outro') => {
-      socketRef.current?.send({ type: kind === 'intro' ? 'room.skip_intro' : 'room.skip_outro' });
-    },
-    [],
-  );
-
-  const requestPause = useMemo(
-    () => () => {
-      socketRef.current?.send({ type: 'room.pause' });
-    },
-    [],
-  );
-
-  const requestResume = useMemo(
-    () => () => {
-      socketRef.current?.send({ type: 'room.resume' });
-    },
-    [],
-  );
+    socketRef.current?.send({
+      type: 'room.skip_intro',
+      positionMs: Math.round(Math.max(0, localRef.current.introTargetSec) * 1000),
+    });
+  }, []);
 
   const series = local.series;
   const setRoomPlayback = useSetRoomPlayback();
@@ -354,13 +343,13 @@ export const useRoomPlayback = (
   // graph) renders remote singers exactly like local-multiplayer ones.
   useEffect(() => {
     if (setRoomPlayback === null) {
-      return undefined;
+      return;
     }
 
     if (room === null || roomState === null) {
       setRoomPlayback({ self: null, remote: new Map() });
 
-      return undefined;
+      return;
     }
 
     const me = roomState.members.find((member) => member.id === room.memberId);
@@ -372,6 +361,7 @@ export const useRoomPlayback = (
           .filter((member) => member.id !== room.memberId)
           .map((member) => {
             const track = remote.get(member.id);
+            const similarities = track?.similarities ?? [];
 
             return [
               member.id,
@@ -381,20 +371,38 @@ export const useRoomPlayback = (
                 host: member.host,
                 score: member.score,
                 series: {
-                  ...series,
-                  userPitches: track?.userPitches ?? [],
-                  displaySemitones: track?.displaySemitones ?? [],
-                  similarities: track?.similarities ?? [],
-                  times: (track?.times ?? []).map((time) => time / 1000),
+                  // Placeholder references keep the remote trail on the same
+                  // similarity-tinted render path as local multiplayer.
+                  refPitches: similarities.map(() => 0),
+                  userPitches: track?.pitches ?? [],
+                  displaySemitones: track?.semitones ?? [],
+                  similarities,
+                  times: track?.times ?? [],
+                  referenceTrack: null,
+                  referenceTime: series.currentTime,
+                  currentTime: series.currentTime,
                 },
               },
             ] as const;
           }),
       ),
     });
-
-    return undefined;
   }, [room, roomState, remote, series, setRoomPlayback]);
 
-  return { requestPause, requestResume, requestSkip };
+  const isHost = room !== null && roomState?.hostId === room.memberId;
+  const pausedById = roomState?.pausedById ?? null;
+  const pausedByName = roomState?.pausedBy ?? null;
+
+  return useMemo(
+    () => ({
+      requestPause,
+      requestResume,
+      requestSeek,
+      requestSkip,
+      isHost,
+      pausedById,
+      pausedByName,
+    }),
+    [isHost, pausedById, pausedByName, requestPause, requestResume, requestSeek, requestSkip],
+  );
 };

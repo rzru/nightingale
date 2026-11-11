@@ -371,12 +371,10 @@ const MissingTrackHint = ({ hasTrack, isHost }: { hasTrack: boolean | null; isHo
 
 /** Launches this singer's playback when the room starts a track. */
 const RoomSessionBridge = ({
-  me,
   offsetMs,
   session,
   state,
 }: {
-  me: RoomMember | null;
   offsetMs: number;
   session: RoomSession;
   state: RoomViewState;
@@ -385,9 +383,6 @@ const RoomSessionBridge = ({
     session,
     trackHash: state.track?.hash ?? null,
     live: state.phase === 'arming' || state.phase === 'playing',
-    startAtMs: state.startAtMs,
-    memberName: me?.name ?? '',
-    color: me?.color ?? 'rose',
     offsetMs,
   });
 
@@ -472,7 +467,7 @@ export function RoomView({ onLeave, session }: { onLeave: () => void; session: R
 
   return (
     <div className="flex flex-col gap-4">
-      <RoomSessionBridge me={me} offsetMs={offsetMs} session={session} state={state} />
+      <RoomSessionBridge offsetMs={offsetMs} session={session} state={state} />
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">

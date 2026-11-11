@@ -141,16 +141,26 @@ async fn dispatch(
         ClientFrame::Loaded => deny_on_error(room, room.set_loaded(member_id).await),
         ClientFrame::Pause => deny_on_error(room, room.pause(member_id).await),
         ClientFrame::Resume => deny_on_error(room, room.resume(member_id).await),
-        ClientFrame::SkipIntro => skip(room, member_id, false).await,
-        ClientFrame::SkipOutro => skip(room, member_id, true).await,
+        ClientFrame::SkipIntro { position_ms } => {
+            deny_on_error(room, room.seek(member_id, position_ms).await)
+        }
+        ClientFrame::SkipOutro => finish_song(room, member_id).await,
+        ClientFrame::Seek { position_ms } => {
+            deny_on_error(room, room.seek(member_id, position_ms).await)
+        }
         ClientFrame::Start => deny_on_error(room, room.start(member_id).await),
         ClientFrame::End => deny_on_error(room, room.end(member_id).await),
-        ClientFrame::Pitch { hz, rms } => {
-            room.broadcast_pitch(member_id, hz, rms);
+        ClientFrame::Pitch {
+            hz,
+            semitone,
+            similarity,
+            position_ms,
+        } => {
+            room.broadcast_pitch(member_id, hz, semitone, similarity, position_ms);
 
             true
         }
-        ClientFrame::Score { delta } => deny_on_error(room, room.add_score(member_id, delta).await),
+        ClientFrame::Score { score } => deny_on_error(room, room.set_score(member_id, score).await),
         ClientFrame::Ping { client_ms } => {
             let _ = direct
                 .send(ServerFrame::Pong {
@@ -164,12 +174,12 @@ async fn dispatch(
     }
 }
 
-/// Skipping is host-only and broadcast, so every singer jumps together.
-async fn skip(room: &Room, member_id: &str, outro: bool) -> bool {
-    match room.skip(member_id, outro).await {
+/// The host finished the song; the room returns to its lobby.
+async fn finish_song(room: &Room, member_id: &str) -> bool {
+    match room.skip_outro(member_id).await {
         Ok(position) => {
             room.announce(ServerFrame::Skip {
-                kind: if outro { "outro" } else { "intro" }.to_owned(),
+                kind: "outro".to_owned(),
                 position_ms: position,
             });
 

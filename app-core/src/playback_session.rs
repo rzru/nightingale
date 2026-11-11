@@ -38,12 +38,6 @@ pub struct RoomPlayback {
     pub room_id: String,
     pub token: String,
     pub member_id: String,
-    pub member_name: String,
-    /// The singer's room colour, so trails stay consistent across machines.
-    pub color: String,
-    /// Unix milliseconds the room agreed to start at.
-    #[ts(type = "number")]
-    pub start_at_ms: i64,
     /// `node clock - local clock`, measured in the room before launching.
     #[ts(type = "number")]
     pub offset_ms: i64,
@@ -64,17 +58,13 @@ pub struct PlaybackSession {
 
 impl PlaybackSession {
     fn validate(&self) -> Result<(), String> {
-        if let Some(room) = &self.room {
-            if room.node_url.trim().is_empty()
+        if let Some(room) = &self.room
+            && (room.node_url.trim().is_empty()
                 || room.room_id.trim().is_empty()
                 || room.token.trim().is_empty()
-                || room.member_id.trim().is_empty()
-            {
-                return Err("room playback needs a node, room, member, and token".to_string());
-            }
-            if room.start_at_ms < 0 {
-                return Err("room playback needs a valid start timestamp".to_string());
-            }
+                || room.member_id.trim().is_empty())
+        {
+            return Err("room playback needs a node, room, member, and token".to_string());
         }
         if self.players.is_empty() {
             return Ok(());

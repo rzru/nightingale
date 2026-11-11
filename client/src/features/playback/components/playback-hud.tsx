@@ -8,7 +8,6 @@ import {
   type PlaybackPlayerMicState,
   usePlaybackThemeActions,
   usePlaybackThemeState,
-  usePlaybackTranscriptActions,
   usePlaybackTranscriptState,
   usePlaybackTransportActions,
   usePlaybackTransportState,
@@ -18,6 +17,7 @@ import { playerDisplayName } from '@/features/playback/utils/player-display-name
 import { t, useTranslation } from '@/i18n';
 import { playerColorOption } from '@/shared/player-colors';
 import type { AppConfig } from '@/types/AppConfig';
+import type { Segment } from '@/types/Transcript';
 
 import { LiveStars } from './live-stars';
 import { PlaybackTransportControls } from './playback-transport-controls';
@@ -160,14 +160,16 @@ function TouchControls({
   config,
   hasTouch,
   position,
+  onPause,
 }: {
   config: AppConfig | null;
   hasTouch: boolean;
   position: PlaybackHudPosition;
+  onPause: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const { guideVolume, guideAvailable } = usePlaybackTransportState();
-  const { setGuideVolume, handlePause } = usePlaybackTransportActions();
+  const { setGuideVolume } = usePlaybackTransportActions();
   const { micUserEnabled, micName, micMonitorUserEnabled, multiplayer } = usePlaybackMicState();
   const { handleToggleMic, handleCycleMic, handleToggleMicMonitor } = usePlaybackMicActions();
   const { theme, videoFlavor } = usePlaybackThemeState();
@@ -216,7 +218,7 @@ function TouchControls({
 
       {open && (
         <div className="grid w-full grid-cols-3 gap-2 text-center">
-          <TouchButton label={t('common.actions.pause')} onClick={handlePause} />
+          <TouchButton label={t('common.actions.pause')} onClick={onPause} />
           {guideAvailable && (
             <>
               <TouchButton
@@ -373,14 +375,99 @@ function MultiplayerScores({ players }: { players: PlaybackPlayerMicState[] }) {
   );
 }
 
+function hudFlowClasses(position: PlaybackHudPosition): { flow: string; skip: string } {
+  const bottom = position === 'bottom';
+
+  return { flow: bottom ? 'flex-col-reverse' : 'flex-col', skip: bottom ? 'mb-2' : 'mt-2' };
+}
+
+function HudScores({
+  multiplayer,
+  pitchScore,
+  players,
+}: {
+  multiplayer: boolean;
+  pitchScore: number | null;
+  players: PlaybackPlayerMicState[];
+}) {
+  if (multiplayer) {
+    return <MultiplayerScores players={players} />;
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <LiveStars score={pitchScore} />
+      <div className={scoreTextClass(pitchScore)}>{pitchScore ?? '--'}</div>
+    </div>
+  );
+}
+
+type SkipButtonState = {
+  canSkip: boolean;
+  time: number;
+  firstSegmentStart: number;
+  introSkipLeadSec: number;
+  lastSegmentEnd: number;
+};
+
+function updateSkipButtons(
+  state: SkipButtonState,
+  intro: HTMLButtonElement | null,
+  outro: HTMLButtonElement | null,
+): void {
+  if (intro) {
+    intro.style.display =
+      state.canSkip && state.time < state.firstSegmentStart - state.introSkipLeadSec ? '' : 'none';
+  }
+  if (outro) {
+    outro.style.display = state.canSkip && state.time > state.lastSegmentEnd + 1 ? '' : 'none';
+  }
+}
+
+/** Writes the gap caption straight to the DOM, outside React's render loop. */
+function writeGapCaption(
+  el: HTMLOutputElement | null,
+  segments: Segment[],
+  time: number,
+  hintRef: { current: number },
+): void {
+  if (!el) {
+    return;
+  }
+  if (segments.length === 0) {
+    el.style.display = 'none';
+
+    return;
+  }
+
+  const idx = findCurrentSegment(segments, time, hintRef.current);
+  hintRef.current = idx;
+  const caption = computeLyricGapCaption(segments, time, idx);
+
+  if (typeof caption === 'string' && caption !== '') {
+    el.textContent = caption;
+    el.style.display = '';
+
+    return;
+  }
+
+  el.style.display = 'none';
+}
+
 type PlaybackHudProps = {
   title: string;
   artist: string;
   config: AppConfig | null;
   position?: PlaybackHudPosition;
   windowControls?: boolean;
-  /** Room playback is clock-driven: nobody seeks. */
-  locked?: boolean;
+  /** Room playback: only the host may move the timeline. */
+  seekable?: boolean;
+  /** Room playback: only the host may skip intro/outro. */
+  canSkip?: boolean;
+  onPause: () => void;
+  onSeek: (time: number) => void;
+  onSkipIntro: () => void;
+  onSkipOutro: () => void;
 };
 
 function PlaybackHudImpl({
@@ -389,7 +476,12 @@ function PlaybackHudImpl({
   config,
   position = 'top',
   windowControls = false,
-  locked = false,
+  seekable = true,
+  canSkip = true,
+  onPause,
+  onSeek,
+  onSkipIntro,
+  onSkipOutro,
 }: PlaybackHudProps) {
   useTranslation();
   const { duration, guideVolume, guideAvailable } = usePlaybackTransportState();
@@ -397,7 +489,6 @@ function PlaybackHudImpl({
   const { theme, videoFlavor } = usePlaybackThemeState();
   const { firstSegmentStart, lastSegmentEnd, introSkipLeadSec, segments, transcriptSource } =
     usePlaybackTranscriptState();
-  const { handleSkipIntro, handleSkipOutro } = usePlaybackTranscriptActions();
   const { pitchScore, micUserEnabled, micName, micMonitorUserEnabled, multiplayer, players } =
     usePlaybackMicState();
 
@@ -412,44 +503,33 @@ function PlaybackHudImpl({
   // Update playback text without triggering React renders every frame.
   useEffect(() => {
     const updateGapCaption = (time: number) => {
-      const el = gapCaptionRef.current;
-      if (!el) {
-        return;
-      }
-      if (segments.length === 0) {
-        el.style.display = 'none';
-        return;
-      }
-      const idx = findCurrentSegment(segments, time, gapHintRef.current);
-      gapHintRef.current = idx;
-      const caption = computeLyricGapCaption(segments, time, idx);
-      if (typeof caption === 'string' && caption !== '') {
-        el.textContent = caption;
-        el.style.display = '';
-      } else {
-        el.style.display = 'none';
-      }
+      writeGapCaption(gapCaptionRef.current, segments, time, gapHintRef);
     };
 
     gapHintRef.current = 0;
     updateGapCaption(getCurrentTime());
 
     return subscribe((time) => {
-      if (skipIntroRef.current) {
-        skipIntroRef.current.style.display =
-          time < firstSegmentStart - introSkipLeadSec ? '' : 'none';
-      }
-      if (skipOutroRef.current) {
-        skipOutroRef.current.style.display = time > lastSegmentEnd + 1 ? '' : 'none';
-      }
+      updateSkipButtons(
+        { canSkip, time, firstSegmentStart, introSkipLeadSec, lastSegmentEnd },
+        skipIntroRef.current,
+        skipOutroRef.current,
+      );
       updateGapCaption(time);
     });
-  }, [subscribe, getCurrentTime, firstSegmentStart, introSkipLeadSec, lastSegmentEnd, segments]);
+  }, [
+    canSkip,
+    subscribe,
+    getCurrentTime,
+    firstSegmentStart,
+    introSkipLeadSec,
+    lastSegmentEnd,
+    segments,
+  ]);
 
   const hudPosition = hudPositionClass(position);
   const rightHudOffset = windowControlsOffsetClass(position, windowControls);
-  const rightHudFlowClass = position === 'bottom' ? 'flex-col-reverse' : 'flex-col';
-  const skipButtonsClass = position === 'bottom' ? 'mb-2' : 'mt-2';
+  const { flow: rightHudFlowClass, skip: skipButtonsClass } = hudFlowClasses(position);
 
   return (
     <>
@@ -463,37 +543,35 @@ function PlaybackHudImpl({
           <p className="line-clamp-1 [overflow-wrap:anywhere] text-sm text-white/70 md:text-base">
             {artist}
           </p>
-          {!locked && <PlaybackTransportControls duration={duration} segments={segments} />}
+          {seekable && (
+            <PlaybackTransportControls duration={duration} segments={segments} onSeek={onSeek} />
+          )}
           <output
             ref={gapCaptionRef}
             aria-live="polite"
             className="truncate text-xs font-medium text-white/60 md:text-sm"
             style={{ display: 'none' }}
           />
-          <div className={`flex gap-2 ${skipButtonsClass}`}>
+          <div
+            className={`flex gap-2 ${skipButtonsClass}`}
+            style={canSkip ? undefined : { display: 'none' }}
+          >
             <SkipButton
               ref={skipIntroRef}
               label={t('playback.playbackHud.skipIntro')}
-              onClick={handleSkipIntro}
+              onClick={onSkipIntro}
             />
             <SkipButton
               ref={skipOutroRef}
               label={t('playback.playbackHud.skipOutro')}
-              onClick={handleSkipOutro}
+              onClick={onSkipOutro}
             />
           </div>
         </div>
 
         <div className={`flex min-w-0 items-end ${rightHudFlowClass} ${rightHudOffset}`}>
           <div className={`flex ${rightHudFlowClass}`}>
-            {multiplayer ? (
-              <MultiplayerScores players={players} />
-            ) : (
-              <div className="flex flex-col items-end gap-0.5">
-                <LiveStars score={pitchScore} />
-                <div className={scoreTextClass(pitchScore)}>{pitchScore ?? '--'}</div>
-              </div>
-            )}
+            <HudScores multiplayer={multiplayer} pitchScore={pitchScore} players={players} />
             <div className="my-1.5 hidden h-px w-full bg-white/20 sm:block" aria-hidden="true" />
           </div>
           <div className="hidden sm:block">
@@ -509,7 +587,12 @@ function PlaybackHudImpl({
               showShortcuts={!hasTouch}
             />
           </div>
-          <TouchControls config={config} hasTouch={hasTouch} position={position} />
+          <TouchControls
+            config={config}
+            hasTouch={hasTouch}
+            position={position}
+            onPause={onPause}
+          />
         </div>
       </div>
 

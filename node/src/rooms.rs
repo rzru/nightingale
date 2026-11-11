@@ -27,10 +27,12 @@ use crate::proto::{
 };
 
 /// Lead time broadcast with [`Phase::Playing`] once everyone has loaded, so the
-/// last client still has a moment to align its clock and seek to zero.
+/// last client still has a moment to align its clock and schedule its audio.
 const START_LEAD_MS: i64 = 3_000;
+/// A pause is undone slightly in the future so every client resumes together.
+const RESUME_LEAD_MS: i64 = 300;
 /// A client that never finishes loading must not hold the room forever.
-const ARMING_TIMEOUT: Duration = Duration::from_secs(20);
+const ARMING_TIMEOUT: Duration = Duration::from_secs(45);
 
 /// A singer keeps their seat while they move between the room screen and the
 /// playback surface, which are separate sockets (and, on desktop, separate
@@ -40,6 +42,8 @@ const TOKEN_BYTES: usize = 16;
 const JOIN_WINDOW: Duration = Duration::from_secs(60);
 const JOIN_ATTEMPTS: u32 = 5;
 const MAX_SCORE: i64 = 1_000_000;
+/// Sanity bound for client-supplied positions: a day of playback is enough.
+const MAX_POSITION_MS: i64 = 24 * 60 * 60 * 1_000;
 const MAX_NAME_CHARS: usize = 32;
 const MAX_ROOM_NAME_CHARS: usize = 60;
 
@@ -56,6 +60,7 @@ pub(crate) enum RoomError {
     Full,
     InPlayback,
     NotHost,
+    NotPauser,
     NoTrack,
     TrackUnset,
     NotReady,
@@ -75,6 +80,7 @@ impl RoomError {
             Self::NotFound => "not-found",
             Self::Full => "full",
             Self::InPlayback => "in-playback",
+            Self::NotPauser => "not-pauser",
             Self::NotHost => "not-host",
             Self::NoTrack => "no-track",
             Self::TrackUnset => "track-unset",
@@ -148,8 +154,10 @@ struct RoomState {
     phase: Phase,
     arming_since: Option<Instant>,
     start_at_ms: Option<i64>,
+    start_position_ms: i64,
     paused: bool,
     paused_by: Option<String>,
+    paused_by_id: Option<String>,
     paused_position_ms: i64,
 }
 
@@ -179,8 +187,10 @@ impl RoomState {
             track: self.track.clone(),
             phase: self.phase,
             start_at_ms: self.start_at_ms,
+            start_position_ms: self.start_position_ms,
             paused: self.paused,
             paused_by: self.paused_by.clone(),
+            paused_by_id: self.paused_by_id.clone(),
             position_ms: self.position_ms(),
             locked: self.password.is_some(),
         }
@@ -191,8 +201,9 @@ impl RoomState {
             return self.paused_position_ms;
         }
 
-        self.start_at_ms
-            .map_or(0, |start| (now_ms() - start).max(0))
+        self.start_at_ms.map_or(0, |start| {
+            self.start_position_ms + (now_ms() - start).max(0)
+        })
     }
 
     fn summary(&self, id: &str) -> RoomSummary {
@@ -235,9 +246,69 @@ impl RoomState {
         self.phase = Phase::Playing;
         self.arming_since = None;
         self.start_at_ms = Some(now_ms() + START_LEAD_MS);
+        self.start_position_ms = 0;
+        self.clear_pause();
+    }
+
+    fn clear_pause(&mut self) {
         self.paused = false;
         self.paused_by = None;
+        self.paused_by_id = None;
         self.paused_position_ms = 0;
+    }
+
+    /// The host moves the whole room to `position_ms` right now.
+    fn seek(&mut self, position_ms: i64) -> Result<(), RoomError> {
+        if self.phase != Phase::Playing {
+            return Err(RoomError::InPlayback);
+        }
+        let position = position_ms.clamp(0, MAX_POSITION_MS);
+        if self.paused {
+            self.paused_position_ms = position;
+            return Ok(());
+        }
+        if self.start_at_ms.is_none() {
+            return Err(RoomError::InPlayback);
+        }
+        self.start_at_ms = Some(now_ms());
+        self.start_position_ms = position;
+
+        Ok(())
+    }
+
+    /// Hand the room back to the lobby after a finished song.
+    fn reset_playback(&mut self) {
+        self.phase = Phase::Lobby;
+        self.arming_since = None;
+        self.start_at_ms = None;
+        self.start_position_ms = 0;
+        self.clear_pause();
+        self.finish_song();
+        self.clear_ready();
+        for member in &mut self.members {
+            member.loaded = false;
+        }
+    }
+
+    /// A pauser who left must not leave the room paused forever.
+    fn resume_if_pauser_gone(&mut self) {
+        if !self.paused {
+            return;
+        }
+        let still_here = self
+            .paused_by_id
+            .as_deref()
+            .is_some_and(|id| self.members.iter().any(|member| member.id == id));
+        if still_here {
+            return;
+        }
+
+        let position = self.paused_position_ms;
+        self.clear_pause();
+        if self.phase == Phase::Playing {
+            self.start_at_ms = Some(now_ms() + RESUME_LEAD_MS);
+            self.start_position_ms = position;
+        }
     }
 
     /// Bank the song's points and clear the per-song counters.
@@ -352,12 +423,26 @@ impl Room {
     }
 
     /// Pitch is fanout-only: never stored, so a burst of frames cannot grow
-    /// node memory beyond the broadcast buffer.
-    pub(crate) fn broadcast_pitch(&self, member_id: &str, hz: Option<f32>, rms: Option<f32>) {
+    /// node memory beyond the broadcast buffer. Client values are clamped
+    /// because the payload travels through an untrusted connection.
+    pub(crate) fn broadcast_pitch(
+        &self,
+        member_id: &str,
+        hz: Option<f32>,
+        semitone: Option<f32>,
+        similarity: f32,
+        position_ms: i64,
+    ) {
         self.send(&ServerFrame::Pitch {
             member_id: member_id.to_owned(),
-            hz,
-            rms,
+            hz: hz.filter(|value| value.is_finite() && (20.0..=5_000.0).contains(value)),
+            semitone: semitone.filter(|value| value.is_finite() && (0.0..=144.0).contains(value)),
+            similarity: if similarity.is_finite() {
+                similarity.clamp(0.0, 1.0)
+            } else {
+                0.0
+            },
+            position_ms: position_ms.clamp(0, MAX_POSITION_MS),
         });
     }
 
@@ -436,6 +521,7 @@ impl Room {
                 title,
             });
             state.start_at_ms = None;
+            state.start_position_ms = 0;
             state.clear_ready();
         }
         self.broadcast_view().await;
@@ -469,17 +555,7 @@ impl Room {
         {
             let mut state = self.state.write().await;
             state.host_only(member_id)?;
-            state.phase = Phase::Lobby;
-            state.arming_since = None;
-            state.start_at_ms = None;
-            state.paused = false;
-            state.paused_by = None;
-            state.paused_position_ms = 0;
-            state.finish_song();
-            state.clear_ready();
-            for member in &mut state.members {
-                member.loaded = false;
-            }
+            state.reset_playback();
         }
         self.broadcast_view().await;
 
@@ -526,31 +602,28 @@ impl Room {
         Ok(())
     }
 
-    /// Host-only: returns the position everyone should seek to.
-    pub(crate) async fn skip(&self, member_id: &str, outro: bool) -> Result<i64, RoomError> {
+    /// Host-only: move everyone to `position_ms`, keeping the shared clock.
+    pub(crate) async fn seek(&self, member_id: &str, position_ms: i64) -> Result<(), RoomError> {
+        {
+            let mut state = self.state.write().await;
+            state.host_only(member_id)?;
+            state.seek(position_ms)?;
+        }
+        self.broadcast_view().await;
+
+        Ok(())
+    }
+
+    /// Host-only: finish the song for the whole room.
+    pub(crate) async fn skip_outro(&self, member_id: &str) -> Result<i64, RoomError> {
         let position = {
             let mut state = self.state.write().await;
-            if state.host != member_id {
-                return Err(RoomError::NotHost);
-            }
+            state.host_only(member_id)?;
             if state.phase != Phase::Playing {
                 return Err(RoomError::InPlayback);
             }
-            let start = state.start_at_ms.ok_or(RoomError::InPlayback)?;
-            let position = (now_ms() - start).max(0);
-            if outro {
-                state.phase = Phase::Lobby;
-                state.start_at_ms = None;
-                state.arming_since = None;
-                state.paused = false;
-                state.paused_by = None;
-                state.paused_position_ms = 0;
-                state.finish_song();
-                state.clear_ready();
-                for member in &mut state.members {
-                    member.loaded = false;
-                }
-            }
+            let position = state.position_ms();
+            state.reset_playback();
             position
         };
         self.broadcast_view().await;
@@ -558,7 +631,7 @@ impl Room {
         Ok(position)
     }
 
-    /// Any singer can pause; the paused position becomes the resume anchor.
+    /// Any singer can pause; only the singer who paused can resume.
     pub(crate) async fn pause(&self, member_id: &str) -> Result<(), RoomError> {
         {
             let mut state = self.state.write().await;
@@ -572,6 +645,7 @@ impl Room {
             let name = state.member_mut(member_id)?.name.clone();
             state.paused = true;
             state.paused_by = Some(name);
+            state.paused_by_id = Some(member_id.to_owned());
             state.paused_position_ms = position;
         }
         self.broadcast_view().await;
@@ -590,20 +664,25 @@ impl Room {
             }
             let position = state.paused_position_ms;
             state.member_mut(member_id)?;
-            state.paused = false;
-            state.paused_by = None;
-            state.start_at_ms = Some(now_ms() - position);
+            if state.paused_by_id.as_deref() != Some(member_id) {
+                return Err(RoomError::NotPauser);
+            }
+            state.clear_pause();
+            state.start_at_ms = Some(now_ms() + RESUME_LEAD_MS);
+            state.start_position_ms = position;
         }
         self.broadcast_view().await;
 
         Ok(())
     }
 
-    pub(crate) async fn add_score(&self, member_id: &str, delta: i64) -> Result<(), RoomError> {
+    /// The client owns its own score, so a seek that rewinds the local tally
+    /// also rewinds the value the room shows.
+    pub(crate) async fn set_score(&self, member_id: &str, score: i64) -> Result<(), RoomError> {
         {
             let mut state = self.state.write().await;
             let member = state.member_mut(member_id)?;
-            member.score = (member.score + delta).clamp(0, MAX_SCORE);
+            member.score = score.clamp(0, MAX_SCORE);
         }
         self.broadcast_view().await;
 
@@ -628,6 +707,7 @@ impl Room {
         if state.members.len() == before {
             return false;
         }
+        state.resume_if_pauser_gone();
         if !state.members.iter().any(|member| member.id == state.host) {
             state.host = state
                 .members
@@ -677,6 +757,9 @@ impl Room {
             .members
             .retain(|member| member.sockets > 0 || member.last_seen.elapsed() <= MEMBER_GRACE);
         let changed = state.members.len() != before;
+        if changed {
+            state.resume_if_pauser_gone();
+        }
         if changed && !state.members.iter().any(|member| member.id == state.host) {
             state.host = state
                 .members
@@ -746,8 +829,10 @@ impl RoomStore {
                 phase: Phase::Lobby,
                 arming_since: None,
                 start_at_ms: None,
+                start_position_ms: 0,
                 paused: false,
                 paused_by: None,
+                paused_by_id: None,
                 paused_position_ms: 0,
             },
         ));

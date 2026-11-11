@@ -40,9 +40,11 @@ const RING = 'ring-2 ring-primary';
 const NO_FOCUS_RING = 'focus-visible:ring-0 focus-visible:border-transparent';
 const EMPTY_RESULT: PlaybackPlayerResult = {
   id: 'solo',
+  name: null,
   profile: null,
   color: defaultPlayerColor(0),
   score: 0,
+  remote: false,
 };
 
 type Props = {

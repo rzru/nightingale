@@ -190,12 +190,16 @@ export function TransportControls({
 export function PlaybackTransportControls({
   duration,
   segments,
+  onSeek,
 }: {
   duration: number;
   segments: Segment[];
+  /** Room playback routes a host's seek through the room instead of locally. */
+  onSeek?: (time: number) => void;
 }) {
   const { subscribe, getCurrentTime, seek } = usePlaybackTransportActions();
   const hintRef = useRef(0);
+  const seekTo = onSeek ?? seek;
 
   const lines = useMemo<TransportLines>(() => {
     const currentLine = () => {
@@ -217,17 +221,17 @@ export function PlaybackTransportControls({
         if (index < 0) {
           return;
         }
-        seek(segments[Math.max(0, Math.min(segments.length - 1, index + delta))].start);
+        seekTo(segments[Math.max(0, Math.min(segments.length - 1, index + delta))].start);
       },
     };
-  }, [getCurrentTime, seek, segments]);
+  }, [getCurrentTime, seekTo, segments]);
 
   return (
     <TransportControls
       duration={duration}
       subscribe={subscribe}
       getCurrentTime={getCurrentTime}
-      seek={seek}
+      seek={seekTo}
       lines={lines}
     />
   );

@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 
-import type { RoomColor } from '@/bridge/rooms';
 import { usePlaybackLauncher } from '@/features/playback/hooks/use-playback-launcher';
 
 import { markPlaybackLaunch } from '../lib/playback-launch';
@@ -20,21 +19,10 @@ type RoomLaunchInput = {
   trackHash: string | null;
   /** Arming already opens the surface; the start time arrives over the socket. */
   live: boolean;
-  startAtMs: number | null;
-  memberName: string;
-  color: RoomColor;
   offsetMs: number;
 };
 
-export const useRoomLaunch = ({
-  session,
-  trackHash,
-  live,
-  startAtMs,
-  memberName,
-  color,
-  offsetMs,
-}: RoomLaunchInput): void => {
+export const useRoomLaunch = ({ session, trackHash, live, offsetMs }: RoomLaunchInput): void => {
   const { launch, reserveTarget } = usePlaybackLauncher();
   const launched = useRef<string | null>(null);
   const { data: songs } = useRoomSongs(trackHash === null ? [] : [trackHash]);
@@ -65,24 +53,10 @@ export const useRoomLaunch = ({
           roomId: session.joining.roomId,
           token: session.joining.token,
           memberId: session.joining.memberId,
-          memberName,
-          color,
-          startAtMs: startAtMs ?? 0,
           offsetMs,
         },
       },
       target,
     );
-  }, [
-    session,
-    trackHash,
-    live,
-    startAtMs,
-    memberName,
-    color,
-    offsetMs,
-    songs,
-    launch,
-    reserveTarget,
-  ]);
+  }, [session, trackHash, live, offsetMs, songs, launch, reserveTarget]);
 };

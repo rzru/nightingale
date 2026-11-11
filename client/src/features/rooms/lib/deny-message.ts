@@ -10,6 +10,7 @@ const MESSAGES: Record<string, TranslationKey> = {
   'no-track': 'rooms.deny.noTrack',
   'not-found': 'rooms.deny.notFound',
   'not-host': 'rooms.deny.notHost',
+  'not-pauser': 'rooms.deny.notPauser',
   'not-ready': 'rooms.deny.notReady',
   'rate-limited': 'rooms.deny.rateLimited',
   'track-unset': 'rooms.deny.trackUnset',

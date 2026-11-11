@@ -15,7 +15,14 @@ import {
   usePlaybackTransportState,
 } from './playback-transport-context';
 
-export function PlaybackStartupProvider({ children }: { children: ReactNode }) {
+export function PlaybackStartupProvider({
+  children,
+  deferStart = false,
+}: {
+  children: ReactNode;
+  /** Room playback starts on the node's shared clock instead of locally. */
+  deferStart?: boolean;
+}) {
   const { isReady: audioReady } = usePlaybackTransportState();
   const { startPlayback } = usePlaybackTransportActions();
   const { isReady: transcriptReady } = usePlaybackTranscriptState();
@@ -45,13 +52,13 @@ export function PlaybackStartupProvider({ children }: { children: ReactNode }) {
   }, [activeThemeKey, audioReady, readyBackgroundKey, started, transcriptReady]);
 
   useEffect(() => {
-    if (!started) {
+    if (!started || deferStart) {
       return undefined;
     }
 
     const playbackFrame = requestAnimationFrame(startPlayback);
     return () => cancelAnimationFrame(playbackFrame);
-  }, [startPlayback, started]);
+  }, [deferStart, startPlayback, started]);
 
   const stateValue = useMemo<PlaybackStartupState>(() => ({ started }), [started]);
   const actionsValue = useMemo<PlaybackStartupActions>(

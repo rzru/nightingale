@@ -34,6 +34,8 @@ export type AudioPlayer = {
    * there is no separate guide vocal track to control. */
   guideAvailable: boolean;
   play: () => void;
+  /** Starts at `offset` now or `delaySec` in the future on the shared clock. */
+  playAt: (offset: number, delaySec: number) => boolean;
   pause: () => void;
   resume: () => void;
   seek: (time: number) => void;
@@ -68,6 +70,8 @@ export function useAudioPlayer(
   const playingRef = useRef(false);
   /** Set on cleanup so async decode/start and onended ignore stale work after unmount. */
   const cancelledRef = useRef(false);
+  /** A start scheduled ahead on the AudioContext clock; pause/seek clear it. */
+  const startTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [duration, setDuration] = useState(0);
   const [isReady, setIsReady] = useState(false);
@@ -92,7 +96,12 @@ export function useAudioPlayer(
       return currentTimeRef.current;
     }
 
-    return startOffsetRef.current + (ctx.currentTime - startContextTimeRef.current);
+    const elapsed = ctx.currentTime - startContextTimeRef.current;
+    if (elapsed < 0) {
+      return startOffsetRef.current;
+    }
+
+    return startOffsetRef.current + elapsed;
   }, []);
 
   const subscribe = useCallback((fn: TimeSubscriber) => {
@@ -109,7 +118,15 @@ export function useAudioPlayer(
     }
   }, []);
 
+  const clearStartTimer = useCallback(() => {
+    if (startTimerRef.current !== null) {
+      clearTimeout(startTimerRef.current);
+      startTimerRef.current = null;
+    }
+  }, []);
+
   const stopSources = useCallback(() => {
+    clearStartTimer();
     playingRef.current = false;
 
     try {
@@ -125,10 +142,15 @@ export function useAudioPlayer(
 
     instrumentalSrcRef.current = null;
     vocalsSrcRef.current = null;
-  }, []);
+  }, [clearStartTimer]);
 
+  /**
+   * Starts the buffers at `offset`, optionally scheduled `delaySec` in the
+   * future. Scheduling on the AudioContext clock is what keeps a room's
+   * singers sample-aligned; returns false while the buffers are still loading.
+   */
   const startSources = useCallback(
-    (offset: number) => {
+    (offset: number, delaySec = 0): boolean => {
       const ctx = ctxRef.current;
       const instBuf = instrumentalBufRef.current;
       const vocBuf = vocalsBufRef.current;
@@ -136,12 +158,14 @@ export function useAudioPlayer(
       const masterGainNode = masterGainRef.current;
 
       if (!ctx || !instBuf || !masterGainNode) {
-        return;
+        return false;
       }
 
       stopSources();
 
       const clamped = Math.max(0, Math.min(offset, instBuf.duration));
+      const delay = Number.isFinite(delaySec) ? Math.max(0, delaySec) : 0;
+      const when = ctx.currentTime + delay;
 
       const instSrc = ctx.createBufferSource();
       instSrc.buffer = instBuf;
@@ -165,9 +189,10 @@ export function useAudioPlayer(
       );
 
       startOffsetRef.current = clamped;
-      startContextTimeRef.current = ctx.currentTime;
+      startContextTimeRef.current = when;
+      currentTimeRef.current = clamped;
 
-      instSrc.start(0, clamped);
+      instSrc.start(when, clamped);
       instrumentalSrcRef.current = instSrc;
 
       // No vocals stem (LRC-provided, no separation): play the original mix
@@ -176,11 +201,24 @@ export function useAudioPlayer(
         const vocSrc = ctx.createBufferSource();
         vocSrc.buffer = vocBuf;
         vocSrc.connect(gainNode);
-        vocSrc.start(0, clamped);
+        vocSrc.start(when, clamped);
         vocalsSrcRef.current = vocSrc;
       }
 
       playingRef.current = true;
+
+      if (delay > 0) {
+        startTimerRef.current = setTimeout(() => {
+          startTimerRef.current = null;
+          if (playingRef.current) {
+            setIsPlaying(true);
+          }
+        }, delay * 1000);
+      } else {
+        setIsPlaying(true);
+      }
+
+      return true;
     },
     [stopSources],
   );
@@ -281,24 +319,39 @@ export function useAudioPlayer(
     let lastNotify = 0;
     const NOTIFY_INTERVAL = 33;
 
+    const notifyPlayback = () => {
+      const context = ctxRef.current;
+
+      if (!playingRef.current || !context) {
+        return;
+      }
+
+      const elapsed = context.currentTime - startContextTimeRef.current;
+
+      if (elapsed < 0) {
+        return;
+      }
+
+      const now = performance.now();
+      const currentTime = startOffsetRef.current + elapsed;
+      currentTimeRef.current = currentTime;
+
+      if (now - lastNotify < NOTIFY_INTERVAL) {
+        return;
+      }
+
+      lastNotify = now;
+      for (const fn of subscribersRef.current) {
+        fn(currentTime);
+      }
+    };
+
     const tick = () => {
       if (isCancelled()) {
         return;
       }
 
-      if (playingRef.current && ctxRef.current) {
-        const now = performance.now();
-        const currentTime =
-          startOffsetRef.current + (ctxRef.current.currentTime - startContextTimeRef.current);
-        currentTimeRef.current = currentTime;
-
-        if (now - lastNotify >= NOTIFY_INTERVAL) {
-          lastNotify = now;
-          for (const fn of subscribersRef.current) {
-            fn(currentTime);
-          }
-        }
-      }
+      notifyPlayback();
 
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -323,22 +376,29 @@ export function useAudioPlayer(
       return;
     }
     startSources(startOffsetRef.current);
-    setIsPlaying(playingRef.current);
   }, [startSources]);
+
+  const playAt = useCallback(
+    (offset: number, delaySec: number): boolean => startSources(offset, delaySec),
+    [startSources],
+  );
 
   const pause = useCallback(() => {
     const ctx = ctxRef.current;
     if (ctx && playingRef.current) {
-      startOffsetRef.current += ctx.currentTime - startContextTimeRef.current;
+      const elapsed = ctx.currentTime - startContextTimeRef.current;
+      if (elapsed > 0) {
+        startOffsetRef.current += elapsed;
+      }
     }
 
     stopSources();
+    currentTimeRef.current = startOffsetRef.current;
     setIsPlaying(false);
   }, [stopSources]);
 
   const resume = useCallback(() => {
     startSources(startOffsetRef.current);
-    setIsPlaying(true);
   }, [startSources]);
 
   const seek = useCallback(
@@ -352,7 +412,6 @@ export function useAudioPlayer(
 
       if (wasPlaying) {
         startSources(time);
-        setIsPlaying(true);
       }
 
       notifySubscribers(time);
@@ -394,6 +453,7 @@ export function useAudioPlayer(
       guideVolume,
       guideAvailable,
       play,
+      playAt,
       pause,
       resume,
       seek,
@@ -414,6 +474,7 @@ export function useAudioPlayer(
       guideVolume,
       guideAvailable,
       play,
+      playAt,
       pause,
       resume,
       seek,

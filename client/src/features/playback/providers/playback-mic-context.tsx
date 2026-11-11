@@ -36,6 +36,8 @@ export type PlaybackPlayerMicState = {
   id: string;
   /** A singer in a room: no local microphone, pitch arrives over the socket. */
   remote?: boolean;
+  /** The room member's display name; `null` for local seats. */
+  name: string | null;
   profile: string | null;
   microphoneId: string | null;
   color: PlayerColor;
@@ -88,6 +90,8 @@ type MicPlayerConfig = {
   remote?: boolean;
   present: boolean;
   id: string;
+  /** Room singers carry their member name; local seats do not. */
+  name: string | null;
   profile: string | null;
   microphoneId: string | null;
   color: PlayerColor;
@@ -131,6 +135,7 @@ function localConfigs(
     return players.map((player) => ({
       present: true,
       id: player.id,
+      name: null,
       profile: player.profile,
       microphoneId: player.microphoneId,
       color: player.color,
@@ -143,6 +148,7 @@ function localConfigs(
     {
       present: true,
       id: self?.id ?? 'solo',
+      name: null,
       profile: self?.name ?? null,
       microphoneId: selectedMicId,
       color: self?.color ?? defaultPlayerColor(0),
@@ -155,6 +161,7 @@ function remoteConfigs(room: RoomPlaybackView | null): MicPlayerConfig[] {
   return [...(room?.remote.entries() ?? [])].map(([id, player]) => ({
     present: true,
     id,
+    name: player.name,
     profile: null,
     microphoneId: null,
     color: player.color,
@@ -178,6 +185,7 @@ function playerAt(players: readonly MicPlayerConfig[], index: number): MicPlayer
   return {
     present: false,
     id: `inactive-${index + 1}`,
+    name: null,
     profile: null,
     microphoneId: null,
     color: defaultPlayerColor(index),
@@ -230,7 +238,8 @@ function usePlayerMic({
     error: micPitchError,
   } = useMicPitch(player.id, shouldTrackPitch);
   const { series, score } = usePitchScoring(
-    { ...source, isReady: source.isReady && player.present },
+    // Remote singers have no local capture; their series arrives over the room.
+    { ...source, isReady: source.isReady && player.present && !isRemote },
     latestPitch,
     latencySec,
   );
@@ -280,6 +289,7 @@ function namePlayer(player: InternalPlayerMicState, devices: readonly MicDevice[
   return {
     id: player.id,
     remote: player.remote === true,
+    name: player.name,
     profile: player.profile,
     microphoneId: player.microphoneId,
     color: player.color,

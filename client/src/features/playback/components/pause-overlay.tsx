@@ -15,10 +15,24 @@ type PauseOverlayProps = {
   open: boolean;
   actions: PlaybackAction[];
   onCommand: (command: PlaybackCommand) => void;
+  /** A room pauses for everyone; only the singer who paused can resume. */
+  canResume?: boolean;
+  /** Set when someone else paused the room. */
+  pausedBy?: string | null;
 };
 
-export const PauseOverlay = ({ open, actions, onCommand }: PauseOverlayProps) => {
-  const onContinue = () => onCommand('resume');
+export const PauseOverlay = ({
+  open,
+  actions,
+  onCommand,
+  canResume = true,
+  pausedBy = null,
+}: PauseOverlayProps) => {
+  const onContinue = () => {
+    if (canResume) {
+      onCommand('resume');
+    }
+  };
 
   return (
     <>
@@ -26,12 +40,17 @@ export const PauseOverlay = ({ open, actions, onCommand }: PauseOverlayProps) =>
       <AlertDialog open={open} onOpenChange={(value) => !value && onContinue()}>
         <AlertDialogContent
           style={{ animation: 'none' }}
-          onEscapeKeyDown={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => {
+            event.preventDefault();
+            onContinue();
+          }}
         >
           <AlertDialogHeader>
             <AlertDialogTitle>{t('playback.pauseOverlay.paused')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('playback.pauseOverlay.exitingNowWonAposTDescription')}
+              {pausedBy === null
+                ? t('playback.pauseOverlay.exitingNowWonAposTDescription')
+                : t('playback.pauseOverlay.pausedBy', { value1: pausedBy })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

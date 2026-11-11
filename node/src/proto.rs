@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub(crate) const ROOM_CAPACITY: usize = 4;
 
 /// Bump whenever a client would misread frames from the other side.
-pub(crate) const PROTOCOL: u32 = 1;
+pub(crate) const PROTOCOL: u32 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -84,9 +84,13 @@ pub(crate) struct RoomView {
     /// Unix milliseconds of the shared start. While it lies in the future the
     /// room is counting down; clients schedule their own audio against it.
     pub(crate) start_at_ms: Option<i64>,
+    /// Song position at `start_at_ms`, so resumes and seeks keep their offset.
+    pub(crate) start_position_ms: i64,
     /// Paused by any singer pauses for the whole room.
     pub(crate) paused: bool,
+    /// `paused_by` is the display name; `paused_by_id` decides who may resume.
     pub(crate) paused_by: Option<String>,
+    pub(crate) paused_by_id: Option<String>,
     /// Where the room is right now, so a late joiner lands in the same place.
     pub(crate) position_ms: i64,
     pub(crate) locked: bool,
@@ -133,11 +137,14 @@ pub(crate) struct NodeInfo {
 pub(crate) enum ServerFrame {
     #[serde(rename = "room.state")]
     RoomState { state: RoomView },
+    /// One singer's pitch sample, already in song time and absolute semitones.
     #[serde(rename = "room.pitch")]
     Pitch {
         member_id: String,
         hz: Option<f32>,
-        rms: Option<f32>,
+        semitone: Option<f32>,
+        similarity: f32,
+        position_ms: i64,
     },
     #[serde(rename = "room.deny")]
     Deny { reason: &'static str },
@@ -165,10 +172,13 @@ pub(crate) enum ClientFrame {
     Color { color: String },
     #[serde(rename = "room.loaded")]
     Loaded,
+    /// The host's own intro target, so every client seeks to the same place.
     #[serde(rename = "room.skip_intro")]
-    SkipIntro,
+    SkipIntro { position_ms: i64 },
     #[serde(rename = "room.skip_outro")]
     SkipOutro,
+    #[serde(rename = "room.seek")]
+    Seek { position_ms: i64 },
     #[serde(rename = "room.pause")]
     Pause,
     #[serde(rename = "room.resume")]
@@ -178,9 +188,14 @@ pub(crate) enum ClientFrame {
     #[serde(rename = "room.end")]
     End,
     #[serde(rename = "room.pitch")]
-    Pitch { hz: Option<f32>, rms: Option<f32> },
+    Pitch {
+        hz: Option<f32>,
+        semitone: Option<f32>,
+        similarity: f32,
+        position_ms: i64,
+    },
     #[serde(rename = "room.score")]
-    Score { delta: i64 },
+    Score { score: i64 },
     #[serde(rename = "time.ping")]
     Ping { client_ms: i64 },
 }

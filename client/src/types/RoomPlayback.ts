@@ -4,15 +4,7 @@
  * What a singer needs to start a shared room track on time. Solo playback
  * leaves this empty, so none of it reaches the normal playback path.
  */
-export type RoomPlayback = { nodeUrl: string, roomId: string, token: string, memberId: string, memberName: string, 
-/**
- * The singer's room colour, so trails stay consistent across machines.
- */
-color: string, 
-/**
- * Unix milliseconds the room agreed to start at.
- */
-startAtMs: number, 
+export type RoomPlayback = { nodeUrl: string, roomId: string, token: string, memberId: string,
 /**
  * `node clock - local clock`, measured in the room before launching.
  */

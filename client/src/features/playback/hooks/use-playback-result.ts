@@ -26,9 +26,13 @@ import type { Song } from '@/types/Song';
 
 export type PlaybackPlayerResult = {
   id: string;
+  /** Room singers show their member name; local seats use the profile. */
+  name: string | null;
   profile: string | null;
   color: PlayerColor;
   score: number;
+  /** Remote scores stay in the room and never touch local profiles. */
+  remote: boolean;
 };
 
 type FinalResultsInput = {
@@ -43,17 +47,21 @@ function buildFinalResults(input: FinalResultsInput): PlaybackPlayerResult[] {
     return [
       {
         id: 'solo',
+        name: null,
         profile: input.activeProfile,
         color: defaultPlayerColor(0),
         score: input.soloScore,
+        remote: false,
       },
     ];
   }
   return input.players.map((player) => ({
     id: player.id,
+    name: player.name,
     profile: player.profile,
     color: player.color,
     score: player.rawScore,
+    remote: player.remote === true,
   }));
 }
 
@@ -124,10 +132,12 @@ export function usePlaybackResult(
       try {
         await Promise.all(
           finalResults.flatMap((result) =>
-            result.profile === null ? [] : [addScore(fileHash, result.score, result.profile)],
+            result.profile === null || result.remote
+              ? []
+              : [addScore(fileHash, result.score, result.profile)],
           ),
         );
-        if (finalResults.some((result) => result.profile !== null)) {
+        if (finalResults.some((result) => result.profile !== null && !result.remote)) {
           await queryClient.invalidateQueries({ queryKey: PROFILES });
         }
       } catch (error) {

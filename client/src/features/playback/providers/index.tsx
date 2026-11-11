@@ -20,10 +20,17 @@ type PlaybackProvidersProps = {
   song: Song;
   config: AppConfig | null;
   players?: readonly PlaybackPlayer[];
+  deferStart?: boolean;
   children: ReactNode;
 };
 
-export function PlaybackProviders({ song, config, players, children }: PlaybackProvidersProps) {
+export function PlaybackProviders({
+  song,
+  config,
+  players,
+  deferStart = false,
+  children,
+}: PlaybackProvidersProps) {
   return (
     <PlaybackTransportProvider
       fileHash={song.file_hash}
@@ -34,7 +41,7 @@ export function PlaybackProviders({ song, config, players, children }: PlaybackP
         <RoomPlaybackProvider>
           <PlaybackMicProvider config={config} players={players}>
             <PlaybackTranscriptProvider fileHash={song.file_hash}>
-              <PlaybackStartupProvider>{children}</PlaybackStartupProvider>
+              <PlaybackStartupProvider deferStart={deferStart}>{children}</PlaybackStartupProvider>
             </PlaybackTranscriptProvider>
           </PlaybackMicProvider>
         </RoomPlaybackProvider>
