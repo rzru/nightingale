@@ -40,17 +40,20 @@ pub struct RemoteInfo {
 
 impl RemoteControl {
     pub fn load() -> Self {
-        let mut control = std::fs::read_to_string(path())
+        let stored = std::fs::read_to_string(path())
             .ok()
-            .and_then(|raw| serde_json::from_str::<Self>(&raw).ok())
-            .unwrap_or_default();
+            .and_then(|raw| serde_json::from_str::<Self>(&raw).ok());
 
-        if control.token.is_empty() {
-            control.token = new_token();
-            control.save();
+        match stored {
+            Some(control) if !control.token.is_empty() => control,
+            // Missing, unreadable, or blank: mint one and write it down, so the
+            // QR a phone scanned keeps working after the next launch.
+            _ => {
+                let control = Self::default();
+                control.save();
+                control
+            }
         }
-
-        control
     }
 
     pub fn save(&self) {
