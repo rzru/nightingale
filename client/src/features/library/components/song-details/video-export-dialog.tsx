@@ -7,6 +7,12 @@ import {
   type VideoStyle,
   type VideoProgress,
 } from '@/bridge/video-export';
+import { exportBackgroundName, exportBackgroundIsShader } from '@/bridge/video-export-background';
+import {
+  readVideoExportPreferences,
+  saveVideoExportPreferences,
+  type VideoExportPreferences,
+} from '@/bridge/video-export-preferences';
 import { t, useTranslation } from '@/i18n';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -17,20 +23,11 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { Input } from '@/shared/components/ui/input';
+import { useConfig } from '@/shared/config/use-config';
+import type { AppConfig } from '@/types/AppConfig';
 import type { Song } from '@/types/Song';
 
-const initialStyle: VideoStyle = {
-  width: 1920,
-  height: 1080,
-  font: 'Arial',
-  fontSize: 64,
-  textColor: '#ffffff',
-  highlightColor: '#ffffff',
-  position: 2,
-  guideVolume: 0,
-  countdownSeconds: 3,
-  lyricsOffsetSeconds: 0,
-};
+import { VideoColorPicker } from './video-color-picker';
 
 const validTiming = (style: VideoStyle): boolean =>
   Number.isInteger(style.countdownSeconds) &&
@@ -39,18 +36,92 @@ const validTiming = (style: VideoStyle): boolean =>
   Number.isFinite(style.lyricsOffsetSeconds) &&
   Math.abs(style.lyricsOffsetSeconds) <= 30;
 
-const exportDisabled = (busy: boolean, background: string, size: number): boolean =>
-  busy || background === '' || !Number.isInteger(size) || size < 20 || size > 120;
+const exportDisabled = (busy: boolean, size: number): boolean =>
+  busy || !Number.isInteger(size) || size < 20 || size > 120;
+
+const previewTop = (position: number) => {
+  if (position >= 7) {
+    return '8%';
+  }
+  if (position >= 4) {
+    return '45%';
+  }
+  return undefined;
+};
+const previewAlign = (position: number): 'left' | 'right' | 'center' => {
+  if ((position - 1) % 3 === 0) {
+    return 'left';
+  }
+  if ((position - 1) % 3 === 2) {
+    return 'right';
+  }
+  return 'center';
+};
+const exportStatus = (
+  preparing: number | undefined,
+  busy: boolean,
+  progress: VideoProgress,
+): string => {
+  if (preparing !== undefined) {
+    return t('videoExport.preparing', { percent: preparing });
+  }
+  if (busy) {
+    return t('videoExport.progress', {
+      percent: progress.percent,
+      seconds: progress.elapsedSeconds,
+    });
+  }
+  return t('videoExport.note');
+};
 
 type Props = { song: Song; open: boolean; onClose: () => void };
 
-export const VideoExportDialog = ({ song, open, onClose }: Props) => {
+const VideoBackgroundSummary = ({
+  config,
+  background,
+  onReset,
+}: {
+  config: AppConfig;
+  background: string;
+  onReset: () => void;
+}) => (
+  <>
+    <p className="break-all text-muted-foreground">
+      {background === ''
+        ? t('videoExport.selectedAppBackground', { name: exportBackgroundName(config) })
+        : background.split(/[/\\]/).at(-1)}
+    </p>
+    {background !== '' && (
+      <Button variant="ghost" onClick={() => onReset()}>
+        {t('videoExport.useAppBackground')}
+      </Button>
+    )}
+    {background === '' && exportBackgroundIsShader(config) && (
+      <p className="text-muted-foreground">{t('videoExport.animatedBackgroundHint')}</p>
+    )}
+  </>
+);
+
+const VideoExportForm = ({ song, open, onClose, config }: Props & { config: AppConfig }) => {
   useTranslation();
-  const [style, setStyle] = useState(initialStyle);
-  const [background, setBackground] = useState('');
+  const [preferences, setPreferences] = useState(() => readVideoExportPreferences(config));
+  const { style, background } = preferences;
+  const [preparing, setPreparing] = useState<number | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [progress, setProgress] = useState<VideoProgress>({ percent: 0, elapsedSeconds: 0 });
+
+  const updatePreferences = (next: VideoExportPreferences): void => {
+    setPreferences(next);
+    try {
+      saveVideoExportPreferences(next);
+    } catch {
+      setError(t('videoExport.saveFailed'));
+    }
+  };
+  const setStyle = (next: VideoStyle): void => updatePreferences({ ...preferences, style: next });
+  const setBackground = (next: string): void =>
+    updatePreferences({ ...preferences, background: next });
 
   const chooseBackground = async (): Promise<void> => {
     try {
@@ -68,7 +139,10 @@ export const VideoExportDialog = ({ song, open, onClose }: Props) => {
     setError('');
     setProgress({ percent: 0, elapsedSeconds: 0 });
     try {
-      const path = await exportVideo(song.file_hash, background, style, setProgress);
+      const path = await exportVideo(
+        { fileHash: song.file_hash, backgroundPath: background, style, config },
+        { onProgress: setProgress, onPreparing: setPreparing },
+      );
       if (path !== undefined) {
         toast.success(t('videoExport.complete'), { description: path });
         onClose();
@@ -76,6 +150,7 @@ export const VideoExportDialog = ({ song, open, onClose }: Props) => {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
+      setPreparing(undefined);
       setBusy(false);
     }
   };
@@ -99,9 +174,11 @@ export const VideoExportDialog = ({ song, open, onClose }: Props) => {
           <Button variant="outline" onClick={() => void chooseBackground()}>
             {t('videoExport.background')}
           </Button>
-          <p className="break-all text-muted-foreground">
-            {background === '' ? t('videoExport.noBackground') : background.split(/[/\\]/).at(-1)}
-          </p>
+          <VideoBackgroundSummary
+            config={config}
+            background={background}
+            onReset={() => setBackground('')}
+          />
           <div className="grid grid-cols-2 gap-4">
             <label className="grid gap-1">
               {t('videoExport.resolution')}
@@ -130,7 +207,7 @@ export const VideoExportDialog = ({ song, open, onClose }: Props) => {
                 ))}
               </select>
             </label>
-            <label className="grid gap-1">
+            <label className="col-span-2 grid gap-1">
               {t('videoExport.size')}
               <Input
                 type="number"
@@ -144,32 +221,49 @@ export const VideoExportDialog = ({ song, open, onClose }: Props) => {
               {t('videoExport.position')}
               <select
                 className="h-10 rounded-md border bg-background px-2"
-                value={style.position}
-                onChange={(event) => setStyle({ ...style, position: Number(event.target.value) })}
+                value={Math.floor((style.position - 1) / 3)}
+                onChange={(event) =>
+                  setStyle({
+                    ...style,
+                    position: Number(event.target.value) * 3 + ((style.position - 1) % 3) + 1,
+                  })
+                }
               >
-                <option value="8">{t('settings.constants.top')}</option>
-                <option value="5">{t('settings.constants.center')}</option>
-                <option value="2">{t('settings.constants.bottom')}</option>
+                <option value="2">{t('settings.constants.top')}</option>
+                <option value="1">{t('settings.constants.center')}</option>
+                <option value="0">{t('settings.constants.bottom')}</option>
               </select>
             </label>
             <label className="grid gap-1">
-              {t('videoExport.textColor')}
-              <Input
-                type="color"
-                className="h-10"
-                value={style.textColor}
-                onChange={(event) => setStyle({ ...style, textColor: event.target.value })}
-              />
+              {t('videoExport.horizontalPosition')}
+              <select
+                className="h-10 rounded-md border bg-background px-2"
+                value={(style.position - 1) % 3}
+                onChange={(event) =>
+                  setStyle({
+                    ...style,
+                    position:
+                      Math.floor((style.position - 1) / 3) * 3 + Number(event.target.value) + 1,
+                  })
+                }
+              >
+                <option value="0">{t('videoExport.left')}</option>
+                <option value="1">{t('settings.constants.center')}</option>
+                <option value="2">{t('videoExport.right')}</option>
+              </select>
             </label>
-            <label className="grid gap-1">
-              {t('videoExport.highlightColor')}
-              <Input
-                type="color"
-                className="h-10"
-                value={style.highlightColor}
-                onChange={(event) => setStyle({ ...style, highlightColor: event.target.value })}
-              />
-            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <VideoColorPicker
+              label={t('videoExport.textColor')}
+              value={style.textColor}
+              onChange={(textColor) => setStyle({ ...style, textColor })}
+            />
+            <VideoColorPicker
+              label={t('videoExport.highlightColor')}
+              value={style.highlightColor}
+              onChange={(highlightColor) => setStyle({ ...style, highlightColor })}
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <label className="grid gap-1">
@@ -219,8 +313,9 @@ export const VideoExportDialog = ({ song, open, onClose }: Props) => {
               <p
                 className="absolute right-3 left-3 text-center font-bold"
                 style={{
-                  top: { 8: '8%', 5: '45%' }[style.position],
-                  bottom: style.position === 2 ? '8%' : undefined,
+                  top: previewTop(style.position),
+                  bottom: style.position <= 3 ? '8%' : undefined,
+                  textAlign: previewAlign(style.position),
                   color: style.textColor,
                   fontFamily: style.font,
                   fontSize: `${style.fontSize * 0.25}px`,
@@ -244,18 +339,13 @@ export const VideoExportDialog = ({ song, open, onClose }: Props) => {
           </p>
         )}
         <output aria-live="polite" className="text-muted-foreground">
-          {busy
-            ? t('videoExport.progress', {
-                percent: progress.percent,
-                seconds: progress.elapsedSeconds,
-              })
-            : t('videoExport.note')}
+          {exportStatus(preparing, busy, progress)}
         </output>
         {busy && (
           <progress
             className="h-3 w-full accent-primary"
             max={100}
-            value={progress.percent}
+            value={preparing ?? progress.percent}
             aria-label={t('videoExport.busy')}
           />
         )}
@@ -264,12 +354,40 @@ export const VideoExportDialog = ({ song, open, onClose }: Props) => {
             {t('common.actions.close')}
           </Button>
           <Button
-            disabled={exportDisabled(busy, background, style.fontSize) || !validTiming(style)}
+            disabled={exportDisabled(busy, style.fontSize) || !validTiming(style)}
             onClick={() => void start()}
           >
             {busy ? t('videoExport.busy') : t('videoExport.title')}
           </Button>
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export const VideoExportDialog = (props: Props) => {
+  useTranslation();
+  const { data: config, isError } = useConfig();
+  if (config !== undefined) {
+    return <VideoExportForm {...props} config={config} />;
+  }
+  return (
+    <Dialog
+      open={props.open}
+      onOpenChange={(open) => {
+        if (!open) {
+          props.onClose();
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t('videoExport.title')}</DialogTitle>
+          <DialogDescription>
+            {t(isError ? 'videoExport.settingsUnavailable' : 'videoExport.loadingSettings')}
+          </DialogDescription>
+        </DialogHeader>
+        <Button onClick={props.onClose}>{t('common.actions.close')}</Button>
       </DialogContent>
     </Dialog>
   );
