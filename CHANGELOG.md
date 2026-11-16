@@ -13,6 +13,10 @@ below.
 
 ## [Unreleased]
 
+### Features
+
+- Desktop users can export MP4 karaoke videos using existing timed lyrics, with a chosen image or video background, customizable lyrics, word highlighting, portrait or landscape resolution, guide-vocal volume, an optional countdown, lyric timing adjustment, and export progress.
+
 ### Fixes
 
 - The phone queue link now keeps the same address across launches, so a QR code scanned earlier keeps working. A phone that scans a new code is also no longer turned away as "remote link is not valid" because of a cookie left from an earlier code.
