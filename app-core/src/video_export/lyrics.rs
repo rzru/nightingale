@@ -241,8 +241,6 @@ fn approximate_lines(segment: &Segment, size: f64, width: f64) -> f64 {
 struct Placement {
     current: String,
     next: String,
-    bubble_x: f64,
-    bubble_y: f64,
 }
 
 fn placement(options: &VideoExportOptions, current: &Segment, next: Option<&Segment>) -> Placement {
@@ -264,54 +262,19 @@ fn placement(options: &VideoExportOptions, current: &Segment, next: Option<&Segm
         ),
         _ => (2, height - 60.0 - next_height, 2, height - 60.0),
     };
-    let bubble_y = if alignment == 8 {
-        current_y - size * 0.2
-    } else {
-        current_y - current_height - size * 0.4
-    };
     Placement {
         current: format!("{{\\an{alignment}\\pos({},{current_y})}}", width * 0.5),
         next: format!("{{\\an{next_alignment}\\pos({},{next_y})}}", width * 0.5),
-        bubble_x: ((width - approximate_width(current, size).min(width - 120.0)) * 0.5
-            - size * 0.6)
-            .max(size * 0.6),
-        bubble_y: bubble_y.max(size * 0.4),
     }
 }
 
-fn bubble(
+fn countdown_number(
     ass: &mut String,
     from: f64,
     until: f64,
     seconds: u32,
-    place: &Placement,
     options: &VideoExportOptions,
 ) -> Result<(), NightingaleError> {
-    let radius = f64::from(options.font_size) * 0.5;
-    let diameter = radius * 2.0;
-    let k = radius * 0.552_284_75;
-    let path = format!(
-        "m {radius} 0 b {} 0 {diameter} {} {diameter} {radius} b {diameter} {} {} {diameter} {radius} {diameter} b {} {diameter} 0 {} 0 {radius} b 0 {} {} 0 {radius} 0",
-        radius + k,
-        radius - k,
-        radius + k,
-        radius + k,
-        radius - k,
-        radius + k,
-        radius - k,
-        radius - k
-    );
-    event(
-        ass,
-        from,
-        until,
-        "Bubble",
-        &format!(
-            "{{\\an7\\pos({},{})\\p1}}{path}",
-            place.bubble_x - radius,
-            place.bubble_y - radius
-        ),
-    )?;
     event(
         ass,
         from,
@@ -319,7 +282,8 @@ fn bubble(
         "Count",
         &format!(
             "{{\\an5\\pos({},{})}}{seconds}",
-            place.bubble_x, place.bubble_y
+            options.width / 2,
+            options.height / 2
         ),
     )
 }
@@ -339,7 +303,7 @@ fn timeline(segments: &[Segment], timing: &Timing, offset: f64) -> Vec<i64> {
         let previous_end = index.checked_sub(1).map_or(0.0, |i| segments[i].end);
         let gap = segment.start - previous_end;
         if gap >= timing.gap_threshold {
-            for second in 1..=gap.ceil() as u32 {
+            for second in 1..=timing.bubble_countdown.ceil() as u32 {
                 points.push(((segment.start - f64::from(second)) * 100.0).round() as i64);
             }
         }
@@ -371,9 +335,8 @@ fn render_interval(
     let active =
         time >= segment.start - timing.lyrics_lead && time <= segment.end + timing.segment_linger;
     let bridge = time > segment.end + timing.segment_linger && next_continuous;
-    let show_current = active || countdown || bridge;
-    let long_gap = gap_before >= timing.gap_threshold && time_until > timing.lyrics_lead;
-    let show_next = show_current && next_continuous && (!long_gap || countdown);
+    let show_current = (active || bridge) && !countdown;
+    let show_next = show_current && next_continuous;
     let place = placement(options, segment, if show_next { next } else { None });
     let offset = f64::from(options.countdown_seconds) + options.lyrics_offset_seconds;
     let start = (from + offset).max(0.0);
@@ -405,26 +368,7 @@ fn render_interval(
         )?;
     }
     if countdown {
-        bubble(ass, start, end, time_until.ceil() as u32, &place, options)?;
-    }
-    if index > 0
-        && gap_before >= timing.gap_threshold
-        && time_until > 0.0
-        && let Some(template) = &options.gap_caption_template
-    {
-        let caption = template.replace("{{seconds}}", &(time_until.ceil() as u32).to_string());
-        event(
-            ass,
-            start,
-            end,
-            "Caption",
-            &format!(
-                "{{\\pos({},{})}}{}",
-                options.width / 2,
-                options.height - 8,
-                escape(&caption)
-            ),
-        )?;
+        countdown_number(ass, start, end, time_until.ceil() as u32, options)?;
     }
     Ok(())
 }
@@ -446,31 +390,19 @@ pub(super) fn subtitles(
     for (name, size, alpha, box_alpha, bold, alignment) in [
         ("Current", 1.0, "80", "99", -1, options.position),
         ("Next", 0.6, "A6", "BF", 0, options.position),
-        ("Count", 0.4, "00", "FF", -1, 5),
-        ("Bubble", 0.4, "99", "FF", 0, 5),
-        ("Caption", 0.35, "66", "99", 0, 2),
+        ("Count", 1.0, "00", "FF", -1, 5),
     ] {
-        let fill = if name == "Bubble" {
-            format!("&H{alpha}000000")
-        } else {
-            format!("&H{alpha}{}", &color[2..8])
-        };
+        let fill = format!("&H{alpha}{}", &color[2..8]);
         writeln!(ass,"Style: {name},{},{},{fill},&H00FFFFFF,&H{box_alpha}000000,&H{box_alpha}000000,{bold},0,0,0,100,100,0,0,4,0,{},{alignment},60,60,60,1",options.font,f64::from(options.font_size)*size,if name=="Current"||name=="Next" { f64::from(options.font_size)*0.2 }else{0.0}).map_err(|_| invalid("Cannot format lyric styles"))?;
     }
     ass.push_str("\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n");
     for second in 0..options.countdown_seconds {
-        event(
+        countdown_number(
             &mut ass,
             f64::from(second),
             f64::from(second + 1),
-            "Count",
-            &format!(
-                "{{\\an5\\pos({},{})\\fs{}}}{}",
-                options.width / 2,
-                options.height / 2,
-                options.font_size,
-                options.countdown_seconds - second
-            ),
+            u32::from(options.countdown_seconds - second),
+            options,
         )?;
     }
     let points = timeline(
