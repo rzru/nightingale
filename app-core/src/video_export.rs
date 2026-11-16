@@ -9,6 +9,9 @@ use serde::{Deserialize, Serialize};
 use crate::error::NightingaleError;
 use crate::vendor::{ffmpeg_path, silent_command};
 
+mod lyrics;
+use lyrics::{Transcript, subtitles};
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct VideoExportOptions {
@@ -27,6 +30,8 @@ pub struct VideoExportOptions {
     pub countdown_seconds: u8,
     #[serde(default)]
     pub lyrics_offset_seconds: f64,
+    #[serde(default)]
+    pub gap_caption_template: Option<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -36,152 +41,8 @@ pub struct VideoExportProgress {
     pub elapsed_seconds: u64,
 }
 
-#[derive(Deserialize)]
-struct Transcript {
-    segments: Vec<Segment>,
-}
-
-#[derive(Deserialize)]
-struct Segment {
-    start: f64,
-    end: f64,
-    text: String,
-    #[serde(default)]
-    words: Vec<Word>,
-}
-
-#[derive(Deserialize)]
-struct Word {
-    start: f64,
-    end: f64,
-    word: String,
-}
-
 fn invalid(message: &str) -> NightingaleError {
     NightingaleError::Other(message.into())
-}
-
-fn color(value: &str) -> Result<String, NightingaleError> {
-    let hex = value.strip_prefix('#').unwrap_or(value);
-    if hex.len() != 6 || !hex.bytes().all(|c| c.is_ascii_hexdigit()) {
-        return Err(invalid("Choose a valid RGB color"));
-    }
-    Ok(format!("&H00{}{}{}", &hex[4..6], &hex[2..4], &hex[0..2]))
-}
-
-fn timestamp(seconds: f64) -> String {
-    let centiseconds = (seconds * 100.0).round() as u64;
-    format!(
-        "{}:{:02}:{:02}.{:02}",
-        centiseconds / 360_000,
-        centiseconds / 6_000 % 60,
-        centiseconds / 100 % 60,
-        centiseconds % 100
-    )
-}
-
-fn escape(text: &str) -> String {
-    text.replace('\\', "＼")
-        .replace('{', "｛")
-        .replace('}', "｝")
-        .replace(['\r', '\n'], " ")
-}
-
-fn valid_time(start: f64, end: f64) -> bool {
-    start.is_finite() && end.is_finite() && start >= 0.0 && end > start && end <= 14_400.0
-}
-
-fn subtitles(
-    transcript: Transcript,
-    options: &VideoExportOptions,
-) -> Result<String, NightingaleError> {
-    let primary = color(&options.highlight_color)?;
-    let secondary = color(&options.text_color)?;
-    let mut ass = format!(
-        "[Script Info]\nScriptType: v4.00+\nPlayResX: {}\nPlayResY: {}\nWrapStyle: 0\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,{},{},{},{},&H00101010,&H80000000,-1,0,0,0,100,100,0,0,1,3,1,{},60,60,60,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n",
-        options.width,
-        options.height,
-        options.font,
-        options.font_size,
-        primary,
-        secondary,
-        options.position
-    );
-    if transcript.segments.is_empty() || transcript.segments.len() > 20_000 {
-        return Err(invalid("No timed lyrics available; analyze the song first"));
-    }
-    for second in 0..options.countdown_seconds {
-        writeln!(
-            ass,
-            "Dialogue: 0,{},{},Default,,0,0,0,,{{\\an5}}{}",
-            timestamp(f64::from(second)),
-            timestamp(f64::from(second + 1)),
-            options.countdown_seconds - second
-        )
-        .map_err(|_| invalid("Cannot format countdown"))?;
-    }
-    let offset = f64::from(options.countdown_seconds) + options.lyrics_offset_seconds;
-    let mut previous_end = 0.0;
-    for mut segment in transcript.segments {
-        if !valid_time(segment.start, segment.end) {
-            return Err(invalid(
-                "Lyrics contain invalid timestamps; realign them first",
-            ));
-        }
-        if segment.end + offset <= 0.0 {
-            continue;
-        }
-        let mut text = String::new();
-        let mut cursor = (segment.start + offset).max(0.0);
-        for word in &segment.words {
-            if !valid_time(word.start, word.end)
-                || word.start + offset + 0.02 < cursor
-                    && word.end + offset > 0.0
-                    && word.start + offset >= 0.0
-                || word.end > segment.end + 0.02
-                || word.word.len() > 16_384
-            {
-                return Err(invalid(
-                    "Word timing is inconsistent; realign the lyrics first",
-                ));
-            }
-            if word.end + offset <= 0.0 {
-                continue;
-            }
-            let start = (word.start + offset).max(0.0);
-            let end = word.end + offset;
-            let gap = ((start - cursor).max(0.0) * 100.0).round() as u64;
-            let duration = ((end - start) * 100.0).round() as u64;
-            if !text.is_empty() && !word.word.starts_with(char::is_whitespace) {
-                text.push(' ');
-            }
-            if gap > 0 {
-                write!(text, "{{\\k{gap}}}").map_err(|_| invalid("Cannot format lyrics"))?;
-            }
-            write!(text, "{{\\kf{duration}}}{}", escape(&word.word))
-                .map_err(|_| invalid("Cannot format lyrics"))?;
-            cursor = end;
-        }
-        segment.start = (segment.start + offset).max(0.0);
-        segment.end += offset;
-        if segment.words.is_empty() {
-            text = escape(&segment.text);
-        }
-        if text.len() > 65_536 {
-            return Err(invalid("A lyric line is too long"));
-        }
-        // Simultaneous source lines remain simultaneous, on distinct ASS layers.
-        let layer = u8::from(segment.start < previous_end);
-        writeln!(
-            ass,
-            "Dialogue: {layer},{},{},Default,,0,0,0,,{text}",
-            timestamp(segment.start),
-            timestamp(segment.end)
-        )
-        .map_err(|_| invalid("Cannot format lyrics"))?;
-        previous_end = segment.end;
-    }
-    Ok(ass)
 }
 
 pub fn export_song_mp4(
@@ -198,6 +59,10 @@ pub fn export_song_mp4(
         )
         || !matches!(options.position, 2 | 5 | 8)
         || options.guide_volume > 100
+        || options
+            .gap_caption_template
+            .as_ref()
+            .is_some_and(|template| template.len() > 256)
         || options.countdown_seconds > 10
         || !options.lyrics_offset_seconds.is_finite()
         || !(-30.0..=30.0).contains(&options.lyrics_offset_seconds)
