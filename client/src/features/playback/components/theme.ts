@@ -1,9 +1,8 @@
 import { videoFlavorLabel, type VideoFlavor } from '@/features/playback/lib/video-flavor';
 import { t } from '@/i18n';
+import { shaders } from '@/shared/visuals/shaders';
 import type { BackgroundSelection } from '@/types/BackgroundSelection';
 import type { CustomBackground } from '@/types/CustomBackground';
-
-import { shaders } from './shaders';
 
 export const PITCH_GUIDE_SHADER_ID = 'pitch-guide';
 
