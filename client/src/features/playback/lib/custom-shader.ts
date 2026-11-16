@@ -1,5 +1,5 @@
-import { composeCustomFragment, vertexShader } from '@/features/playback/components/shaders';
 import { t } from '@/i18n';
+import { composeCustomFragment, vertexShader } from '@/shared/visuals/shaders';
 
 const validationVertexShader = `
 attribute vec3 position;
