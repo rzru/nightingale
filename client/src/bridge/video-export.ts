@@ -2,9 +2,11 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { z } from 'zod';
 
 import { t } from '@/i18n';
+import type { AppConfig } from '@/types/AppConfig';
 
 import { createChannel, invoke, isTauri } from './runtime';
 import { selectFolderPath } from './source';
+import { prepareExportBackground } from './video-export-background';
 
 export const supportsVideoExport = isTauri;
 
@@ -41,15 +43,25 @@ export const chooseVideoBackground = async (): Promise<string | undefined> => {
 };
 
 export const exportVideo = async (
-  fileHash: string,
-  backgroundPath: string,
-  style: VideoStyle,
-  onProgress: (progress: VideoProgress) => void,
+  input: { fileHash: string; backgroundPath: string; style: VideoStyle; config: AppConfig },
+  callbacks: {
+    onProgress: (progress: VideoProgress) => void;
+    onPreparing: (percent: number | undefined) => void;
+  },
 ): Promise<string | undefined> => {
+  const { fileHash, backgroundPath, style, config } = input;
+  const { onProgress, onPreparing } = callbacks;
   const destinationDirectory = await selectFolderPath();
   if (destinationDirectory === undefined) {
     return undefined;
   }
+  onPreparing(0);
+  const background = await prepareExportBackground(config, backgroundPath, {
+    width: style.width,
+    height: style.height,
+    onProgress: onPreparing,
+  });
+  onPreparing(undefined);
   const channel = createChannel<unknown>();
   Object.assign(channel, {
     onmessage: (message: unknown) => {
@@ -63,7 +75,7 @@ export const exportVideo = async (
     await invoke('export_song_mp4', {
       options: {
         fileHash,
-        backgroundPath,
+        ...background,
         destinationDirectory,
         ...style,
       },
