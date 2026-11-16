@@ -66,7 +66,6 @@ export const exportVideo = async (
         backgroundPath,
         destinationDirectory,
         ...style,
-        gapCaptionTemplate: t('playback.lyrics.nextIn', { seconds: '{{seconds}}' }),
       },
       onProgress: channel,
     }),
