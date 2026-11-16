@@ -241,6 +241,8 @@ fn approximate_lines(segment: &Segment, size: f64, width: f64) -> f64 {
 struct Placement {
     current: String,
     next: String,
+    bubble_x: f64,
+    bubble_y: f64,
 }
 
 fn placement(options: &VideoExportOptions, current: &Segment, next: Option<&Segment>) -> Placement {
@@ -252,29 +254,84 @@ fn placement(options: &VideoExportOptions, current: &Segment, next: Option<&Segm
     let next_height = next.map_or(0.0, |segment| {
         approximate_lines(segment, size * 0.6, width - 120.0) * size * 0.78 + size * 0.3 + gap
     });
-    let (alignment, current_y, next_alignment, next_y) = match options.position {
-        8 => (8, 60.0, 8, 60.0 + current_height + gap + size * 0.2),
-        5 => (
-            5,
+    let column = (options.position - 1) % 3;
+    let x = match column {
+        0 => 60.0,
+        2 => width - 60.0,
+        _ => width * 0.5,
+    };
+    let (alignment, current_y, next_alignment, next_y) = match (options.position - 1) / 3 {
+        2 => (
+            7 + column,
+            60.0,
+            7 + column,
+            60.0 + current_height + gap + size * 0.2,
+        ),
+        1 => (
+            4 + column,
             height * 0.5 - next_height * 0.5,
-            8,
+            7 + column,
             height * 0.5 - next_height * 0.5 + current_height * 0.5 + gap + size * 0.2,
         ),
-        _ => (2, height - 60.0 - next_height, 2, height - 60.0),
+        _ => (
+            1 + column,
+            height - 60.0 - next_height,
+            1 + column,
+            height - 60.0,
+        ),
+    };
+    let bubble_y = if alignment >= 7 {
+        current_y - size * 0.2
+    } else {
+        current_y - current_height - size * 0.4
+    };
+    let text_width = approximate_width(current, size).min(width - 120.0);
+    let text_left = match column {
+        0 => x,
+        2 => x - text_width,
+        _ => x - text_width * 0.5,
     };
     Placement {
-        current: format!("{{\\an{alignment}\\pos({},{current_y})}}", width * 0.5),
-        next: format!("{{\\an{next_alignment}\\pos({},{next_y})}}", width * 0.5),
+        current: format!("{{\\an{alignment}\\pos({x},{current_y})}}"),
+        next: format!("{{\\an{next_alignment}\\pos({x},{next_y})}}"),
+        bubble_x: (text_left - size * 0.6).max(size * 0.6),
+        bubble_y: bubble_y.max(size * 0.4),
     }
 }
 
-fn countdown_number(
+fn bubble(
     ass: &mut String,
     from: f64,
     until: f64,
     seconds: u32,
+    place: &Placement,
     options: &VideoExportOptions,
 ) -> Result<(), NightingaleError> {
+    let radius = f64::from(options.font_size) * 0.5;
+    let diameter = radius * 2.0;
+    let k = radius * 0.552_284_75;
+    let path = format!(
+        "m {radius} 0 b {} 0 {diameter} {} {diameter} {radius} b {diameter} {} {} {diameter} {radius} {diameter} b {} {diameter} 0 {} 0 {radius} b 0 {} {} 0 {radius} 0",
+        radius + k,
+        radius - k,
+        radius + k,
+        radius + k,
+        radius - k,
+        radius + k,
+        radius - k,
+        radius - k
+    );
+    event(
+        ass,
+        from,
+        until,
+        "Bubble",
+        &format!(
+            "{{\\an7\\pos({},{})\\p1}}{path}",
+            place.bubble_x - radius,
+            place.bubble_y - radius
+        ),
+    )?;
     event(
         ass,
         from,
@@ -282,8 +339,7 @@ fn countdown_number(
         "Count",
         &format!(
             "{{\\an5\\pos({},{})}}{seconds}",
-            options.width / 2,
-            options.height / 2
+            place.bubble_x, place.bubble_y
         ),
     )
 }
@@ -335,8 +391,9 @@ fn render_interval(
     let active =
         time >= segment.start - timing.lyrics_lead && time <= segment.end + timing.segment_linger;
     let bridge = time > segment.end + timing.segment_linger && next_continuous;
-    let show_current = (active || bridge) && !countdown;
-    let show_next = show_current && next_continuous;
+    let show_current = active || countdown || bridge;
+    let long_gap = gap_before >= timing.gap_threshold && time_until > timing.lyrics_lead;
+    let show_next = show_current && next_continuous && (!long_gap || countdown);
     let place = placement(options, segment, if show_next { next } else { None });
     let offset = f64::from(options.countdown_seconds) + options.lyrics_offset_seconds;
     let start = (from + offset).max(0.0);
@@ -368,7 +425,7 @@ fn render_interval(
         )?;
     }
     if countdown {
-        countdown_number(ass, start, end, time_until.ceil() as u32, options)?;
+        bubble(ass, start, end, time_until.ceil() as u32, &place, options)?;
     }
     Ok(())
 }
@@ -390,19 +447,30 @@ pub(super) fn subtitles(
     for (name, size, alpha, box_alpha, bold, alignment) in [
         ("Current", 1.0, "80", "99", -1, options.position),
         ("Next", 0.6, "A6", "BF", 0, options.position),
-        ("Count", 1.0, "00", "FF", -1, 5),
+        ("Count", 0.4, "00", "FF", -1, 5),
+        ("Bubble", 0.4, "99", "FF", 0, 5),
     ] {
-        let fill = format!("&H{alpha}{}", &color[2..8]);
+        let fill = if name == "Bubble" {
+            format!("&H{alpha}000000")
+        } else {
+            format!("&H{alpha}{}", &color[2..8])
+        };
         writeln!(ass,"Style: {name},{},{},{fill},&H00FFFFFF,&H{box_alpha}000000,&H{box_alpha}000000,{bold},0,0,0,100,100,0,0,4,0,{},{alignment},60,60,60,1",options.font,f64::from(options.font_size)*size,if name=="Current"||name=="Next" { f64::from(options.font_size)*0.2 }else{0.0}).map_err(|_| invalid("Cannot format lyric styles"))?;
     }
     ass.push_str("\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n");
     for second in 0..options.countdown_seconds {
-        countdown_number(
+        event(
             &mut ass,
             f64::from(second),
             f64::from(second + 1),
-            u32::from(options.countdown_seconds - second),
-            options,
+            "Count",
+            &format!(
+                "{{\\an5\\pos({},{})\\fs{}}}{}",
+                options.width / 2,
+                options.height / 2,
+                options.font_size,
+                options.countdown_seconds - second
+            ),
         )?;
     }
     let points = timeline(
