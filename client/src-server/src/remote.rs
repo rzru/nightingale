@@ -48,9 +48,12 @@ pub(crate) async fn require_token(
 
     let token = state.remote_token();
     let from_query = query_token(request.uri().query()).map(str::to_owned);
-    let presented = header_token(request.headers())
-        .or_else(|| cookie_token(request.headers()))
-        .or(from_query.as_deref());
+    // A link's own token wins: the cookie may be left over from an earlier
+    // pairing, and a phone that scans a fresh QR code means the new one.
+    let presented = from_query
+        .as_deref()
+        .or_else(|| header_token(request.headers()))
+        .or_else(|| cookie_token(request.headers()));
 
     if token.is_empty() || !presented.is_some_and(|value| constant_time_eq(value, &token)) {
         return Response::builder()
