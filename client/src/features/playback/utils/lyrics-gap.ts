@@ -1,12 +1,13 @@
 import { t } from '@/i18n';
+import timing from '@/shared/config/lyrics-timing.json';
 import type { Segment } from '@/types/Transcript';
 
 // Small timing leads keep lyric transitions visually in sync with the audio.
-export const LYRICS_LEAD = 0.15;
-export const WORD_HIGHLIGHT_LEAD = 0.25;
-export const SEGMENT_LINGER = 0.5;
-export const GAP_THRESHOLD_SEC = 3.5;
-export const BUBBLE_COUNTDOWN_SEC = 3.0;
+export const LYRICS_LEAD = timing.lyricsLead;
+export const WORD_HIGHLIGHT_LEAD = timing.wordHighlightLead;
+export const SEGMENT_LINGER = timing.segmentLinger;
+export const GAP_THRESHOLD_SEC = timing.gapThreshold;
+export const BUBBLE_COUNTDOWN_SEC = timing.bubbleCountdown;
 
 /** Finds the displayed segment, using `hint` to skip already-passed entries. */
 export function findCurrentSegment(segments: Segment[], time: number, hint: number): number {
