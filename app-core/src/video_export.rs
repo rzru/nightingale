@@ -30,8 +30,6 @@ pub struct VideoExportOptions {
     pub countdown_seconds: u8,
     #[serde(default)]
     pub lyrics_offset_seconds: f64,
-    #[serde(default)]
-    pub gap_caption_template: Option<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -59,10 +57,6 @@ pub fn export_song_mp4(
         )
         || !matches!(options.position, 2 | 5 | 8)
         || options.guide_volume > 100
-        || options
-            .gap_caption_template
-            .as_ref()
-            .is_some_and(|template| template.len() > 256)
         || options.countdown_seconds > 10
         || !options.lyrics_offset_seconds.is_finite()
         || !(-30.0..=30.0).contains(&options.lyrics_offset_seconds)
