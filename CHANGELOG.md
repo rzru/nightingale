@@ -15,7 +15,7 @@ below.
 
 ### Features
 
-- Desktop users can export MP4 karaoke videos using existing timed lyrics, with a chosen image or video background, customizable lyrics, word highlighting, portrait or landscape resolution, guide-vocal volume, an optional countdown, lyric timing adjustment, and export progress. Exports now mirror the player's current/next lyric lines, progressive word illumination, short-pause behavior, and a simple centered numeric countdown before singing resumes, matching the intro without extra captions.
+- Desktop users can export MP4 karaoke videos using existing timed lyrics, with a chosen image or video background, customizable lyrics, word highlighting, portrait or landscape resolution, guide-vocal volume, an optional countdown, lyric timing adjustment, and export progress. Exports now mirror the player's current/next lyric lines, progressive word illumination, short-pause behavior, and a circular countdown with the upcoming lyrics visible before singing resumes. Export settings are remembered, start from the selected application background and lyric placement, and offer six color presets with gold highlighting and no intro countdown by default.
 
 ### Fixes
 
