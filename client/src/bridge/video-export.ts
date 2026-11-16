@@ -61,7 +61,13 @@ export const exportVideo = async (
   });
   return z.string().parse(
     await invoke('export_song_mp4', {
-      options: { fileHash, backgroundPath, destinationDirectory, ...style },
+      options: {
+        fileHash,
+        backgroundPath,
+        destinationDirectory,
+        ...style,
+        gapCaptionTemplate: t('playback.lyrics.nextIn', { seconds: '{{seconds}}' }),
+      },
       onProgress: channel,
     }),
   );
