@@ -25,7 +25,7 @@ const initialStyle: VideoStyle = {
   font: 'Arial',
   fontSize: 64,
   textColor: '#ffffff',
-  highlightColor: '#ffd43b',
+  highlightColor: '#ffffff',
   position: 2,
   guideVolume: 0,
   countdownSeconds: 3,
@@ -230,7 +230,10 @@ export const VideoExportDialog = ({ song, open, onClose }: Props) => {
                 <span style={{ color: style.highlightColor }}>
                   {t('videoExport.previewHighlight')}
                 </span>{' '}
-                {t('videoExport.previewText')}
+                <span className="opacity-50">{t('videoExport.previewText')}</span>
+                <span className="mt-2 block text-[0.6em] font-normal opacity-35">
+                  {t('settings.playbackPreview.letTheMusicCarryYouHome')}
+                </span>
               </p>
             </div>
           </div>
