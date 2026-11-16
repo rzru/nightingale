@@ -17,6 +17,10 @@ use lyrics::{Transcript, subtitles};
 pub struct VideoExportOptions {
     pub file_hash: String,
     pub background_path: String,
+    #[serde(default)]
+    pub background_data: Option<Vec<u8>>,
+    #[serde(default)]
+    pub background_extension: Option<String>,
     pub destination_directory: String,
     pub width: u32,
     pub height: u32,
@@ -55,7 +59,7 @@ pub fn export_song_mp4(
             options.font.as_str(),
             "Arial" | "Verdana" | "Georgia" | "Tahoma"
         )
-        || !matches!(options.position, 2 | 5 | 8)
+        || !(1..=9).contains(&options.position)
         || options.guide_volume > 100
         || options.countdown_seconds > 10
         || !options.lyrics_offset_seconds.is_finite()
@@ -63,14 +67,27 @@ pub fn export_song_mp4(
     {
         return Err(invalid("Invalid video export settings"));
     }
-    let background = Path::new(&options.background_path).canonicalize()?;
-    let ext = background
-        .extension()
-        .and_then(|v| v.to_str())
-        .unwrap_or("")
-        .to_ascii_lowercase();
+    let background = if options.background_data.is_some() {
+        None
+    } else {
+        Some(Path::new(&options.background_path).canonicalize()?)
+    };
+    let ext = if let Some(data) = &options.background_data {
+        if data.is_empty() || data.len() > 32 * 1024 * 1024 {
+            return Err(invalid("Choose a background smaller than 32 MiB"));
+        }
+        options.background_extension.clone().unwrap_or_default()
+    } else {
+        background
+            .as_ref()
+            .and_then(|path| path.extension())
+            .and_then(|v| v.to_str())
+            .unwrap_or("")
+            .to_ascii_lowercase()
+    };
     let image = matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "webp");
-    if !background.is_file() || (!image && !matches!(ext.as_str(), "mp4" | "webm" | "mov" | "mkv"))
+    if background.as_ref().is_some_and(|path| !path.is_file())
+        || (!image && !matches!(ext.as_str(), "mp4" | "webm" | "mov" | "mkv"))
     {
         return Err(invalid("Choose a supported image or video background"));
     }
@@ -105,6 +122,13 @@ pub fn export_song_mp4(
     let partial = work.join("video.mp4");
     let output = destination.join(format!("{name}.mp4"));
     let result = (|| {
+        let background = if let Some(data) = &options.background_data {
+            let path = work.join(format!("background.{ext}"));
+            std::fs::write(&path, data)?;
+            path
+        } else {
+            background.ok_or_else(|| invalid("Choose an export background"))?
+        };
         std::fs::write(&subtitle_path, ass)?;
         let mut command = silent_command(ffmpeg_path());
         command
