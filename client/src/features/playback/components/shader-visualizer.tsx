@@ -2,8 +2,7 @@ import { Canvas } from '@react-three/fiber';
 
 import type { MicReactiveRef } from '@/features/microphone/hooks/use-mic-reactive';
 import { useReactiveShaderUniforms } from '@/features/playback/hooks/use-reactive-shader-uniforms';
-
-import { shaders, vertexShader } from './shaders';
+import { shaders, vertexShader } from '@/shared/visuals/shaders';
 
 type ShaderVisualizerProps = {
   shaderIndex: number;

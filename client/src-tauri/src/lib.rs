@@ -242,6 +242,24 @@ impl CommandRuntime for DesktopRuntime {
 }
 
 #[tauri::command]
+async fn export_song_mp4(
+    options: app_core::VideoExportOptions,
+    on_progress: tauri::ipc::Channel<app_core::VideoExportProgress>,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        app_core::export_song_mp4(options, |progress| {
+            if let Err(error) = on_progress.send(progress) {
+                tracing::debug!(%error, "video export progress receiver disconnected");
+            }
+        })
+    })
+    .await
+    .map_err(|_| "Video export worker failed".to_string())?
+    .map(|path| path.to_string_lossy().into_owned())
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 async fn dispatch_command(
     state: tauri::State<'_, CommandState>,
     name: String,
@@ -330,6 +348,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             dispatch_command,
+            export_song_mp4,
             frontend_ready,
             window_immersive,
             minimize_window,

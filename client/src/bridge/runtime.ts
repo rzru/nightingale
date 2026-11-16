@@ -31,6 +31,7 @@ class WebChannel {
 }
 
 const nativeCommands = new Set([
+  'export_song_mp4',
   'frontend_ready',
   'window_immersive',
   'minimize_window',

@@ -23,6 +23,9 @@ mod source;
 mod usdx;
 mod vendor;
 mod vendor_scripts;
+mod video_export;
+
+pub use video_export::{VideoExportOptions, VideoExportProgress, export_song_mp4};
 
 pub use analyzer::{
     AnalysisQueue, cancel_analysis, delete_cache, enqueue, realign, reanalyze_force_transcribe,

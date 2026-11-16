@@ -1,8 +1,9 @@
-import { TrophyIcon } from 'lucide-react';
-import { Fragment } from 'react';
+import { TrophyIcon, VideoIcon } from 'lucide-react';
+import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
 
 import { exportSongNge } from '@/bridge/playback';
+import { supportsVideoExport } from '@/bridge/video-export';
 import { useAnalysis } from '@/features/library/hooks/use-analysis';
 import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useProfiles } from '@/features/profiles/queries/use-profiles';
@@ -13,6 +14,7 @@ import type { Song } from '@/types/Song';
 import type { SongStatusInfo } from '../song/song-status';
 import { ActionItem } from './action-item';
 import { buildActionGroups } from './song-actions';
+import { VideoExportDialog } from './video-export-dialog';
 
 type ActionsSectionProps = {
   song: Song;
@@ -41,6 +43,7 @@ export const ActionsSection = ({
   supportsAnalysisActions,
 }: ActionsSectionProps) => {
   const { setMode } = useDialog();
+  const [videoOpen, setVideoOpen] = useState(false);
   const analysis = useAnalysis();
   const { data: profiles } = useProfiles();
   const hasScores = profiles?.scores.some((score) => score.song_hash === song.file_hash) ?? false;
@@ -79,6 +82,17 @@ export const ActionsSection = ({
     run,
   });
 
+  if (supportsVideoExport && status.isReady === true) {
+    groups.push([
+      {
+        icon: VideoIcon,
+        title: 'videoExport.title',
+        description: 'videoExport.description',
+        onClick: () => setVideoOpen(true),
+      },
+    ]);
+  }
+
   if (hasScores) {
     groups.unshift([
       {
@@ -92,6 +106,9 @@ export const ActionsSection = ({
 
   return (
     <section className="px-2 py-4" aria-labelledby="song-actions-heading">
+      {videoOpen && (
+        <VideoExportDialog song={song} open={videoOpen} onClose={() => setVideoOpen(false)} />
+      )}
       <h3
         id="library.songDetails.actionsSection.songActionsHeading"
         className="mb-2 px-2 text-xs font-semibold"

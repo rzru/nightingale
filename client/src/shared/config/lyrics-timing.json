@@ -1,0 +1,7 @@
+{
+  "lyricsLead": 0.15,
+  "wordHighlightLead": 0.25,
+  "segmentLinger": 0.5,
+  "gapThreshold": 3.5,
+  "bubbleCountdown": 3.0
+}
