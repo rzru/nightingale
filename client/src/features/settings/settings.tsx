@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 
 import { setFullScreen, isFullScreen as tauriIsFullScreen } from '@/bridge/fullScreen';
 import { openUrl } from '@/bridge/opener';
-import { clampPlaybackScale, DEFAULT_PLAYBACK_SCALE } from '@/features/playback/lib/display-scale';
+import { clampPlaybackScale } from '@/features/playback/lib/display-scale';
 import { BackgroundSettings } from '@/features/settings/components/background-settings';
 import {
   ALIGN_BACKENDS,
@@ -18,12 +18,14 @@ import {
   PLAYBACK_SCALE_MAX,
   PLAYBACK_SCALE_MIN,
   PLAYBACK_SCALE_STEP,
+  SCORING_DIFFICULTIES,
   SEPARATORS,
   SETTINGS_TABS,
   VOCAL_THRESHOLD_MAX,
   getAnalysisNav,
   type SettingsTab,
 } from '@/features/settings/components/constants';
+import { LyricsStyleFields } from '@/features/settings/components/lyrics-style-fields';
 import { MicrophoneSettings } from '@/features/settings/components/microphone-settings';
 import { PlaybackPreview } from '@/features/settings/components/playback-preview';
 import {
@@ -76,9 +78,10 @@ const playbackSettings = (config: AppConfig | undefined) => {
       masterVolume: DEFAULTS.master_volume,
       lyricsVertical: DEFAULTS.lyrics_vertical_position,
       lyricsHorizontal: DEFAULTS.lyrics_horizontal_position,
-      lyricsScale: DEFAULT_PLAYBACK_SCALE,
-      pitchGraphScale: DEFAULT_PLAYBACK_SCALE,
+      lyricsScale: DEFAULTS.lyrics_scale,
+      pitchGraphScale: DEFAULTS.pitch_graph_scale,
       lyricsRomanizationMode: DEFAULTS.lyrics_romanization_mode,
+      scoringDifficulty: DEFAULTS.scoring_difficulty,
     };
   }
 
@@ -87,9 +90,10 @@ const playbackSettings = (config: AppConfig | undefined) => {
     masterVolume: config.master_volume ?? DEFAULTS.master_volume,
     lyricsVertical: config.lyrics_vertical_position ?? DEFAULTS.lyrics_vertical_position,
     lyricsHorizontal: config.lyrics_horizontal_position ?? DEFAULTS.lyrics_horizontal_position,
-    lyricsScale: clampPlaybackScale(config.lyrics_scale),
-    pitchGraphScale: clampPlaybackScale(config.pitch_graph_scale),
+    lyricsScale: clampPlaybackScale(config.lyrics_scale, DEFAULTS.lyrics_scale),
+    pitchGraphScale: clampPlaybackScale(config.pitch_graph_scale, DEFAULTS.pitch_graph_scale),
     lyricsRomanizationMode: config.lyrics_romanization_mode ?? DEFAULTS.lyrics_romanization_mode,
+    scoringDifficulty: config.scoring_difficulty ?? DEFAULTS.scoring_difficulty,
   };
 };
 
@@ -153,6 +157,8 @@ export const SettingsPage = () => {
   const [pitchGraphScaleInput, setPitchGraphScale] = useState<number | null>(null);
   const pitchGraphScale = pendingValue(pitchGraphScaleInput, playback.pitchGraphScale);
   const [lyricsRomanizationModeInput, setLyricsRomanizationMode] = useState<string | null>(null);
+  const [scoringDifficultyInput, setScoringDifficulty] = useState<string | null>(null);
+  const scoringDifficulty = pendingValue(scoringDifficultyInput, playback.scoringDifficulty);
   const lyricsRomanizationMode = pendingValue(
     lyricsRomanizationModeInput,
     playback.lyricsRomanizationMode,
@@ -234,6 +240,7 @@ export const SettingsPage = () => {
     setLyricsScale(DEFAULTS.lyrics_scale);
     setPitchGraphScale(DEFAULTS.pitch_graph_scale);
     setLyricsRomanizationMode(DEFAULTS.lyrics_romanization_mode);
+    setScoringDifficulty(DEFAULTS.scoring_difficulty);
     setVocalThresholdPct(DEFAULTS.vocal_detection_threshold_pct);
   };
 
@@ -488,6 +495,23 @@ export const SettingsPage = () => {
                     }}
                   />
                 </Field>
+
+                <Field>
+                  <Label>{t('settings.scoringDifficulty')}</Label>
+                  <Hint>{t('settings.scoringDifficultyDescription')}</Hint>
+                  <SettingsButtonGroup
+                    value={scoringDifficulty}
+                    options={SCORING_DIFFICULTIES}
+                    segment={NAV.playback.scoringDifficulty}
+                    getFocusClassName={getFocusClassName}
+                    onChange={(scoring_difficulty) => {
+                      setScoringDifficulty(scoring_difficulty);
+                      mutate({ scoring_difficulty });
+                    }}
+                  />
+                </Field>
+
+                <LyricsStyleFields getFocusClassName={getFocusClassName} />
               </FieldGroup>
             </div>
           </TabsContent>

@@ -7,17 +7,25 @@ import {
 } from '@/bridge/microphone';
 import { useMicSamples } from '@/features/microphone/hooks/use-mic-samples';
 import { SampleRing } from '@/features/microphone/lib/sample-ring';
-import { PITCH_WINDOW_SAMPLES } from '@/features/playback/lib/pitch/constants';
+import { PITCH_RMS_GATE, PITCH_WINDOW_SAMPLES } from '@/features/playback/lib/pitch/constants';
 import { createPitchDetector, detectPitchFromSamples } from '@/features/playback/lib/pitch/detect';
 
 /** ~30 Hz pitch updates: more than enough for vocal pitch tracking. */
 const PITCH_TICK_MS = 33;
 const RING_CAPACITY = PITCH_WINDOW_SAMPLES * 2;
+/**
+ * A running microphone delivers audio continuously. No audio for this long
+ * after it had started means the device is gone (unplugged, driver stopped).
+ */
+const MIC_STALL_MS = 1500;
 
 const defaultAdapter = microphoneAdapter;
 
-export function useMicPitch(captureId: string, enabled: boolean) {
+/** `rmsGate`: sound quieter than this is not treated as a voice. */
+export function useMicPitch(captureId: string, enabled: boolean, rmsGate = PITCH_RMS_GATE) {
   const [latestPitch, setLatestPitch] = useState<number | null>(null);
+  const [stalled, setStalled] = useState(false);
+  const lastFrameAtRef = useRef<number | null>(null);
   const ringRef = useRef<SampleRing | null>(null);
   const sampleRateRef = useRef(0);
 
@@ -29,6 +37,7 @@ export function useMicPitch(captureId: string, enabled: boolean) {
     captureId,
     (frame) => {
       sampleRateRef.current = frame.sample_rate;
+      lastFrameAtRef.current = performance.now();
       ringRef.current?.push(frame.samples);
     },
     enabled,
@@ -45,6 +54,8 @@ export function useMicPitch(captureId: string, enabled: boolean) {
     const window = new Float32Array(PITCH_WINDOW_SAMPLES);
 
     const tick = () => {
+      const lastFrameAt = lastFrameAtRef.current;
+      setStalled(lastFrameAt !== null && performance.now() - lastFrameAt > MIC_STALL_MS);
       const ring = ringRef.current;
       const sr = sampleRateRef.current;
       if (!ring || sr === 0) {
@@ -53,17 +64,27 @@ export function useMicPitch(captureId: string, enabled: boolean) {
       if (!ring.readMostRecent(window)) {
         return;
       }
-      const hz = detectPitchFromSamples(detector, window, sr);
+      const hz = detectPitchFromSamples(detector, window, sr, rmsGate);
       setLatestPitch(hz);
     };
 
     const id = setInterval(tick, PITCH_TICK_MS);
 
-    return () => clearInterval(id);
-  }, [enabled]);
+    return () => {
+      clearInterval(id);
+      lastFrameAtRef.current = null;
+      setStalled(false);
+    };
+  }, [enabled, rmsGate]);
 
   const error: string | null = null;
-  return { latestPitch: enabled ? latestPitch : null, active: enabled, error };
+  return {
+    latestPitch: enabled ? latestPitch : null,
+    active: enabled,
+    /** The microphone stopped delivering audio while it should be running. */
+    stalled: enabled && stalled,
+    error,
+  };
 }
 
 type MicCaptureInput = {

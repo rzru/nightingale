@@ -142,6 +142,16 @@ def main():
             ctype = cmd.get("type")
             if ctype == "quit":
                 break
+            if ctype == "melody":
+                # Notes for a song analyzed before notes existed, or re-cut
+                # after its word timings were edited.
+                try:
+                    from melody import backfill_melody
+                    updated = backfill_melody(os.path.abspath(cmd["cache_path"]), cmd["hash"])
+                    _send(wfile, {"type": "done", "hash": cmd.get("hash", ""), "updated": updated})
+                except Exception as e:
+                    _send(wfile, {"type": "error", "kind": "generic", "msg": str(e)})
+                continue
             if ctype == "analyze":
                 try:
                     process_song(cmd, device)

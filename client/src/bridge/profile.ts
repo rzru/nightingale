@@ -18,10 +18,15 @@ export const deleteProfile = async (name: string): Promise<void> => {
   return await invoke<void>('delete_profile', { name });
 };
 
-export const addScore = async (
-  songHash: string,
-  score: number,
-  profile?: string,
-): Promise<void> => {
-  return await invoke<void>('add_score', { songHash, score, profile });
+export type AddScoreInput = {
+  songHash: string;
+  score: number;
+  profile?: string;
+  /** Scoring system that produced the score; see `ScoreRecord.version`. */
+  version: number;
+  difficulty: string | null;
+};
+
+export const addScore = async (input: AddScoreInput): Promise<void> => {
+  return await invoke<void>('add_score', input);
 };

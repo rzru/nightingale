@@ -12,6 +12,7 @@ import { MenuFocusProvider } from '@/features/menu/providers/menu-focus-context'
 import { Playback } from '@/features/playback/playback';
 import { RemoteQueuePage } from '@/features/remote/remote-queue';
 import { SettingsPage } from '@/features/settings/settings';
+import { TimingEditorPage } from '@/features/timing-editor/timing-editor';
 import { useUpdate } from '@/features/updates/queries/use-update';
 import { syncLanguagePreference, useTranslation } from '@/i18n';
 import { Toaster } from '@/shared/components/ui/sonner';
@@ -47,6 +48,7 @@ const InnerWrapper = () => (
             <Route path="settings" element={<SettingsPage />} />
           </Route>
           <Route path="/playback" element={<Playback />} />
+          <Route path="/timing-editor" element={<TimingEditorPage />} />
         </Routes>
       </BrowserRouter>
     </MenuFocusProvider>

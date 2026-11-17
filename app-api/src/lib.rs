@@ -392,10 +392,18 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
                 song_hash: String,
                 score: u32,
                 profile: Option<String>,
+                version: Option<u32>,
+                difficulty: Option<String>,
             }
             let args: Args = deserialize(payload)?;
             let mut store = ProfileStore::load();
-            store.add_score(&args.song_hash, args.score, args.profile.as_deref());
+            store.add_score(
+                &args.song_hash,
+                args.score,
+                args.profile.as_deref(),
+                args.version.unwrap_or(1),
+                args.difficulty,
+            );
             Ok(Value::Null)
         }
 
@@ -759,6 +767,89 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
         }
         "shift_key" => shift_key_cmd(events, payload),
         "shift_tempo" => shift_tempo_cmd(events, payload),
+        "render_recording_voice" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Args {
+                take: String,
+                offset_sec: f64,
+            }
+            let args: Args = deserialize(payload)?;
+            let path = tokio::task::spawn_blocking(move || {
+                app_core::render_recording_voice(&args.take, args.offset_sec)
+            })
+            .await
+            .map_err(blocking_task_err)?
+            .map_err(|e| ApiError::internal(e.to_string()))?;
+            Ok(Value::from(path))
+        }
+        "save_recording" => {
+            #[derive(Deserialize)]
+            struct Args {
+                request: app_core::SaveRecordingRequest,
+            }
+            let args: Args = deserialize(payload)?;
+            let path = tokio::task::spawn_blocking(move || app_core::save_recording(&args.request))
+                .await
+                .map_err(blocking_task_err)?
+                .map_err(|e| ApiError::internal(e.to_string()))?;
+            Ok(Value::from(path))
+        }
+        "discard_recording" => {
+            #[derive(Deserialize)]
+            struct Args {
+                take: String,
+            }
+            let args: Args = deserialize(payload)?;
+            app_core::discard_recording(&args.take)
+                .map_err(|e| ApiError::internal(e.to_string()))?;
+            Ok(Value::Null)
+        }
+        "list_recordings" => {
+            Ok(serde_json::to_value(app_core::list_recordings()).map_err(serde_err)?)
+        }
+        "recordings_dir" => Ok(Value::from(
+            app_core::recordings_dir().to_string_lossy().into_owned(),
+        )),
+        "delete_recording" => {
+            #[derive(Deserialize)]
+            struct Args {
+                path: String,
+            }
+            let args: Args = deserialize(payload)?;
+            app_core::delete_recording(&args.path)
+                .map_err(|e| ApiError::internal(e.to_string()))?;
+            Ok(Value::Null)
+        }
+        "load_base_transcript" => {
+            let args: FileHashArgs = deserialize(payload)?;
+            app_core::load_base_transcript(&args.file_hash)
+                .map_err(|e| ApiError::internal(e.to_string()))
+        }
+        "save_transcript_edits" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Args {
+                file_hash: String,
+                segments: Value,
+            }
+            let args: Args = deserialize(payload)?;
+            app_core::save_transcript_edits(&args.file_hash, args.segments)
+                .map_err(|e| ApiError::internal(e.to_string()))?;
+            Ok(Value::Null)
+        }
+        "set_lyrics_offset" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Args {
+                file_hash: String,
+                offset_ms: i64,
+            }
+            let args: Args = deserialize(payload)?;
+            let stored = app_core::set_lyrics_offset(&args.file_hash, args.offset_ms)
+                .map_err(|e| ApiError::internal(e.to_string()))?;
+            Ok(Value::from(stored))
+        }
 
         // ── Lyrics ───────────────────────────────────────────────────────
         "load_lyrics" => {

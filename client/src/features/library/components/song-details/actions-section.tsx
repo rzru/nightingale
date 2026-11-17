@@ -1,5 +1,6 @@
-import { TrophyIcon } from 'lucide-react';
+import { AudioLinesIcon, TrophyIcon } from 'lucide-react';
 import { Fragment } from 'react';
+import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
 import { exportSongNge } from '@/bridge/playback';
@@ -34,6 +35,12 @@ const run =
     );
   };
 
+/** Analyzed songs with an editable transcript: not UltraStar, not a bundle. */
+const canEditTiming = (song: Song): boolean =>
+  song.is_analyzed &&
+  song.transcript_source !== 'Usdx' &&
+  !song.path.toLowerCase().endsWith('.nge');
+
 export const ActionsSection = ({
   song,
   status,
@@ -41,6 +48,7 @@ export const ActionsSection = ({
   supportsAnalysisActions,
 }: ActionsSectionProps) => {
   const { setMode } = useDialog();
+  const navigate = useNavigate();
   const analysis = useAnalysis();
   const { data: profiles } = useProfiles();
   const hasScores = profiles?.scores.some((score) => score.song_hash === song.file_hash) ?? false;
@@ -78,6 +86,24 @@ export const ActionsSection = ({
     onViewLyrics: () => setMode({ mode: 'view-lyrics', song }),
     run,
   });
+
+  if (canEditTiming(song)) {
+    groups.push([
+      {
+        icon: AudioLinesIcon,
+        title: 'timingEditor.open',
+        description: 'timingEditor.openDescription',
+        onClick: () => {
+          const params = new URLSearchParams({
+            hash: song.file_hash,
+            title: song.title,
+            tempo: String(song.tempo),
+          });
+          void navigate(`/timing-editor?${params.toString()}`);
+        },
+      },
+    ]);
+  }
 
   if (hasScores) {
     groups.unshift([

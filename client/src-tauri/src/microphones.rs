@@ -229,6 +229,28 @@ struct MicCaptureTarget {
     emit_audio: bool,
     channel: Channel<MicSampleFrame>,
     pcm: VecDeque<f32>,
+    /// Performance recording is armed for this capture.
+    record: bool,
+    /// Every captured sample while recording, drained by the capture loop.
+    recorded: Vec<f32>,
+}
+
+/// Arm or disarm performance recording for a capture.
+pub(crate) fn set_recording(capture_id: &str, enabled: bool) {
+    let captures = MIC_CAPTURES
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    for capture in captures.values() {
+        let mut targets = capture
+            .targets
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some(target) = targets.get_mut(capture_id) {
+            target.record = enabled;
+            target.recorded.clear();
+            return;
+        }
+    }
 }
 
 type MicCaptureTargets = Arc<Mutex<HashMap<String, MicCaptureTarget>>>;
@@ -423,6 +445,8 @@ pub(crate) fn start_mic_capture(
         emit_audio: next_options.emit_audio,
         channel: on_samples,
         pcm: VecDeque::with_capacity(PCM_QUEUE_CAP),
+        record: false,
+        recorded: Vec::new(),
     };
     let mut captures = MIC_CAPTURES
         .lock()
@@ -508,9 +532,11 @@ fn try_build_stream(
             for target in targets.values_mut() {
                 let selected_channel = target.selected_channel.unwrap_or(active_channel);
                 for frame in data.chunks(ch) {
-                    target
-                        .pcm
-                        .push_back(frame.get(selected_channel).copied().unwrap_or(0.0));
+                    let sample = frame.get(selected_channel).copied().unwrap_or(0.0);
+                    target.pcm.push_back(sample);
+                    if target.record {
+                        target.recorded.push(sample);
+                    }
                 }
                 while target.pcm.len() > PCM_QUEUE_CAP {
                     target.pcm.pop_front();
@@ -733,6 +759,19 @@ fn try_build_output_stream(
     Some(stream)
 }
 
+/// Recorded samples per capture, taken out of the shared targets so the
+/// recording file is written without holding the lock the audio callback needs.
+fn drain_recorded(targets: &MicCaptureTargets) -> Vec<(String, Vec<f32>)> {
+    let Ok(mut targets) = targets.try_lock() else {
+        return Vec::new();
+    };
+    targets
+        .iter_mut()
+        .filter(|(_, target)| target.record && !target.recorded.is_empty())
+        .map(|(id, target)| (id.clone(), std::mem::take(&mut target.recorded)))
+        .collect()
+}
+
 fn drain_target_chunks(targets: &MicCaptureTargets) -> Vec<(Channel<MicSampleFrame>, Vec<f32>)> {
     let Ok(mut targets) = targets.try_lock() else {
         return Vec::new();
@@ -835,6 +874,10 @@ fn run_mic_loop(
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner())
                 .clear();
+        }
+
+        for (capture_id, samples) in drain_recorded(&targets) {
+            crate::recording::append(&capture_id, sr, &samples);
         }
 
         for (channel, samples) in drain_target_chunks(&targets) {

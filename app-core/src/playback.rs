@@ -78,8 +78,166 @@ pub fn load_transcript(file_hash: &str) -> Result<Value, NightingaleError> {
     let cache = CacheDir::new();
     let path = resolve_transcript_path(&cache, file_hash);
     let data = std::fs::read_to_string(&path)?;
-    let value = serde_json::from_str(&data)?;
+    let mut value: Value = serde_json::from_str(&data)?;
+    crate::analyzer::ensure_melody(file_hash);
+    // Notes are stored in the original key; the stems of a shifted key sound
+    // `key_offset` semitones away, so the reference notes move with them.
+    if let Some(song) = library_db::load_song_by_hash(file_hash).ok().flatten() {
+        transpose_transcript_notes(&mut value, i64::from(song.key_offset));
+    }
     Ok(value)
+}
+
+fn editable_transcript_path(file_hash: &str) -> Result<PathBuf, NightingaleError> {
+    if let Some(song) = library_db::load_song_by_hash(file_hash).ok().flatten()
+        && (song.usdx.is_some() || song_is_nge(&song))
+    {
+        return Err("UltraStar and .nge songs are read-only".into());
+    }
+    Ok(CacheDir::new().transcript_path(file_hash))
+}
+
+/// The transcript as stored: original tempo and key, for the timing editor.
+pub fn load_base_transcript(file_hash: &str) -> Result<Value, NightingaleError> {
+    let path = editable_transcript_path(file_hash)?;
+    Ok(serde_json::from_str(&std::fs::read_to_string(&path)?)?)
+}
+
+/// Save lines and words edited by hand. The transcript is marked `edited` so
+/// automatic re-analysis does not silently replace it, and the notes are cut
+/// again from the cached pitch curve without running any neural network.
+pub fn save_transcript_edits(file_hash: &str, segments: Value) -> Result<(), NightingaleError> {
+    if !segments.is_array() {
+        return Err("segments must be a list".into());
+    }
+    let path = editable_transcript_path(file_hash)?;
+    let mut transcript: Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
+    transcript["segments"] = segments;
+    transcript["edited"] = Value::from(true);
+    // The edited words carry no notes yet: an older version number makes every
+    // load ask for them until the background pass has written them.
+    if let Some(fields) = transcript.as_object_mut() {
+        fields.remove("version");
+        fields.remove("range");
+        fields.remove("quality");
+    }
+
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, serde_json::to_string_pretty(&transcript)?)?;
+    std::fs::rename(&tmp, &path)?;
+
+    let cache = CacheDir::new();
+    cache.delete_transcript_variants(file_hash);
+    crate::analyzer::recut_melody(file_hash);
+    Ok(())
+}
+
+/// Largest per-song lyrics offset in either direction.
+const MAX_LYRICS_OFFSET_MS: i64 = 10_000;
+
+/// Move the lyrics of a song earlier (negative) or later (positive) against
+/// the audio. The offset is baked into the cached transcript, so the text on
+/// screen and the scoring both follow it; `lyrics_offset_ms` in the transcript
+/// records the total shift. Returns the stored offset.
+pub fn set_lyrics_offset(file_hash: &str, offset_ms: i64) -> Result<i64, NightingaleError> {
+    let offset_ms = offset_ms.clamp(-MAX_LYRICS_OFFSET_MS, MAX_LYRICS_OFFSET_MS);
+    let cache = CacheDir::new();
+    let path = cache.transcript_path(file_hash);
+    let mut transcript: Value = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
+
+    let current = transcript
+        .get("lyrics_offset_ms")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0);
+    if current == offset_ms {
+        return Ok(offset_ms);
+    }
+
+    // Both offsets are clamped to +-10 s, so their difference fits in an i32.
+    let delta_ms = i32::try_from(offset_ms - current).map_err(|e| e.to_string())?;
+    let delta_sec = f64::from(delta_ms) / 1000.0;
+    shift_transcript_timestamps(&mut transcript, delta_sec);
+    transcript["lyrics_offset_ms"] = Value::from(offset_ms);
+
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, serde_json::to_string_pretty(&transcript)?)?;
+    std::fs::rename(&tmp, &path)?;
+
+    // Tempo variants are derived from the base transcript.
+    cache.delete_transcript_variants(file_hash);
+    // The shifted notes are close; cut them again from the pitch curve so each
+    // word gets the notes that actually sound under it.
+    crate::analyzer::recut_melody(file_hash);
+    Ok(offset_ms)
+}
+
+fn shift_time_field(node: &mut Value, field: &str, delta_sec: f64) {
+    let Some(v) = node.get(field).and_then(|v| v.as_f64()) else {
+        return;
+    };
+    node[field] = Value::from(round_transcript_time((v + delta_sec).max(0.0)));
+}
+
+fn shift_transcript_timestamps(transcript: &mut Value, delta_sec: f64) {
+    let Some(segments) = transcript
+        .get_mut("segments")
+        .and_then(|v| v.as_array_mut())
+    else {
+        return;
+    };
+    for segment in segments {
+        shift_time_field(segment, "start", delta_sec);
+        shift_time_field(segment, "end", delta_sec);
+        let Some(words) = segment.get_mut("words").and_then(|v| v.as_array_mut()) else {
+            continue;
+        };
+        for word in words {
+            shift_time_field(word, "start", delta_sec);
+            shift_time_field(word, "end", delta_sec);
+            let Some(notes) = word.get_mut("notes").and_then(|v| v.as_array_mut()) else {
+                continue;
+            };
+            for note in notes {
+                shift_time_field(note, "start", delta_sec);
+                shift_time_field(note, "end", delta_sec);
+            }
+        }
+    }
+}
+
+fn transpose_pitch_field(node: &mut Value, field: &str, semitones: i64) {
+    if let Some(pitch) = node.get(field).and_then(|v| v.as_i64()) {
+        node[field] = Value::from(pitch + semitones);
+    }
+}
+
+fn transpose_transcript_notes(transcript: &mut Value, semitones: i64) {
+    if semitones == 0 {
+        return;
+    }
+    if let Some(range) = transcript.get_mut("range").filter(|v| v.is_object()) {
+        transpose_pitch_field(range, "low", semitones);
+        transpose_pitch_field(range, "high", semitones);
+    }
+    let Some(segments) = transcript
+        .get_mut("segments")
+        .and_then(|v| v.as_array_mut())
+    else {
+        return;
+    };
+    for segment in segments {
+        let Some(words) = segment.get_mut("words").and_then(|v| v.as_array_mut()) else {
+            continue;
+        };
+        for word in words {
+            let Some(notes) = word.get_mut("notes").and_then(|v| v.as_array_mut()) else {
+                continue;
+            };
+            for note in notes {
+                transpose_pitch_field(note, "pitch", semitones);
+            }
+        }
+    }
 }
 
 fn resolve_effective_key_tempo(song: &Song) -> Option<(String, f64)> {
@@ -673,6 +831,12 @@ fn scale_transcript_timestamps(transcript: &mut Value, factor: f64) {
             for word in words {
                 scale_time_field(word, "start", factor);
                 scale_time_field(word, "end", factor);
+                if let Some(notes) = word.get_mut("notes").and_then(|v| v.as_array_mut()) {
+                    for note in notes {
+                        scale_time_field(note, "start", factor);
+                        scale_time_field(note, "end", factor);
+                    }
+                }
             }
         }
     }

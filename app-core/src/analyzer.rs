@@ -1168,6 +1168,94 @@ fn run_key_pass(
     }
 }
 
+// ─── Melody backfill ─────────────────────────────────────────────────
+
+/// Transcript format that carries per-word notes (see `melody.py`).
+const NOTES_TRANSCRIPT_VERSION: u64 = 3;
+
+static MELODY_BACKFILL_RUNNING: LazyLock<Mutex<HashSet<String>>> =
+    LazyLock::new(|| Mutex::new(HashSet::new()));
+
+/// Songs analyzed before notes existed get them computed in the background the
+/// first time they are opened. The notes are picked up on the next load.
+pub(crate) fn ensure_melody(file_hash: &str) {
+    start_melody_pass(file_hash, false);
+}
+
+/// Cut the notes again from the cached pitch curve after the word timings of a
+/// song changed. Runs in the background; the notes are picked up on next load.
+pub(crate) fn recut_melody(file_hash: &str) {
+    start_melody_pass(file_hash, true);
+}
+
+fn start_melody_pass(file_hash: &str, even_with_notes: bool) {
+    let cache = CacheDir::new();
+    // Always judge the base transcript: tempo variants are derived from it.
+    let Some(transcript) = std::fs::read_to_string(cache.transcript_path(file_hash))
+        .ok()
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+    else {
+        return;
+    };
+    let version = transcript.get("version").and_then(|v| v.as_u64());
+    if !even_with_notes && version.is_some_and(|v| v >= NOTES_TRANSCRIPT_VERSION) {
+        return;
+    }
+    // USDX files bring their own notes; there is no vocal stem to analyze.
+    if transcript.get("source").and_then(|v| v.as_str()) == Some("usdx") {
+        return;
+    }
+    // Without a vocal stem there is nothing to extract the melody from.
+    let has_stems = library_db::load_song_by_hash(file_hash)
+        .ok()
+        .flatten()
+        .is_some_and(|song| !song.no_stems);
+    if !has_stems {
+        return;
+    }
+    if !lock_unpoisoned(&MELODY_BACKFILL_RUNNING).insert(file_hash.to_string()) {
+        return;
+    }
+
+    let file_hash = file_hash.to_string();
+    std::thread::spawn(move || {
+        match run_melody_pass(&cache, &file_hash) {
+            Ok(()) => {
+                // Tempo variants were built from the note-less transcript.
+                cache.delete_transcript_variants(&file_hash);
+                info!("[analyzer] melody backfill complete for {file_hash}");
+            }
+            Err(e) => warn!("[analyzer] melody backfill failed for {file_hash}: {e}"),
+        }
+        lock_unpoisoned(&MELODY_BACKFILL_RUNNING).remove(&file_hash);
+    });
+}
+
+fn run_melody_pass(cache: &CacheDir, file_hash: &str) -> Result<(), NightingaleError> {
+    let cmd_json = serde_json::json!({
+        "type": "melody",
+        "cache_path": cache.path.to_string_lossy(),
+        "hash": file_hash,
+    });
+    let json_str = serde_json::to_string(&cmd_json)?;
+
+    let mut guard = lock_unpoisoned(&ANALYZER_SERVER);
+    ensure_server(&mut guard)?;
+    let server = guard
+        .as_mut()
+        .ok_or_else(|| NightingaleError::Other("analyzer server unavailable".into()))?;
+    // `None` progress hash keeps this off the status pipe (no queue rows).
+    match send_and_monitor(server, &json_str, None, None) {
+        Ok(SongResult::Done) => Ok(()),
+        Ok(SongResult::Cancelled) => Err(NightingaleError::Other("melody pass cancelled".into())),
+        Ok(SongResult::Error(msg)) => Err(NightingaleError::Other(msg)),
+        Ok(SongResult::Oom) | Err(_) => {
+            *guard = None;
+            Err(NightingaleError::Other("melody pass failed".into()))
+        }
+    }
+}
+
 // ─── Audio materialization for non-local sources ─────────────────────
 
 /// Make sure the song's audio is present on disk and the row is keyed by the

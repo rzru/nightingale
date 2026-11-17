@@ -1,3 +1,4 @@
+import type { NoteView } from '../scoring/note-display';
 import {
   PITCH_BUFFER_SIZE,
   PITCH_WINDOW_SAMPLES,
@@ -6,6 +7,9 @@ import {
   SMOOTHING,
 } from './constants';
 import { createPitchDetector, detectPitchFromSamples } from './detect';
+
+/** Reference notes for the graph plus the pitch tolerance of the difficulty. */
+export type SeriesNoteView = NoteView & { tolerance: number };
 
 export type ReferencePitchTrack = {
   pitches: (number | null)[];
@@ -23,6 +27,8 @@ export type PitchSeries = {
   referenceTrack: ReferencePitchTrack | null;
   referenceTime: number;
   currentTime: number;
+  /** Set for songs with notes: the graph draws notes instead of the curve. */
+  noteView?: SeriesNoteView | null;
 };
 
 export function freqToSemitone(hz: number): number {
@@ -73,7 +79,13 @@ export class PitchStateBuffer {
   private smoothedUser: number | null = null;
   private times: number[] = [];
   private octaveAnchorSemitone: number | null = null;
+  /** Octave the voice line follows when the song has notes. */
+  private noteAnchorSemitone: number | null = null;
   private lastPushTime = 0;
+
+  setNoteAnchor(semitone: number | null): void {
+    this.noteAnchorSemitone = semitone;
+  }
 
   setOctaveAnchor(semitone: number | null): void {
     this.octaveAnchorSemitone = semitone;
@@ -85,6 +97,9 @@ export class PitchStateBuffer {
     }
 
     const userSemitone = freqToSemitone(this.smoothedUser);
+    if (this.noteAnchorSemitone !== null) {
+      return snapToRefOctave(this.noteAnchorSemitone, userSemitone);
+    }
     const refSemitone =
       this.smoothedRef !== null ? freqToSemitone(this.smoothedRef) : this.octaveAnchorSemitone;
     return refSemitone === null ? userSemitone : snapToRefOctave(refSemitone, userSemitone);
@@ -157,6 +172,7 @@ export class PitchStateBuffer {
     this.smoothedRef = null;
     this.smoothedUser = null;
     this.octaveAnchorSemitone = null;
+    this.noteAnchorSemitone = null;
     this.lastPushTime = 0;
   }
 }

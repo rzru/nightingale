@@ -71,6 +71,15 @@ function displaySettings(config: AppConfig | null) {
   };
 }
 
+/** Fill colour, outline and font of the karaoke text, as preset names. */
+function lyricsLook(config: AppConfig | null) {
+  return {
+    lyricsFillColor: config?.lyrics_fill_color,
+    lyricsOutline: config?.lyrics_outline,
+    lyricsFont: config?.lyrics_font,
+  };
+}
+
 function PlaybackLayout({
   song,
   config,
@@ -104,6 +113,7 @@ function PlaybackLayout({
     pitchGraphScale,
     lyricsRomanizationMode,
   } = displaySettings(config);
+  const { lyricsFillColor, lyricsOutline, lyricsFont } = lyricsLook(config);
   const hudPosition = lyricsVerticalPosition === 'top' ? 'bottom' : 'top';
   const sessionWindowControls = sessionPlayback && isTauri;
 
@@ -248,6 +258,9 @@ function PlaybackLayout({
         horizontalPosition={lyricsHorizontalPosition}
         scale={lyricsScale}
         romanizationMode={lyricsRomanizationMode}
+        fillColor={lyricsFillColor}
+        outline={lyricsOutline}
+        font={lyricsFont}
       />
 
       {!started && <LoadingScreen song={song} />}

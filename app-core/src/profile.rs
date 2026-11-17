@@ -10,6 +10,17 @@ pub struct ScoreRecord {
     pub song_hash: String,
     pub score: u32,
     pub played_at: u64,
+    /// Scoring system that produced `score`: 1 is the frame-similarity scale
+    /// (0..1000), 2 is note scoring (0..10000). The scales are never mixed.
+    #[serde(default = "legacy_scoring_version")]
+    pub version: u32,
+    /// Difficulty the song was sung at; `None` for version 1 records.
+    #[serde(default)]
+    pub difficulty: Option<String>,
+}
+
+fn legacy_scoring_version() -> u32 {
+    1
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, TS)]
@@ -77,7 +88,14 @@ impl ProfileStore {
         self.save();
     }
 
-    pub fn add_score(&mut self, song_hash: &str, score: u32, profile: Option<&str>) {
+    pub fn add_score(
+        &mut self,
+        song_hash: &str,
+        score: u32,
+        profile: Option<&str>,
+        version: u32,
+        difficulty: Option<String>,
+    ) {
         let profile = match profile.or(self.active.as_deref()) {
             Some(profile) if self.profiles.iter().any(|candidate| candidate == profile) => {
                 profile.to_string()
@@ -93,6 +111,8 @@ impl ProfileStore {
             song_hash: song_hash.to_string(),
             score,
             played_at,
+            version,
+            difficulty,
         });
         self.save();
     }

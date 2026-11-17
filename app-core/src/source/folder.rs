@@ -63,10 +63,15 @@ impl MediaSource for FolderSource {
         let already_processed: HashSet<String> =
             library_db::load_song_path_strings().unwrap_or_default();
 
-        let pending: Vec<_> = media_files
+        let (known, pending): (Vec<_>, Vec<_>) = media_files
             .into_iter()
-            .filter(|(p, _)| !already_processed.contains(&p.to_string_lossy().into_owned()))
-            .collect();
+            .partition(|(p, _)| already_processed.contains(&p.to_string_lossy().into_owned()));
+
+        for (path, kind) in &known {
+            if matches!(kind, MediaKind::Usdx) {
+                usdx::refresh_stale_transcript(path, ctx.cache);
+            }
+        }
 
         let mut batch: Vec<Song> = Vec::new();
         let generation = ctx.generation;

@@ -242,6 +242,9 @@ pub fn local_media_roots() -> Vec<PathBuf> {
         crate::cache::songs_cache_dir(),
         // Downloaded background videos.
         crate::cache::videos_dir(),
+        // Saved performance recordings and the takes waiting to be saved.
+        crate::recording::recordings_dir(),
+        crate::recording::recordings_tmp_dir(),
     ];
     // Folder-library songs are streamed from wherever they were scanned.
     if let Some(LibrarySource::Folder { path }) = config.library_source.as_ref() {

@@ -14,6 +14,7 @@ mod playback;
 mod playback_queue;
 mod playback_session;
 mod profile;
+mod recording;
 mod remote_control;
 mod scanner;
 mod secret;
@@ -55,13 +56,17 @@ pub use media_server::{MediaEndpoint, local_media_roots};
 pub use playback::{
     AudioPaths, PixabayVideoDownloaded, ShiftDone, ShiftResult, StemsReady,
     download_pixabay_videos, ensure_mp3_stems, ensure_mp3_stems_ready_payload,
-    ensure_playable_source_video, get_audio_paths, get_cached_pixabay_videos, load_transcript,
-    prefetch_one_per_flavor, shift_key, shift_key_done_payload, shift_tempo,
-    shift_tempo_done_payload,
+    ensure_playable_source_video, get_audio_paths, get_cached_pixabay_videos, load_base_transcript,
+    load_transcript, prefetch_one_per_flavor, save_transcript_edits, set_lyrics_offset, shift_key,
+    shift_key_done_payload, shift_tempo, shift_tempo_done_payload,
 };
 pub use playback_queue::{PlaybackQueue, PlaybackQueueEntry};
 pub use playback_session::{PlaybackPlayer, PlaybackSession, PlaybackSessionStore};
 pub use profile::ProfileStore;
+pub use recording::{
+    RecordingFile, SaveRecordingRequest, delete_recording, discard_recording, list_recordings,
+    recordings_dir, recordings_tmp_dir, render_recording_voice, save_recording,
+};
 pub use remote_control::{REMOTE_PORT, RemoteControl, RemoteInfo, lan_base, lan_ip};
 pub use scanner::{CacheReconcileSummary, reconcile_cache, start_scan};
 pub use song::{Song, SongOrigin};
@@ -94,6 +99,7 @@ pub fn startup() -> Result<(), String> {
     init_library().map_err(|e| e.to_string())?;
 
     AnalysisQueue::clear();
+    recording::clear_unsaved_takes();
 
     let cache = CacheDir::new();
 

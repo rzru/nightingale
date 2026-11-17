@@ -11,6 +11,7 @@ from key_detect import detect_key
 from stems import separate_stems, separate_stems_uvr
 from transcribe import transcribe_vocals
 from align import align_lyrics
+from melody import add_melody
 
 
 def ffmpeg_bin():
@@ -138,6 +139,17 @@ def transcribe_or_align(
     )
 
 
+def add_melody_safe(transcript, vocals_path, output_dir, file_hash):
+    """Attach notes to the transcript; a melody failure never fails the song."""
+    if not vocals_path or not os.path.isfile(vocals_path):
+        return
+    progress(92, "Extracting melody...")
+    try:
+        add_melody(transcript, vocals_path, os.path.join(output_dir, f"{file_hash}_pitch.json"))
+    except Exception as e:
+        print(f"[nightingale:LOG] Melody extraction failed: {e}", flush=True)
+
+
 def run_pipeline(
     audio_path, output_dir, file_hash, device, *,
     model_name="large-v3", beam_size=5, batch_size=16,
@@ -191,6 +203,7 @@ def run_pipeline(
                     print(f"[nightingale:LOG] Failed to read provided transcript: {e}", flush=True)
             transcript["key"] = detected_key
             transcript["tempo"] = normalize_tempo(tempo)
+            add_melody_safe(transcript, vocals_path, output_dir, file_hash)
             progress(95, "Writing transcript...")
             with open(transcript_path, "w", encoding="utf-8") as f:
                 json.dump(transcript, f, ensure_ascii=False, indent=2)
@@ -214,6 +227,7 @@ def run_pipeline(
 
         transcript["key"] = detected_key
         transcript["tempo"] = normalize_tempo(tempo)
+        add_melody_safe(transcript, vocals_path, output_dir, file_hash)
 
         progress(95, "Writing transcript...")
         with open(transcript_path, "w", encoding="utf-8") as f:

@@ -1,6 +1,7 @@
-import { memo, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { clampPlaybackScale } from '@/features/playback/lib/display-scale';
+import { clampPlaybackScale, DEFAULT_LYRICS_SCALE } from '@/features/playback/lib/display-scale';
+import { lyricsStyleVars } from '@/features/playback/lib/lyrics-style';
 import {
   usePlaybackTransportActions,
   usePlaybackTransportState,
@@ -23,60 +24,39 @@ type WordStyle = {
 };
 
 const STYLES = {
-  unsung: { rgb: 'rgb(255,255,255)', opacity: 0.5 },
-  unsungEstimated: { rgb: 'rgb(255,200,100)', opacity: 0.4 },
-  sung: { rgb: 'rgb(255,255,255)', opacity: 1.0 },
   nextLine: { rgb: 'rgb(255,255,255)', opacity: 0.35 },
   nextLineEstimated: { rgb: 'rgb(255,200,100)', opacity: 0.25 },
 } as const;
 
-const unsungStyle = (word: Word): WordStyle =>
-  word.estimated === true ? STYLES.unsungEstimated : STYLES.unsung;
+// Colour of the part of a word that is not sung yet. The sung part uses the
+// `--lyric-sung` variable set on the container from the settings.
+const UNSUNG_COLOR = 'rgba(255,255,255,0.5)';
+const UNSUNG_ESTIMATED_COLOR = 'rgba(255,200,100,0.4)';
+
+const unsungColor = (word: Word): string =>
+  word.estimated === true ? UNSUNG_ESTIMATED_COLOR : UNSUNG_COLOR;
 
 const nextLineStyle = (word: Word): WordStyle =>
   word.estimated === true ? STYLES.nextLineEstimated : STYLES.nextLine;
 
-function lerp(a: number, b: number, t: number) {
-  return a + (b - a) * t;
-}
-
-function interpolateStyle(from: WordStyle, to: WordStyle, t: number): WordStyle {
-  const p = Math.max(0, Math.min(1, t));
-  if (from.rgb === to.rgb) {
-    return { rgb: to.rgb, opacity: lerp(from.opacity, to.opacity, p) };
-  }
-  const fm = from.rgb.match(/\d+/g);
-  const tm = to.rgb.match(/\d+/g);
-  if (fm === null || tm === null) {
-    return to;
-  }
-  const r = Math.round(lerp(+fm[0], +tm[0], p));
-  const g = Math.round(lerp(+fm[1], +tm[1], p));
-  const b = Math.round(lerp(+fm[2], +tm[2], p));
-  return {
-    rgb: `rgb(${r},${g},${b})`,
-    opacity: lerp(from.opacity, to.opacity, p),
-  };
-}
-
 // --- Per-frame DOM updates (called via rAF subscriber, no React re-renders) ---
 
-function computeWordStyle(word: Word, time: number, isActive: boolean): WordStyle {
-  const base = unsungStyle(word);
+/** Share of the word already sung, 0..1: the fill runs left to right. */
+function wordProgress(word: Word, time: number, isActive: boolean): number {
   if (!isActive) {
-    return base;
+    return 0;
   }
 
   const wStart = word.start - WORD_HIGHLIGHT_LEAD;
   const wEnd = word.end - WORD_HIGHLIGHT_LEAD;
 
   if (time >= wEnd) {
-    return STYLES.sung;
+    return 1;
   }
-  if (time >= wStart) {
-    return interpolateStyle(base, STYLES.sung, (time - wStart) / (wEnd - wStart));
+  if (time >= wStart && wEnd > wStart) {
+    return (time - wStart) / (wEnd - wStart);
   }
-  return base;
+  return 0;
 }
 
 function updateWordSpans(
@@ -90,9 +70,12 @@ function updateWordSpans(
     if (!span) {
       continue;
     }
-    const s = computeWordStyle(words[i], time, isActive);
-    span.style.color = s.rgb;
-    span.style.opacity = String(s.opacity);
+    // Tenths of a percent are finer than a pixel at any text size.
+    const fill = `${Math.round(wordProgress(words[i], time, isActive) * 1000) / 10}%`;
+    if (span.dataset.fill !== fill) {
+      span.dataset.fill = fill;
+      span.style.setProperty('--lyric-fill', fill);
+    }
   }
 }
 
@@ -117,23 +100,30 @@ type WordTokenProps = {
   isLast: boolean;
   readingClass: string;
   refSetter?: (el: HTMLSpanElement | null) => void;
-  style: WordStyle;
+  /** Static colour for the preview line; the current line is filled instead. */
+  style?: WordStyle;
 };
 
+const wordTokenStyle = (word: Word, style: WordStyle | undefined) =>
+  style === undefined
+    ? { '--lyric-unsung': unsungColor(word) }
+    : { color: style.rgb, opacity: style.opacity };
+
 function WordToken({ word, hasReading, isLast, readingClass, refSetter, style }: WordTokenProps) {
+  const fillClass = style === undefined ? 'lyric-fill' : undefined;
   return (
     <span
       ref={refSetter}
       className={hasReading ? 'inline-flex flex-col items-center leading-tight' : undefined}
-      style={{ color: style.rgb, opacity: style.opacity }}
+      style={wordTokenStyle(word, style)}
     >
       {hasReading && (
-        <span className={`block leading-tight font-medium opacity-80 ${readingClass}`}>
+        <span className={cn('block leading-tight font-medium opacity-80', readingClass, fillClass)}>
           {word.reading ?? '\u00A0'}
         </span>
       )}
-      <span>{word.word}</span>
-      {!hasReading && !isLast ? ' ' : ''}
+      <span className={fillClass}>{word.word}</span>
+      {!hasReading && !isLast && word.joined !== true ? ' ' : ''}
     </span>
   );
 }
@@ -232,6 +222,10 @@ type LyricsDisplayProps = {
   horizontalPosition?: LyricsHorizontalPosition | null;
   scale?: number | null;
   romanizationMode: LyricsRomanizationMode;
+  /** Preset names from the settings; see `lyrics-style.ts`. */
+  fillColor?: string | null;
+  outline?: string | null;
+  font?: string | null;
 };
 
 const lyricPositions = (props: LyricsDisplayProps) => ({
@@ -240,9 +234,13 @@ const lyricPositions = (props: LyricsDisplayProps) => ({
 });
 
 function LyricsDisplayImpl(props: LyricsDisplayProps) {
-  const { segments, romanizationMode } = props;
+  const { segments, romanizationMode, fillColor, outline, font } = props;
+  const styleVars = useMemo(
+    () => lyricsStyleVars({ fillColor, outline, font }),
+    [fillColor, outline, font],
+  );
   const { vertical, horizontal } = lyricPositions(props);
-  const scale = clampPlaybackScale(props.scale);
+  const scale = clampPlaybackScale(props.scale, DEFAULT_LYRICS_SCALE);
   const currentFontSize = `clamp(${1.35 * scale}rem, ${7 * scale}svh, ${2.5 * scale}rem)`;
   const nextFontSize = `clamp(${0.9 * scale}rem, ${4.5 * scale}svh, ${1.5 * scale}rem)`;
   const { isPlaying, paused } = usePlaybackTransportState();
@@ -362,6 +360,7 @@ function LyricsDisplayImpl(props: LyricsDisplayProps) {
         verticalClass[vertical],
         horizontalItemsClass[horizontal],
       )}
+      style={styleVars}
     >
       <div
         ref={containerRef}
@@ -389,7 +388,6 @@ function LyricsDisplayImpl(props: LyricsDisplayProps) {
                 refSetter={(el) => {
                   wordRefs.current[wi] = el;
                 }}
-                style={STYLES.unsung}
               />
             ))}
           </p>

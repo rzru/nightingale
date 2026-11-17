@@ -14,13 +14,23 @@ import type { PlaybackPlayer } from '@/bridge/playback-session';
 import { useMicCapture, useMicPitch } from '@/features/microphone/hooks/use-mic-pitch';
 import { useMicReactive, type MicReactiveRef } from '@/features/microphone/hooks/use-mic-reactive';
 import { useMicDevices, type MicDevice } from '@/features/microphone/queries/use-mic-devices';
+import { usePerformanceRecording } from '@/features/playback/hooks/use-performance-recording';
 import {
   usePitchScoring,
+  type LiveScoreStats,
   type PitchScoringSource,
 } from '@/features/playback/hooks/use-pitch-scoring';
 import { usePlaybackConfigPersist } from '@/features/playback/hooks/use-playback-config-persist';
+import { useScoreNotes } from '@/features/playback/hooks/use-score-notes';
 import { DEFAULT_MIC_LATENCY_COMPENSATION_SEC } from '@/features/playback/lib/pitch/constants';
+import { micRmsGate } from '@/features/playback/lib/pitch/mic-gate';
 import type { PitchSeries } from '@/features/playback/lib/pitch/state';
+import {
+  DEFAULT_DIFFICULTY,
+  type Difficulty,
+  type ScoreNote,
+} from '@/features/playback/lib/scoring/note-scoring';
+import { LEGACY_SCORING_VERSION, NOTE_SCORING_VERSION } from '@/features/playback/utils/result';
 import { t } from '@/i18n';
 import { defaultPlayerColor, type PlayerColor } from '@/shared/player-colors';
 import type { AppConfig } from '@/types/AppConfig';
@@ -38,6 +48,8 @@ export type PlaybackPlayerMicState = {
   micName: string;
   pitchScore: number | null;
   rawScore: number;
+  /** Combo, accuracy and per-line results; `null` without note scoring. */
+  scoreStats: LiveScoreStats | null;
   series: PitchSeries;
   micCaptureActive: boolean;
   micPitchActive: boolean;
@@ -55,6 +67,12 @@ export type PlaybackMicState = {
   micName: string;
   pitchScore: number | null;
   rawScore: number;
+  scoreStats: LiveScoreStats | null;
+  /** 2 when the song is scored by notes (0..10000), 1 otherwise (0..1000). */
+  scoringVersion: number;
+  difficulty: Difficulty;
+  /** The singer's voice is being recorded right now. */
+  recording: boolean;
   series: PitchSeries;
   micCaptureActive: boolean;
   micPitchActive: boolean;
@@ -63,6 +81,8 @@ export type PlaybackMicState = {
 
 export type PlaybackMicActions = {
   reactiveRef: MicReactiveRef;
+  /** End the performance recording; its take folder, or `null` without one. */
+  finishRecording: () => Promise<string | null>;
   handleToggleMic: () => void;
   handleCycleMic: () => void;
   handleToggleMicMonitor: () => void;
@@ -74,6 +94,7 @@ const MicStateContext = createContext<PlaybackMicState | null>(null);
 const MicActionsContext = createContext<PlaybackMicActions | null>(null);
 
 type PlaybackMicProviderProps = {
+  fileHash: string;
   config: AppConfig | null;
   players?: readonly PlaybackPlayer[];
   children: ReactNode;
@@ -87,7 +108,17 @@ type MicPlayerConfig = {
   color: PlayerColor;
 };
 
-type InternalPlayerMicState = PlaybackPlayerMicState & { present: boolean };
+type InternalPlayerMicState = PlaybackPlayerMicState & { present: boolean; micStalled: boolean };
+
+/** Pause the song and tell the singer when a microphone stops delivering audio. */
+function useMicLossPause(micLost: boolean, handlePause: () => void): void {
+  useEffect(() => {
+    if (micLost) {
+      handlePause();
+      toast.error(t('playback.playbackMicContext.microphoneLost'), { duration: 10_000 });
+    }
+  }, [handlePause, micLost]);
+}
 
 type PlayerMicInput = {
   player: MicPlayerConfig;
@@ -96,6 +127,9 @@ type PlayerMicInput = {
   emitAudio: boolean;
   source: PitchScoringSource;
   latencySec: number;
+  notes: readonly ScoreNote[] | null;
+  difficulty: Difficulty;
+  rmsGate: number;
 };
 
 type CaptureSettings = {
@@ -103,6 +137,21 @@ type CaptureSettings = {
   pitchEnabled: boolean;
   emitAudio: boolean;
 };
+
+const scoringDifficulty = (config: AppConfig | null): Difficulty => {
+  const value = config?.scoring_difficulty;
+  return value === 'easy' || value === 'medium' || value === 'hard' ? value : DEFAULT_DIFFICULTY;
+};
+
+/** Recording is for one singer: multiplayer songs are never recorded. */
+const recordingEnabled = (config: AppConfig | null, multiplayer: boolean): boolean =>
+  !multiplayer && config?.record_performance === true;
+
+const configRmsGate = (config: AppConfig | null): number =>
+  micRmsGate(config?.mic_sensitivity, config?.speaker_mode);
+
+const scoringVersionFor = (notes: readonly ScoreNote[] | null): number =>
+  notes === null ? LEGACY_SCORING_VERSION : NOTE_SCORING_VERSION;
 
 const latencyCompensation = (config: AppConfig | null): number =>
   config?.mic_latency_compensation_sec ?? DEFAULT_MIC_LATENCY_COMPENSATION_SEC;
@@ -178,6 +227,9 @@ function usePlayerMic({
   emitAudio,
   source,
   latencySec,
+  notes,
+  difficulty,
+  rmsGate,
 }: PlayerMicInput): InternalPlayerMicState {
   const shouldCapture = captureEnabled && player.present;
   const shouldTrackPitch = pitchEnabled && player.present;
@@ -191,12 +243,13 @@ function usePlayerMic({
   const {
     latestPitch,
     active: micPitchActive,
+    stalled: micStalled,
     error: micPitchError,
-  } = useMicPitch(player.id, shouldTrackPitch);
-  const { series, score } = usePitchScoring(
+  } = useMicPitch(player.id, shouldTrackPitch, rmsGate);
+  const { series, score, stats } = usePitchScoring(
     { ...source, isReady: source.isReady && player.present },
     latestPitch,
-    latencySec,
+    { latencyCompensationSec: latencySec, notes, difficulty },
   );
   const micReady = micCaptureActive && micPitchActive;
 
@@ -205,10 +258,12 @@ function usePlayerMic({
     micName: '',
     pitchScore: micReady ? score : null,
     rawScore: score,
+    scoreStats: stats,
     series,
     micCaptureActive,
     micPitchActive,
     micReady,
+    micStalled,
     error: micCaptureError ?? micPitchError,
   };
 }
@@ -223,6 +278,7 @@ function namePlayer(player: InternalPlayerMicState, devices: readonly MicDevice[
     micName: device?.label ?? player.microphoneId ?? t('settings.microphone.default'),
     pitchScore: player.pitchScore,
     rawScore: player.rawScore,
+    scoreStats: player.scoreStats,
     series: player.series,
     micCaptureActive: player.micCaptureActive,
     micPitchActive: player.micPitchActive,
@@ -244,6 +300,9 @@ type MicStateInput = {
   primary: PlaybackPlayerMicState;
   micUserEnabled: boolean;
   micMonitorUserEnabled: boolean;
+  scoringVersion: number;
+  difficulty: Difficulty;
+  recording: boolean;
 };
 
 function micState(input: MicStateInput): PlaybackMicState {
@@ -259,6 +318,10 @@ function micState(input: MicStateInput): PlaybackMicState {
       micName: primary.micName,
       pitchScore: primary.pitchScore,
       rawScore: primary.rawScore,
+      scoreStats: primary.scoreStats,
+      scoringVersion: input.scoringVersion,
+      difficulty: input.difficulty,
+      recording: false,
       series: primary.series,
       micCaptureActive: primary.micCaptureActive,
       micPitchActive: primary.micPitchActive,
@@ -275,6 +338,10 @@ function micState(input: MicStateInput): PlaybackMicState {
     micName: primary.micName,
     pitchScore: primary.pitchScore,
     rawScore: primary.rawScore,
+    scoreStats: primary.scoreStats,
+    scoringVersion: input.scoringVersion,
+    difficulty: input.difficulty,
+    recording: input.recording,
     series: primary.series,
     micCaptureActive: primary.micCaptureActive,
     micPitchActive: primary.micPitchActive,
@@ -282,10 +349,16 @@ function micState(input: MicStateInput): PlaybackMicState {
   };
 }
 
-export function PlaybackMicProvider({ config, players, children }: PlaybackMicProviderProps) {
+export function PlaybackMicProvider({
+  fileHash,
+  config,
+  players,
+  children,
+}: PlaybackMicProviderProps) {
   const sessionPlayers = players ?? EMPTY_PLAYERS;
   const { isReady, isPlaying, paused, duration } = usePlaybackTransportState();
-  const { subscribe, getScoringBuffer } = usePlaybackTransportActions();
+  const { subscribe, getScoringBuffer, getCurrentTime, handlePause } =
+    usePlaybackTransportActions();
   const persistConfig = usePlaybackConfigPersist(config);
   const multiplayer = sessionPlayers.length > 0;
   const [micUserEnabled, setMicUserEnabled] = useState(config?.mic_active ?? true);
@@ -306,11 +379,18 @@ export function PlaybackMicProvider({ config, players, children }: PlaybackMicPr
   );
   const configs = playerConfigs(sessionPlayers, selectedMicId);
   const latencySec = latencyCompensation(config);
+  const notes = useScoreNotes(fileHash);
+  const difficulty = scoringDifficulty(config);
+  const rmsGate = configRmsGate(config);
+  const scoringVersion = scoringVersionFor(notes);
   const playerInput = (index: number): PlayerMicInput => ({
     player: playerAt(configs, index),
     ...settings,
     source,
     latencySec,
+    notes,
+    difficulty,
+    rmsGate,
   });
   const slotOne = usePlayerMic(playerInput(0));
   const slotTwo = usePlayerMic(playerInput(1));
@@ -320,6 +400,19 @@ export function PlaybackMicProvider({ config, players, children }: PlaybackMicPr
     .filter((player) => player.present)
     .map((player) => namePlayer(player, micDevices));
   const primary = namedPlayers[0];
+  const recorder = usePerformanceRecording({
+    enabled: recordingEnabled(config, multiplayer),
+    captureId: slotOne.id,
+    playing: settings.pitchEnabled,
+    micReady: slotOne.micReady,
+    subscribe,
+    getCurrentTime,
+  });
+  const finishRecording = recorder.finish;
+  useMicLossPause(
+    [slotOne, slotTwo, slotThree, slotFour].some((player) => player.present && player.micStalled),
+    handlePause,
+  );
   const reactiveRef = useMicReactive([
     { captureId: slotOne.id, enabled: slotOne.micReady },
     { captureId: slotTwo.id, enabled: slotTwo.micReady },
@@ -403,12 +496,39 @@ export function PlaybackMicProvider({ config, players, children }: PlaybackMicPr
         primary,
         micUserEnabled,
         micMonitorUserEnabled,
+        scoringVersion,
+        difficulty,
+        recording: recorder.recording,
       }),
-    [micDevices, micMonitorUserEnabled, micUserEnabled, multiplayer, namedPlayers, primary],
+    [
+      difficulty,
+      recorder.recording,
+      micDevices,
+      micMonitorUserEnabled,
+      micUserEnabled,
+      multiplayer,
+      namedPlayers,
+      primary,
+      scoringVersion,
+    ],
   );
   const actionsValue = useMemo<PlaybackMicActions>(
-    () => ({ reactiveRef, handleToggleMic, handleCycleMic, handleToggleMicMonitor, selectMic }),
-    [handleCycleMic, handleToggleMic, handleToggleMicMonitor, reactiveRef, selectMic],
+    () => ({
+      reactiveRef,
+      finishRecording,
+      handleToggleMic,
+      handleCycleMic,
+      handleToggleMicMonitor,
+      selectMic,
+    }),
+    [
+      finishRecording,
+      handleCycleMic,
+      handleToggleMic,
+      handleToggleMicMonitor,
+      reactiveRef,
+      selectMic,
+    ],
   );
 
   return (

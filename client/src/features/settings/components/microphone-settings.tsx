@@ -12,6 +12,7 @@ import type { AppConfig } from '@/types/AppConfig';
 
 import { NAV } from './constants';
 import { MicLatencyField } from './mic-latency-field';
+import { MicSensitivityField } from './mic-sensitivity-field';
 import { MicTestField } from './mic-test-field';
 import { Hint, SettingsSelect } from './settings-controls';
 
@@ -173,6 +174,8 @@ export function MicrophoneSettings({
         onMeasuringChange={setLatencyMeasuring}
         onLatencyChange={onLatencyChange}
       />
+
+      <MicSensitivityField getFocusClassName={getFocusClassName} />
 
       <MicTestField
         selectedMicId={preferredMic}

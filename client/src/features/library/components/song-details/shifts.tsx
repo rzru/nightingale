@@ -1,5 +1,13 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { toast } from 'sonner';
+
+import { setLyricsOffset } from '@/bridge/analysis';
+import { useSongRange } from '@/features/library/queries/use-song-range';
+import { formatPitchRange } from '@/features/library/utils/pitch-range';
 import { calculateKeyShift } from '@/features/library/utils/shift-key';
 import { t } from '@/i18n';
+import { SCORE_NOTES, SONG_RANGE } from '@/shared/query-keys';
 import type { Song } from '@/types/Song';
 
 import { Stepper } from './stepper';
@@ -14,7 +22,7 @@ type Props = {
 };
 
 type ShiftControl = {
-  shiftType: 'tempo' | 'key';
+  shiftType: 'tempo' | 'key' | 'offset';
   title: string;
   description: string;
   value: string | null;
@@ -45,6 +53,83 @@ const ShiftControlRow = ({ control, disabled }: { control: ShiftControl; disable
     />
   </div>
 );
+
+const VocalRangeRow = ({ song, keyOffset }: { song: Song; keyOffset: number }) => {
+  const { data: info } = useSongRange(song.file_hash);
+  // The stored range already includes the saved key shift; follow the stepper
+  // while a new shift is pending.
+  const range = formatPitchRange(info?.range ?? null, keyOffset - song.key_offset);
+  if (range === null) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-3 py-2">
+      <p className="text-xs font-medium">{t('library.songDetails.shifts.vocalRange')}</p>
+      <p className="text-xs text-muted-foreground tabular-nums">{range}</p>
+    </div>
+  );
+};
+
+/** Shown when many words of the song have a doubtful timing. */
+const LowQualityNote = ({ song }: { song: Song }) => {
+  const { data: info } = useSongRange(song.file_hash);
+  if (info?.lowQuality !== true) {
+    return null;
+  }
+  return (
+    <p className="py-2 text-xs leading-snug text-amber-600 dark:text-amber-400">
+      {t('library.songDetails.shifts.lowQualityWarning')}
+    </p>
+  );
+};
+
+const LYRICS_OFFSET_STEP_MS = 50;
+const LYRICS_OFFSET_MAX_MS = 5000;
+
+const formatOffset = (offsetMs: number): string =>
+  t('library.songDetails.shifts.lyricsOffsetValue', {
+    value: `${offsetMs > 0 ? '+' : ''}${offsetMs}`,
+  });
+
+/** Per-song lyrics offset: for text that runs early or late against the music. */
+const LyricsOffsetRow = ({ song, disabled }: { song: Song; disabled: boolean }) => {
+  const queryClient = useQueryClient();
+  const { data: info } = useSongRange(song.file_hash);
+  const [pending, setPending] = useState(false);
+  const offsetMs = info?.lyricsOffsetMs ?? 0;
+
+  const change = (next: number) => {
+    setPending(true);
+    void setLyricsOffset(song.file_hash, next)
+      .catch((error: unknown) => {
+        toast.error(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        setPending(false);
+        void queryClient.invalidateQueries({ queryKey: SONG_RANGE });
+        void queryClient.invalidateQueries({ queryKey: SCORE_NOTES });
+      });
+  };
+
+  return (
+    <ShiftControlRow
+      disabled={disabled || pending}
+      control={{
+        shiftType: 'offset',
+        title: t('library.songDetails.shifts.lyricsOffset'),
+        description: t('library.songDetails.shifts.lyricsOffsetDescription'),
+        value: formatOffset(offsetMs),
+        onPlus: () => change(offsetMs + LYRICS_OFFSET_STEP_MS),
+        onMinus: () => change(offsetMs - LYRICS_OFFSET_STEP_MS),
+        disabled: {
+          plus: offsetMs >= LYRICS_OFFSET_MAX_MS,
+          minus: offsetMs <= -LYRICS_OFFSET_MAX_MS,
+        },
+      }}
+    />
+  );
+};
 
 export const Shifts = ({
   song,
@@ -88,9 +173,12 @@ export const Shifts = ({
 
   return (
     <div className="divide-y">
+      <LowQualityNote song={song} />
+      <VocalRangeRow song={song} keyOffset={keyOffset} />
       {controls.map((control) => (
         <ShiftControlRow key={control.shiftType} control={control} disabled={disabled} />
       ))}
+      <LyricsOffsetRow song={song} disabled={disabled} />
     </div>
   );
 };

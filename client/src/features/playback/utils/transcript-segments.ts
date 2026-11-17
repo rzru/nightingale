@@ -24,10 +24,19 @@ export function splitLongSegments(
       result.push(seg);
       continue;
     }
-    for (let i = 0; i < seg.words.length; i += maxWords) {
-      const chunk = seg.words.slice(i, i + maxWords);
+    for (let i = 0; i < seg.words.length;) {
+      // Never break a line between syllables of one word.
+      let end = Math.min(i + maxWords, seg.words.length);
+      while (end < seg.words.length && seg.words[end - 1].joined === true) {
+        end += 1;
+      }
+      const chunk = seg.words.slice(i, end);
+      i = end;
       result.push({
-        text: chunk.map((w) => w.word).join(' '),
+        text: chunk
+          .map((w) => (w.joined === true ? w.word : `${w.word} `))
+          .join('')
+          .trim(),
         start: chunk[0].start,
         end: chunk[chunk.length - 1].end,
         words: chunk,

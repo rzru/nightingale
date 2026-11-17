@@ -43,6 +43,11 @@ const nativeCommands = new Set([
   'start_mic_capture',
   'set_mic_monitoring',
   'stop_mic_capture',
+  'recording_begin',
+  'recording_mark',
+  'recording_hold',
+  'recording_end',
+  'recording_cancel',
 ]);
 
 const apiCall = async (name: string, args: InvokeArgs): Promise<unknown> => {

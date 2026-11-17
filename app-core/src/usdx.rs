@@ -415,6 +415,7 @@ fn synthesize_transcript(file: &UsdxFile) -> serde_json::Value {
         let mut text_buf = String::new();
         let mut first_start: Option<f64> = None;
         let mut last_end: f64 = 0.0;
+        let mut prev_ends_with_space = false;
 
         for note in phrase {
             let start = file.beat_to_seconds(note.beat);
@@ -425,7 +426,17 @@ fn synthesize_transcript(file: &UsdxFile) -> serde_json::Value {
             last_end = end;
 
             let trimmed = note.text.trim();
-            if !text_buf.is_empty() && note.text.starts_with(|c: char| c.is_whitespace()) {
+            // A note is a syllable. It continues the previous word unless a
+            // space separates them, on either side of the boundary.
+            let new_word = text_buf.is_empty()
+                || note.text.starts_with(|c: char| c.is_whitespace())
+                || prev_ends_with_space;
+            prev_ends_with_space = note.text.ends_with(|c: char| c.is_whitespace());
+            if !new_word {
+                if let Some(prev) = words.last_mut() {
+                    prev["joined"] = json!(true);
+                }
+            } else if !text_buf.is_empty() {
                 text_buf.push(' ');
             }
             text_buf.push_str(trimmed);
@@ -456,7 +467,35 @@ fn synthesize_transcript(file: &UsdxFile) -> serde_json::Value {
         "language": language,
         "segments": segments,
         "source": "usdx",
+        "usdx_format": USDX_TRANSCRIPT_FORMAT,
     })
+}
+
+/// Bumped whenever `synthesize_transcript` changes shape, so transcripts cached
+/// by an older build are rewritten on the next scan.
+/// 2: syllables of one word carry `joined`.
+const USDX_TRANSCRIPT_FORMAT: u64 = 2;
+
+/// Rewrite the cached transcript of an already-scanned USDX song when it was
+/// produced by an older transcript format. The library row is left untouched.
+pub(crate) fn refresh_stale_transcript(path: &Path, cache: &CacheDir) {
+    let Ok(file_hash) = compute_file_hash(path) else {
+        return;
+    };
+    let transcript_path = cache.transcript_path(&file_hash);
+    let current = std::fs::read_to_string(&transcript_path)
+        .ok()
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+        .and_then(|v| v.get("usdx_format").and_then(|f| f.as_u64()));
+    if !transcript_path.is_file() || current == Some(USDX_TRANSCRIPT_FORMAT) {
+        return;
+    }
+    let Ok(file) = parse_usdx_path(path) else {
+        return;
+    };
+    if let Ok(json) = serde_json::to_string_pretty(&synthesize_transcript(&file)) {
+        let _ = std::fs::write(&transcript_path, json);
+    }
 }
 
 // ─── Song construction ───────────────────────────────────────────────

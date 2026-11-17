@@ -1,5 +1,6 @@
-import type { PitchSeries } from '@/features/playback/lib/pitch/state';
+import type { PitchSeries, SeriesNoteView } from '@/features/playback/lib/pitch/state';
 import { freqToSemitone } from '@/features/playback/lib/pitch/state';
+import { activeNote, voiceHint } from '@/features/playback/lib/scoring/note-display';
 import type { Rgb } from '@/types/Rgb';
 
 type CanvasLayout = {
@@ -10,6 +11,9 @@ type CanvasLayout = {
   plotWidth: number;
   plotHeight: number;
   lineWidth: number;
+  /** Lowest semitone of the plot and its height in semitones. */
+  lowestSemitone: number;
+  semitoneRange: number;
 };
 
 type PlotPoint = {
@@ -69,7 +73,15 @@ function displayScale(windowHeight: number): number {
   return Math.max(MIN_DISPLAY_SCALE, windowHeight / REFERENCE_HEIGHT);
 }
 
-function computeLayout(windowHeight: number, windowWidth: number, userScale: number): CanvasLayout {
+type LayoutInput = {
+  windowHeight: number;
+  windowWidth: number;
+  userScale: number;
+  /** Fits the vertical range to the song's notes when present. */
+  view: SeriesNoteView | null;
+};
+
+function computeLayout({ windowHeight, windowWidth, userScale, view }: LayoutInput): CanvasLayout {
   const scale = displayScale(windowHeight) * userScale;
   const width = Math.min(BASE_DISPLAY_WIDTH * scale, Math.max(240, windowWidth - 32));
   const height = BASE_DISPLAY_HEIGHT * scale;
@@ -84,6 +96,8 @@ function computeLayout(windowHeight: number, windowWidth: number, userScale: num
     plotWidth: width - paddingX * 2,
     plotHeight: height - paddingY * 2,
     lineWidth: Math.max(2.25, 2 * scale),
+    lowestSemitone: view?.lowest ?? LOWEST_VISIBLE_SEMITONE,
+    semitoneRange: view?.range ?? VISIBLE_SEMITONE_RANGE,
   };
 }
 
@@ -112,7 +126,7 @@ function rgbaString({ r, g, b }: Rgb, alpha: number): string {
 function semitoneToY(semitone: number, layout: CanvasLayout): number {
   const normalized = Math.min(
     1,
-    Math.max(0, (semitone - LOWEST_VISIBLE_SEMITONE) / VISIBLE_SEMITONE_RANGE),
+    Math.max(0, (semitone - layout.lowestSemitone) / layout.semitoneRange),
   );
 
   return layout.paddingY + (1 - normalized) * layout.plotHeight;
@@ -312,6 +326,101 @@ function buildReferenceTrackSegments(series: PitchSeries, layout: CanvasLayout):
   );
 }
 
+const NOTE_BAR_COLOR: Rgb = { r: 0.5, g: 0.7, b: 1.0 };
+const GOLDEN_NOTE_COLOR: Rgb = { r: 1.0, g: 0.82, b: 0.25 };
+const RAP_NOTE_COLOR: Rgb = { r: 0.8, g: 0.8, b: 0.8 };
+const NOTE_BAR_ALPHA = 0.7;
+const SUNG_NOTE_ALPHA = 0.3;
+const MIN_NOTE_BAR_HEIGHT = 3;
+
+const noteBarColor = (type: string): Rgb => {
+  if (type === 'golden') {
+    return GOLDEN_NOTE_COLOR;
+  }
+  return type === 'rap' ? RAP_NOTE_COLOR : NOTE_BAR_COLOR;
+};
+
+/** Reference melody as one bar per note: position is time, height is pitch. */
+function drawReferenceNotes(
+  ctx: CanvasRenderingContext2D,
+  layout: CanvasLayout,
+  view: SeriesNoteView,
+  referenceTime: number,
+): void {
+  const barHeight = Math.max(MIN_NOTE_BAR_HEIGHT, (layout.plotHeight / layout.semitoneRange) * 0.9);
+  const left = layout.paddingX;
+  const right = layout.paddingX + layout.plotWidth;
+
+  for (const note of view.notes) {
+    if (note.end < referenceTime - GRAPH_WINDOW_SECONDS || note.type === 'free') {
+      continue;
+    }
+    if (note.start > referenceTime + GRAPH_WINDOW_SECONDS) {
+      break;
+    }
+    const x1 = Math.max(left, timeToX(note.start - referenceTime, layout));
+    const x2 = Math.min(right, timeToX(note.end - referenceTime, layout));
+    const y =
+      note.semitone === null
+        ? layout.paddingY + layout.plotHeight / 2
+        : semitoneToY(note.semitone, layout);
+    const alpha = note.end <= referenceTime ? SUNG_NOTE_ALPHA : NOTE_BAR_ALPHA;
+
+    ctx.fillStyle = rgbaString(noteBarColor(note.type), alpha);
+    ctx.beginPath();
+    ctx.roundRect(x1, y - barHeight / 2, Math.max(2, x2 - x1 - 1), barHeight, barHeight / 2);
+    ctx.fill();
+  }
+}
+
+const HINT_COLOR = 'rgba(242,204,26,0.95)';
+
+/**
+ * Next to the playhead: an arrow when the voice has to go up or down, and an
+ * octave mark when the note is hit in another octave than written. Colour is
+ * never the only cue.
+ */
+function drawVoiceHint(
+  ctx: CanvasRenderingContext2D,
+  layout: CanvasLayout,
+  series: PitchSeries,
+): void {
+  const view = series.noteView;
+  const userHz = series.userPitches.at(-1);
+  if (view === null || view === undefined || userHz === null || userHz === undefined) {
+    return;
+  }
+  const note = activeNote(view, series.referenceTime);
+  if (note === null) {
+    return;
+  }
+
+  const hint = voiceHint(note, freqToSemitone(userHz), view.tolerance);
+  const x = currentX(layout) + 10;
+  const size = Math.max(4, layout.plotHeight * 0.14);
+
+  if (hint.direction !== 0) {
+    const tipY = layout.height / 2 - hint.direction * size;
+    const baseY = layout.height / 2 + hint.direction * size;
+    ctx.fillStyle = HINT_COLOR;
+    ctx.beginPath();
+    ctx.moveTo(x + size, tipY);
+    ctx.lineTo(x, baseY);
+    ctx.lineTo(x + size * 2, baseY);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+
+  if (hint.octaves !== 0) {
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = '600 10px ui-sans-serif, system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(hint.octaves > 0 ? '8va \u2191' : '8vb \u2193', layout.width - 6, 5);
+  }
+}
+
 function drawPitchSeries({
   ctx,
   layout,
@@ -331,13 +440,10 @@ function drawPitchSeries({
     referenceTrack: series.referenceTrack,
     referenceTime: series.referenceTime,
     currentTime: series.currentTime,
+    noteView: series.noteView,
   };
 
-  if (includeReference) {
-    for (const segment of buildReferenceTrackSegments(series, layout)) {
-      strokeUniformSegment(ctx, segment, layout.lineWidth);
-    }
-  }
+  drawReference(ctx, layout, series, includeReference);
 
   const userSegments = buildSegments(visibleSeries.displaySemitones, (displaySemitone, index) =>
     buildUserPoint({ displaySemitone, index, series: visibleSeries, layout, baseColor }),
@@ -345,6 +451,24 @@ function drawPitchSeries({
 
   for (const segment of userSegments) {
     strokeGradientSegment(ctx, segment, layout.lineWidth);
+  }
+}
+
+function drawReference(
+  ctx: CanvasRenderingContext2D,
+  layout: CanvasLayout,
+  series: PitchSeries,
+  includeReference: boolean,
+): void {
+  if (!includeReference) {
+    return;
+  }
+  if (series.noteView) {
+    drawReferenceNotes(ctx, layout, series.noteView, series.referenceTime);
+    return;
+  }
+  for (const segment of buildReferenceTrackSegments(series, layout)) {
+    strokeUniformSegment(ctx, segment, layout.lineWidth);
   }
 }
 
@@ -421,7 +545,13 @@ export function renderPitchGraph({
     return;
   }
 
-  const layout = computeLayout(windowHeight, windowWidth, scale);
+  const primarySeries = players.at(0)?.series ?? series;
+  const layout = computeLayout({
+    windowHeight,
+    windowWidth,
+    userScale: scale,
+    view: primarySeries.noteView ?? null,
+  });
   setupCanvas(canvas, ctx, layout);
 
   if (players.length > 0) {
@@ -440,4 +570,7 @@ export function renderPitchGraph({
 
   drawCurrentLine(ctx, layout);
   drawCurrentNotes(ctx, notes);
+  if (players.length <= 1) {
+    drawVoiceHint(ctx, layout, primarySeries);
+  }
 }

@@ -49,8 +49,11 @@ function AchievedAt({ playedAt }: { playedAt: bigint }) {
   );
 }
 
-function topScoreRecords(records: ScoreRecord[]): ScoreRecord[] {
-  return records
+function topScoreRecords(allRecords: ScoreRecord[]): ScoreRecord[] {
+  // The global board shows one scoring scale: the newest one in use.
+  const version = Math.max(1, ...allRecords.map((record) => record.version));
+  return allRecords
+    .filter((record) => record.version === version)
     .map((record, index) => ({ record, index }))
     .toSorted((a, b) => b.record.score - a.record.score || a.index - b.index)
     .slice(0, TOP_LIMIT)

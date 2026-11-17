@@ -28,11 +28,12 @@ export function detectPitchFromSamples(
   detector: PitchDetector<Float32Array>,
   samples: Float32Array,
   sampleRate: number,
+  rmsGate: number = PITCH_RMS_GATE,
 ): number | null {
   if (samples.length !== PITCH_WINDOW_SAMPLES) {
     throw new Error(`Expected ${PITCH_WINDOW_SAMPLES} samples`);
   }
-  if (rms(samples) < PITCH_RMS_GATE) {
+  if (rms(samples) < rmsGate) {
     return null;
   }
   const [hz, clarity] = detector.findPitch(samples, sampleRate);

@@ -9,6 +9,7 @@ import {
   usePlaybackQueueQuery,
   useStartNextPlaybackQueueSong,
 } from '@/features/playback-queue/use-playback-queue';
+import type { LiveScoreStats } from '@/features/playback/hooks/use-pitch-scoring';
 import {
   usePlaybackMicState,
   usePlaybackTranscriptActions,
@@ -29,6 +30,11 @@ export type PlaybackPlayerResult = {
   profile: string | null;
   color: PlayerColor;
   score: number;
+  /** Scoring system that produced `score`; see `ScoreRecord.version`. */
+  version: number;
+  difficulty: string | null;
+  /** Combo, accuracy and per-line results; `null` without note scoring. */
+  stats: LiveScoreStats | null;
 };
 
 type FinalResultsInput = {
@@ -36,6 +42,9 @@ type FinalResultsInput = {
   players: ReturnType<typeof usePlaybackMicState>['players'];
   activeProfile: string | null;
   soloScore: number;
+  soloStats: LiveScoreStats | null;
+  version: number;
+  difficulty: string | null;
 };
 
 function buildFinalResults(input: FinalResultsInput): PlaybackPlayerResult[] {
@@ -46,6 +55,9 @@ function buildFinalResults(input: FinalResultsInput): PlaybackPlayerResult[] {
         profile: input.activeProfile,
         color: defaultPlayerColor(0),
         score: input.soloScore,
+        version: input.version,
+        difficulty: input.difficulty,
+        stats: input.soloStats,
       },
     ];
   }
@@ -54,6 +66,9 @@ function buildFinalResults(input: FinalResultsInput): PlaybackPlayerResult[] {
     profile: player.profile,
     color: player.color,
     score: player.rawScore,
+    version: input.version,
+    difficulty: input.difficulty,
+    stats: player.scoreStats,
   }));
 }
 
@@ -88,7 +103,15 @@ export function usePlaybackResult(
 
   const { isFinished } = usePlaybackTransportState();
   const { handleExit } = usePlaybackTransportActions();
-  const { rawScore, players: micPlayers, multiplayer } = usePlaybackMicState();
+  const {
+    rawScore,
+    scoreStats,
+    players: micPlayers,
+    multiplayer,
+    scoringVersion,
+    difficulty,
+  } = usePlaybackMicState();
+  const scoringRef = useLatestRef({ scoringVersion, difficulty, scoreStats });
   const { skipOutroPending } = usePlaybackTranscriptState();
   const { clearSkipOutroPending } = usePlaybackTranscriptActions();
 
@@ -111,6 +134,9 @@ export function usePlaybackResult(
       players: micPlayersRef.current,
       activeProfile: profileData?.active ?? null,
       soloScore: scoreRef.current,
+      soloStats: scoringRef.current.scoreStats,
+      version: scoringRef.current.scoringVersion,
+      difficulty: scoringRef.current.scoringVersion >= 2 ? scoringRef.current.difficulty : null,
     });
     const shouldShowResult =
       multiplayer || queuePlayback || finalResults.some((result) => result.score > 0);
@@ -124,7 +150,17 @@ export function usePlaybackResult(
       try {
         await Promise.all(
           finalResults.flatMap((result) =>
-            result.profile === null ? [] : [addScore(fileHash, result.score, result.profile)],
+            result.profile === null
+              ? []
+              : [
+                  addScore({
+                    songHash: fileHash,
+                    score: result.score,
+                    profile: result.profile,
+                    version: result.version,
+                    difficulty: result.difficulty,
+                  }),
+                ],
           ),
         );
         if (finalResults.some((result) => result.profile !== null)) {
@@ -152,6 +188,7 @@ export function usePlaybackResult(
     queryClient,
     queuePlayback,
     scoreRef,
+    scoringRef,
     skipOutroPending,
   ]);
 

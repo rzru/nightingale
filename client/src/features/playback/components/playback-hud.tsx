@@ -1,5 +1,6 @@
 import { forwardRef, memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
+import type { LiveScoreStats } from '@/features/playback/hooks/use-pitch-scoring';
 import { usePlaybackConfigPersist } from '@/features/playback/hooks/use-playback-config-persist';
 import type { VideoFlavor } from '@/features/playback/lib/video-flavor';
 import {
@@ -15,6 +16,7 @@ import {
 } from '@/features/playback/providers';
 import { computeLyricGapCaption, findCurrentSegment } from '@/features/playback/utils/lyrics-gap';
 import { playerDisplayName } from '@/features/playback/utils/player-display-name';
+import { starsScore } from '@/features/playback/utils/result';
 import { t, useTranslation } from '@/i18n';
 import { playerColorOption } from '@/shared/player-colors';
 import type { AppConfig } from '@/types/AppConfig';
@@ -327,6 +329,36 @@ function creditPositionClass(position: PlaybackHudPosition, windowControls: bool
   return windowControls && position === 'bottom' ? 'top-12' : notePositionClass(position);
 }
 
+const liveStarsScore = (score: number | null, version: number): number | null =>
+  score === null ? null : starsScore(score, version);
+
+const micReadyStats = (
+  score: number | null,
+  stats: LiveScoreStats | null,
+): LiveScoreStats | null => (score === null ? null : stats);
+
+/** Accuracy and combo under the score; only for songs scored by notes. */
+function LiveStatsLine({ stats }: { stats: LiveScoreStats | null }) {
+  if (stats === null) {
+    return null;
+  }
+  return (
+    <div className="text-xs whitespace-nowrap text-white/70 tabular-nums">
+      {t('playback.hud.accuracy', { percent: stats.accuracyPct })}
+      {stats.combo >= 2 ? ` · ${t('playback.hud.combo', { count: stats.combo })}` : ''}
+    </div>
+  );
+}
+
+/** Songs without notes fall back to the frame-similarity score (0..1000). */
+function SimplifiedScoringNote({ show }: { show: boolean }) {
+  return show ? (
+    <div className="text-[0.625rem] whitespace-nowrap text-white/50">
+      {t('playback.hud.simplifiedScoring')}
+    </div>
+  ) : null;
+}
+
 const scoreTextClass = (score: number | null): string =>
   `text-sm md:text-base ${score !== null && score !== 0 ? 'text-white' : 'text-white/50'}`;
 
@@ -337,12 +369,14 @@ function PlayerScore({
   player: PlaybackPlayerMicState;
   players: PlaybackPlayerMicState[];
 }) {
+  const { scoringVersion } = usePlaybackMicState();
   return (
     <div className="flex flex-col items-end gap-0.5">
-      <LiveStars score={player.pitchScore} size="sm" />
+      <LiveStars score={liveStarsScore(player.pitchScore, scoringVersion)} size="sm" />
       <span className={`whitespace-nowrap ${scoreTextClass(player.pitchScore)}`}>
         {playerDisplayName(player, players)}: {player.pitchScore ?? '--'}
       </span>
+      <LiveStatsLine stats={micReadyStats(player.pitchScore, player.scoreStats)} />
     </div>
   );
 }
@@ -395,8 +429,16 @@ function PlaybackHudImpl({
   const { firstSegmentStart, lastSegmentEnd, introSkipLeadSec, segments, transcriptSource } =
     usePlaybackTranscriptState();
   const { handleSkipIntro, handleSkipOutro } = usePlaybackTranscriptActions();
-  const { pitchScore, micUserEnabled, micName, micMonitorUserEnabled, multiplayer, players } =
-    usePlaybackMicState();
+  const {
+    pitchScore,
+    scoreStats,
+    scoringVersion,
+    micUserEnabled,
+    micName,
+    micMonitorUserEnabled,
+    multiplayer,
+    players,
+  } = usePlaybackMicState();
 
   const skipIntroRef = useRef<HTMLButtonElement>(null);
   const skipOutroRef = useRef<HTMLButtonElement>(null);
@@ -487,8 +529,10 @@ function PlaybackHudImpl({
               <MultiplayerScores players={players} />
             ) : (
               <div className="flex flex-col items-end gap-0.5">
-                <LiveStars score={pitchScore} />
+                <LiveStars score={liveStarsScore(pitchScore, scoringVersion)} />
                 <div className={scoreTextClass(pitchScore)}>{pitchScore ?? '--'}</div>
+                <LiveStatsLine stats={micReadyStats(pitchScore, scoreStats)} />
+                <SimplifiedScoringNote show={pitchScore !== null && scoringVersion < 2} />
               </div>
             )}
             <div className="my-1.5 hidden h-px w-full bg-white/20 sm:block" aria-hidden="true" />

@@ -49,6 +49,11 @@ export const shiftTempo = async (fileHash: string, tempo: number): Promise<void>
   return await invoke<void>('shift_tempo', { fileHash, tempo });
 };
 
+/** Move a song's lyrics earlier (negative) or later; returns the stored offset. */
+export const setLyricsOffset = async (fileHash: string, offsetMs: number): Promise<number> => {
+  return await invoke<number>('set_lyrics_offset', { fileHash, offsetMs });
+};
+
 export const shiftKey = async (
   fileHash: string,
   key: string,

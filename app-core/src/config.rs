@@ -207,6 +207,22 @@ pub struct AppConfig {
     pub mic_monitor_gain: Option<f64>,
     pub mic_latency_compensation_sec: Option<f64>,
     pub combine_multi_channel: Option<bool>,
+    /// Record the voice during a song to keep it mixed with the music.
+    #[serde(default)]
+    pub record_performance: Option<bool>,
+    /// `mp3` (default) or `wav` for saved recordings.
+    #[serde(default)]
+    pub recording_format: Option<String>,
+    /// Folder for saved recordings; `recordings/` in the data folder when unset.
+    #[serde(default)]
+    pub recordings_dir: Option<String>,
+    /// Microphone noise gate preset: `quiet`, `normal` (default), `noisy`, `loud`.
+    #[serde(default)]
+    pub mic_sensitivity: Option<String>,
+    /// The song plays through speakers, so the microphone hears it: raises the
+    /// noise gate.
+    #[serde(default)]
+    pub speaker_mode: Option<bool>,
     pub multiplayer_combine_multi_channel: Option<bool>,
     pub preferred_mic: Option<String>,
     pub multiplayer_players: Option<Vec<PlaybackPlayer>>,
@@ -218,7 +234,20 @@ pub struct AppConfig {
     pub lyrics_horizontal_position: Option<String>,
     pub lyrics_scale: Option<f64>,
     pub pitch_graph_scale: Option<f64>,
+    /// `easy` (default), `medium` or `hard`: pitch tolerance of note scoring.
+    #[serde(default)]
+    pub scoring_difficulty: Option<String>,
     pub lyrics_romanization_mode: Option<String>,
+    /// Colour that fills a word as it is sung: `white` (default), `yellow`,
+    /// `cyan`, `green`, `pink`.
+    #[serde(default)]
+    pub lyrics_fill_color: Option<String>,
+    /// Text outline: `none` (default), `black`, `blue`.
+    #[serde(default)]
+    pub lyrics_outline: Option<String>,
+    /// Lyrics font: `system` (default), `serif`, `narrow`, `mono`.
+    #[serde(default)]
+    pub lyrics_font: Option<String>,
     pub separator: Option<String>,
     pub asr_engine: Option<String>,
     pub align_backend: Option<String>,
@@ -280,6 +309,11 @@ impl Default for AppConfig {
             mic_monitoring: None,
             mic_monitor_gain: None,
             mic_latency_compensation_sec: None,
+            mic_sensitivity: None,
+            record_performance: None,
+            recording_format: None,
+            recordings_dir: None,
+            speaker_mode: None,
             combine_multi_channel: None,
             multiplayer_combine_multi_channel: None,
             preferred_mic: None,
@@ -292,7 +326,11 @@ impl Default for AppConfig {
             lyrics_horizontal_position: None,
             lyrics_scale: None,
             pitch_graph_scale: None,
+            scoring_difficulty: None,
             lyrics_romanization_mode: None,
+            lyrics_fill_color: None,
+            lyrics_outline: None,
+            lyrics_font: None,
             separator: None,
             asr_engine: None,
             align_backend: None,

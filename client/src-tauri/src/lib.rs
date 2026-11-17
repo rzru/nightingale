@@ -1,6 +1,7 @@
 mod backgrounds;
 mod logging;
 mod microphones;
+mod recording;
 
 use std::{
     collections::HashMap,
@@ -342,6 +343,11 @@ pub fn run() {
             start_mic_capture,
             set_mic_monitoring,
             stop_mic_capture,
+            recording::recording_begin,
+            recording::recording_mark,
+            recording::recording_hold,
+            recording::recording_end,
+            recording::recording_cancel,
         ])
         .setup(|app| {
             let _ = dotenvy::dotenv();

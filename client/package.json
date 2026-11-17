@@ -31,6 +31,7 @@
     "rules:check": "cd .. && node client/node_modules/rulesync/dist/cli/index.js doctor --strict && node client/node_modules/rulesync/dist/cli/index.js generate --dry-run --silent",
     "rules:generate": "cd .. && node client/node_modules/rulesync/dist/cli/index.js generate",
     "tauri": "tauri",
+    "test": "node --import ./tests/register.mjs --test tests/",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -13,6 +13,25 @@ below.
 
 ## [Unreleased]
 
+### Features
+
+- Songs are now scored by their notes: each note counts when you sing it within the chosen difficulty (easy, medium or hard, set in Playback settings), for up to 10,000 points. Accuracy and combo show under the score, and the results screen breaks accuracy down line by line. Older results stay on their own scale.
+- The pitch graph draws the melody as notes, colours your voice by whether it hits them, and shows arrows to go higher or lower plus an octave mark.
+- Analysis now extracts the melody of each song; songs analyzed earlier get it the first time they are opened. Song details show the vocal range, which follows key shifts.
+- Words now fill with colour from left to right as they are sung. Choose the fill colour, outline and font in Playback settings.
+- Added a per-song lyrics offset in song details for lyrics that run early or late.
+- Added a microphone noise gate and a speakers mode in General settings, so music from speakers is less likely to count as singing.
+- Playback pauses with a message when the microphone stops responding.
+- Added a Russian interface.
+- Song details warn when the lyrics look incomplete because part of the singing has no text under it.
+- Added a timing editor: fix words and their timing on a timeline with the vocal wave, play any part slowed down or looped, set timing by tapping along, mark words that should not be scored, and undo any step.
+- Record your performance during playback, listen to it with the music, adjust the voice timing, and save or discard the take.
+
+### Fixes
+
+- Lyrics and pitch graph are larger by default.
+- UltraStar songs no longer show spaces inside words split into syllables.
+
 ## [1.4.1] - 2026-11-09
 
 ### Fixes

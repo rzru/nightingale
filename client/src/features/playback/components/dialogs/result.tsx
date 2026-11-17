@@ -6,7 +6,7 @@ import { useDialogNav } from '@/features/menu/hooks/use-dialog-nav';
 import { MultiplayerSetupDialog } from '@/features/playback/components/dialogs/multiplayer-setup';
 import type { PlaybackPlayerResult } from '@/features/playback/hooks/use-playback-result';
 import { playerDisplayName } from '@/features/playback/utils/player-display-name';
-import { topScoresForSong } from '@/features/playback/utils/result';
+import { starsScore, topScoresForSong } from '@/features/playback/utils/result';
 import { t } from '@/i18n';
 import { Stars } from '@/shared/components/shared/stars';
 import { Button } from '@/shared/components/ui/button';
@@ -43,6 +43,9 @@ const EMPTY_RESULT: PlaybackPlayerResult = {
   profile: null,
   color: defaultPlayerColor(0),
   score: 0,
+  version: 1,
+  difficulty: null,
+  stats: null,
 };
 
 type Props = {
@@ -83,6 +86,14 @@ function MultiplayerResults({ results }: { results: PlaybackPlayerResult[] }) {
                     aria-hidden="true"
                   />
                   <span className="truncate font-medium">{playerDisplayName(result, results)}</span>
+                  {result.stats === null ? null : (
+                    <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                      {t('playback.dialogs.result.playerStats', {
+                        percent: result.stats.accuracyPct,
+                        count: result.stats.maxCombo,
+                      })}
+                    </span>
+                  )}
                   {index === 0 ? (
                     <span className="flex shrink-0 items-center gap-1 text-xs text-primary">
                       <TrophyIcon className="size-3" />
@@ -93,7 +104,7 @@ function MultiplayerResults({ results }: { results: PlaybackPlayerResult[] }) {
               </TableCell>
               <TableCell>
                 <div className="flex items-center justify-end gap-3">
-                  <Stars score={result.score} size="sm" />
+                  <Stars score={starsScore(result.score, result.version)} size="sm" />
                   <span className="min-w-8 text-right font-semibold tabular-nums">
                     {result.score}
                   </span>
@@ -107,6 +118,51 @@ function MultiplayerResults({ results }: { results: PlaybackPlayerResult[] }) {
   );
 }
 
+const lineBarClass = (accuracy: number): string => {
+  if (accuracy >= 0.8) {
+    return 'bg-emerald-500';
+  }
+  return accuracy >= 0.5 ? 'bg-amber-400' : 'bg-rose-500';
+};
+
+/** Accuracy, best combo and a bar per lyric line; only for note scoring. */
+function ScoreBreakdown({ stats }: { stats: PlaybackPlayerResult['stats'] }) {
+  if (stats === null) {
+    return null;
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex justify-center gap-6 text-sm">
+        <span>{t('playback.dialogs.result.accuracy', { percent: stats.accuracyPct })}</span>
+        <span>{t('playback.dialogs.result.bestCombo', { count: stats.maxCombo })}</span>
+      </div>
+      {stats.lines.length > 0 && (
+        <ul
+          className="flex h-12 items-end gap-px"
+          aria-label={t('playback.dialogs.result.lineBreakdown')}
+        >
+          {stats.lines.map((line) => {
+            const label = t('playback.dialogs.result.lineAccuracy', {
+              line: line.line + 1,
+              percent: Math.round(line.accuracy * 100),
+            });
+            return (
+              <li
+                key={line.line}
+                className={`min-w-0 flex-1 rounded-t-sm ${lineBarClass(line.accuracy)}`}
+                style={{ height: `${Math.max(6, Math.round(line.accuracy * 100))}%` }}
+                title={label}
+              >
+                <span className="sr-only">{label}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function SoloResults({ result, board }: { result: PlaybackPlayerResult; board: ScoreRecord[] }) {
   return (
     <>
@@ -117,8 +173,14 @@ function SoloResults({ result, board }: { result: PlaybackPlayerResult; board: S
         >
           {result.score}
         </p>
-        <Stars score={result.score} size="lg" className="mt-1" />
+        <Stars score={starsScore(result.score, result.version)} size="lg" className="mt-1" />
       </div>
+      <ScoreBreakdown stats={result.stats} />
+      {result.version < 2 ? (
+        <p className="text-center text-xs text-muted-foreground">
+          {t('playback.dialogs.result.simplifiedScoring')}
+        </p>
+      ) : null}
 
       {board.length > 0 ? (
         <>
@@ -467,7 +529,7 @@ export const ResultDialog = ({
 }: Props) => {
   const multiplayer = results.length > 1;
   const soloResult = results.at(0) ?? EMPTY_RESULT;
-  const board = topScoresForSong(scores, song.file_hash, TOP_LIMIT);
+  const board = topScoresForSong(scores, song.file_hash, TOP_LIMIT, soloResult.version);
 
   return (
     <Dialog open={open} modal>

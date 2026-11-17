@@ -5,7 +5,10 @@ import {
   pitchNoteIndex,
   renderPitchGraph,
 } from '@/features/playback/components/pitch-graph-canvas';
-import { clampPlaybackScale } from '@/features/playback/lib/display-scale';
+import {
+  clampPlaybackScale,
+  DEFAULT_PITCH_GRAPH_SCALE,
+} from '@/features/playback/lib/display-scale';
 import type { PitchSeries } from '@/features/playback/lib/pitch/state';
 import { usePlaybackMicState } from '@/features/playback/providers';
 import { playerColorOption } from '@/shared/player-colors';
@@ -125,7 +128,7 @@ type PitchGraphProps = {
   scale?: number | null;
 };
 
-export function PitchGraph({ series, position = 'top', scale = 1 }: PitchGraphProps) {
+export function PitchGraph({ series, position = 'top', scale }: PitchGraphProps) {
   const { micReady, multiplayer, players } = usePlaybackMicState();
   const visible = multiplayer ? players.some((player) => player.micReady) : micReady;
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -142,7 +145,7 @@ export function PitchGraph({ series, position = 'top', scale = 1 }: PitchGraphPr
       canvas,
       windowHeight,
       windowWidth,
-      scale: clampPlaybackScale(scale),
+      scale: clampPlaybackScale(scale, DEFAULT_PITCH_GRAPH_SCALE),
       series,
       players: multiplayer
         ? players

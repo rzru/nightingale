@@ -1,4 +1,7 @@
-import { DEFAULT_PLAYBACK_SCALE } from '@/features/playback/lib/display-scale';
+import {
+  DEFAULT_LYRICS_SCALE,
+  DEFAULT_PITCH_GRAPH_SCALE,
+} from '@/features/playback/lib/display-scale';
 import {
   DEFAULT_MIC_LATENCY_COMPENSATION_SEC,
   MAX_MIC_LATENCY_COMPENSATION_SEC,
@@ -97,6 +100,45 @@ export const LYRICS_ROMANIZATION_MODES: SettingsOption[] = [
   { value: 'disabled', label: 'settings.constants.disabled' },
 ];
 
+export const MIC_SENSITIVITIES: SettingsOption[] = [
+  { value: 'quiet', label: 'settings.constants.micSensitivityQuiet' },
+  { value: 'normal', label: 'settings.constants.micSensitivityNormal' },
+  { value: 'noisy', label: 'settings.constants.micSensitivityNoisy' },
+  { value: 'loud', label: 'settings.constants.micSensitivityLoud' },
+];
+
+export const SPEAKER_MODES: SettingsOption[] = [
+  { value: 'off', label: 'settings.constants.speakerModeOff' },
+  { value: 'on', label: 'settings.constants.speakerModeOn' },
+];
+
+export const LYRICS_FILL_COLORS: SettingsOption[] = [
+  { value: 'white', label: 'settings.constants.colorWhite' },
+  { value: 'yellow', label: 'settings.constants.colorYellow' },
+  { value: 'cyan', label: 'settings.constants.colorCyan' },
+  { value: 'green', label: 'settings.constants.colorGreen' },
+  { value: 'pink', label: 'settings.constants.colorPink' },
+];
+
+export const LYRICS_OUTLINES: SettingsOption[] = [
+  { value: 'none', label: 'settings.constants.outlineNone' },
+  { value: 'black', label: 'settings.constants.outlineBlack' },
+  { value: 'blue', label: 'settings.constants.outlineBlue' },
+];
+
+export const LYRICS_FONTS: SettingsOption[] = [
+  { value: 'system', label: 'settings.constants.fontSystem' },
+  { value: 'serif', label: 'settings.constants.fontSerif' },
+  { value: 'narrow', label: 'settings.constants.fontNarrow' },
+  { value: 'mono', label: 'settings.constants.fontMono' },
+];
+
+export const SCORING_DIFFICULTIES: SettingsOption[] = [
+  { value: 'easy', label: 'settings.constants.difficultyEasy' },
+  { value: 'medium', label: 'settings.constants.difficultyMedium' },
+  { value: 'hard', label: 'settings.constants.difficultyHard' },
+];
+
 export const DEFAULTS = {
   separator: 'karaoke',
   asr_engine: 'whisper',
@@ -108,6 +150,8 @@ export const DEFAULTS = {
   mic_monitor_gain: 0.65,
   mic_latency_compensation_sec: DEFAULT_MIC_LATENCY_COMPENSATION_SEC,
   combine_multi_channel: true,
+  mic_sensitivity: 'normal',
+  speaker_mode: false,
   multiplayer_combine_multi_channel: true,
   auto_analyze: false,
   master_volume: 1,
@@ -115,9 +159,13 @@ export const DEFAULTS = {
   playback_mode: 'classic',
   lyrics_vertical_position: 'bottom',
   lyrics_horizontal_position: 'center',
-  lyrics_scale: DEFAULT_PLAYBACK_SCALE,
-  pitch_graph_scale: DEFAULT_PLAYBACK_SCALE,
+  lyrics_scale: DEFAULT_LYRICS_SCALE,
+  pitch_graph_scale: DEFAULT_PITCH_GRAPH_SCALE,
   lyrics_romanization_mode: 'enabled',
+  scoring_difficulty: 'easy',
+  lyrics_fill_color: 'white',
+  lyrics_outline: 'none',
+  lyrics_font: 'system',
 } satisfies Pick<
   AppConfig,
   | 'separator'
@@ -130,6 +178,8 @@ export const DEFAULTS = {
   | 'mic_monitor_gain'
   | 'mic_latency_compensation_sec'
   | 'combine_multi_channel'
+  | 'mic_sensitivity'
+  | 'speaker_mode'
   | 'multiplayer_combine_multi_channel'
   | 'auto_analyze'
   | 'master_volume'
@@ -140,6 +190,10 @@ export const DEFAULTS = {
   | 'lyrics_scale'
   | 'pitch_graph_scale'
   | 'lyrics_romanization_mode'
+  | 'scoring_difficulty'
+  | 'lyrics_fill_color'
+  | 'lyrics_outline'
+  | 'lyrics_font'
 >;
 
 export const MIC_MONITOR_GAIN_STEP = 0.01;
@@ -162,7 +216,9 @@ export const NAV = {
     microphone: 3,
     micMonitorGain: 4,
     micLatency: 5,
-    micTest: 6,
+    micSensitivity: 6,
+    speakerMode: 7,
+    micTest: 8,
   },
   playback: {
     background: 1,
@@ -173,6 +229,10 @@ export const NAV = {
     lyricsScale: 6,
     pitchGraphScale: 7,
     lyricsRomanizationMode: 8,
+    scoringDifficulty: 9,
+    lyricsFillColor: 10,
+    lyricsOutline: 11,
+    lyricsFont: 12,
   },
 } as const;
 
@@ -210,10 +270,10 @@ export function getSettingsStops(
   hasMultiChannelInput: boolean,
 ) {
   if (tab === 'general') {
-    return [3, 2, 2, hasMultiChannelInput ? 2 : 1, 1, 2, 2, 2];
+    return [3, 2, 2, hasMultiChannelInput ? 2 : 1, 1, 2, 4, 2, 2, 2];
   }
   if (tab === 'playback') {
-    return [3, 2, 1, 1, 1, 1, 1, 1, 2, 2];
+    return [3, 2, 1, 1, 1, 1, 1, 1, 2, 3, 5, 3, 4, 2];
   }
 
   return isParakeet
