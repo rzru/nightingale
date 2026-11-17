@@ -17,8 +17,10 @@ import type { AppConfig } from '@/types/AppConfig';
 type KeyboardActions = {
   paused: boolean;
   guideVolume: number;
+  masterVolume: number;
   guideAvailable: boolean;
   setGuideVolume: (volume: number) => void;
+  setMasterVolume: (volume: number) => void;
   persistConfig: (patch: Partial<AppConfig>) => void;
   handlePause: () => void;
   handleContinue: () => void;
@@ -44,8 +46,19 @@ function handleGuideKey(key: string, actions: KeyboardActions): boolean {
 
   if (actions.guideAvailable) {
     actions.setGuideVolume(next);
-    actions.persistConfig({ guide_volume: next });
+    actions.persistConfig({ guide_volume: next, master_volume: actions.masterVolume });
   }
+  return true;
+}
+
+function handleMasterKey(key: string, actions: KeyboardActions): boolean {
+  if (key !== '[' && key !== ']') {
+    return false;
+  }
+
+  const next = Math.max(0, Math.min(1, actions.masterVolume + (key === ']' ? 0.1 : -0.1)));
+  actions.setMasterVolume(next);
+  actions.persistConfig({ master_volume: next, guide_volume: actions.guideVolume });
   return true;
 }
 
@@ -59,7 +72,7 @@ function handleKeyboardShortcut(event: KeyboardEvent, actions: KeyboardActions):
     }
     return;
   }
-  if (actions.paused || handleGuideKey(event.key, actions)) {
+  if (actions.paused || handleGuideKey(event.key, actions) || handleMasterKey(event.key, actions)) {
     return;
   }
 
@@ -80,11 +93,12 @@ function handleKeyboardShortcut(event: KeyboardEvent, actions: KeyboardActions):
 /**
  * Wires keyboard + gamepad input for the playback session. Reads everything it
  * needs from the playback contexts; only the app config is passed in so we can
- * persist guide-volume changes without coupling this hook to the config query.
+ * persist volume changes without coupling this hook to the config query.
  */
 export function usePlaybackInput(config: AppConfig | null, enabled = true) {
-  const { paused, isReady, guideVolume, guideAvailable } = usePlaybackTransportState();
-  const { getCurrentTime, setGuideVolume, handlePause, handleContinue } =
+  const { paused, isReady, guideVolume, masterVolume, guideAvailable } =
+    usePlaybackTransportState();
+  const { getCurrentTime, setGuideVolume, setMasterVolume, handlePause, handleContinue } =
     usePlaybackTransportActions();
   const { cycleTheme, cycleFlavor } = usePlaybackThemeActions();
   const { firstSegmentStart, lastSegmentEnd, introSkipLeadSec } = usePlaybackTranscriptState();
@@ -144,7 +158,7 @@ export function usePlaybackInput(config: AppConfig | null, enabled = true) {
     ),
   );
 
-  // Keyboard-only shortcuts (G, T, F, M, N, R, +/-, Space)
+  // Keyboard-only shortcuts (G, T, F, M, N, R, +/-, [, ], Space)
   useEffect(() => {
     if (!enabled) {
       return undefined;
@@ -152,8 +166,10 @@ export function usePlaybackInput(config: AppConfig | null, enabled = true) {
     const actions: KeyboardActions = {
       paused,
       guideVolume,
+      masterVolume,
       guideAvailable,
       setGuideVolume,
+      setMasterVolume,
       persistConfig,
       handlePause,
       handleContinue,
@@ -172,8 +188,10 @@ export function usePlaybackInput(config: AppConfig | null, enabled = true) {
     enabled,
     paused,
     guideVolume,
+    masterVolume,
     guideAvailable,
     setGuideVolume,
+    setMasterVolume,
     cycleTheme,
     cycleFlavor,
     persistConfig,

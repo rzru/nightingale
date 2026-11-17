@@ -1,6 +1,5 @@
-import { forwardRef, memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { forwardRef, memo, useEffect, useRef, useState, type ReactNode } from 'react';
 
-import { usePlaybackConfigPersist } from '@/features/playback/hooks/use-playback-config-persist';
 import type { VideoFlavor } from '@/features/playback/lib/video-flavor';
 import {
   usePlaybackMicActions,
@@ -21,14 +20,8 @@ import type { AppConfig } from '@/types/AppConfig';
 
 import { LiveStars } from './live-stars';
 import { PlaybackTransportControls } from './playback-transport-controls';
+import { PlaybackVolumeControl } from './playback-volume-control';
 import { isPixabayTheme, themeName, type PlaybackTheme } from './theme';
-
-function formatGuideText(volume: number): string {
-  const pct = Math.round(volume * 100);
-  return pct === 0
-    ? t('playback.hud.guideOffShortcut')
-    : t('playback.hud.guidePercentShortcut', { percent: pct });
-}
 
 function formatThemeText(theme: PlaybackTheme, videoFlavor: VideoFlavor): string {
   return t('playback.hud.themeShortcut', {
@@ -103,8 +96,6 @@ function TouchButton({
 }
 
 function SettingsInfo({
-  guideVolume,
-  guideAvailable,
   micUserEnabled,
   micName,
   micMonitorUserEnabled,
@@ -113,8 +104,6 @@ function SettingsInfo({
   videoFlavor,
   showShortcuts,
 }: {
-  guideVolume: number;
-  guideAvailable: boolean;
   micUserEnabled: boolean;
   micName: string;
   micMonitorUserEnabled: boolean;
@@ -125,13 +114,6 @@ function SettingsInfo({
 }) {
   return (
     <div className="flex flex-col items-end">
-      {guideAvailable && (
-        <HintText>
-          {showShortcuts
-            ? formatGuideText(guideVolume)
-            : t('playback.hud.guidePercent', { percent: Math.round(guideVolume * 100) })}
-        </HintText>
-      )}
       {!multiplayer && (
         <HintText>
           {t('playback.hud.micStatus', {
@@ -166,35 +148,20 @@ function TouchControls({
   position: PlaybackHudPosition;
 }) {
   const [open, setOpen] = useState(false);
-  const { guideVolume, guideAvailable } = usePlaybackTransportState();
-  const { setGuideVolume, handlePause } = usePlaybackTransportActions();
+  const { handlePause } = usePlaybackTransportActions();
   const { micUserEnabled, micName, micMonitorUserEnabled, multiplayer } = usePlaybackMicState();
   const { handleToggleMic, handleCycleMic, handleToggleMicMonitor } = usePlaybackMicActions();
   const { theme, videoFlavor } = usePlaybackThemeState();
   const { cycleTheme, cycleFlavor } = usePlaybackThemeActions();
-  const persistConfig = usePlaybackConfigPersist(config);
-
-  const setPersistedGuideVolume = useCallback(
-    (volume: number) => {
-      const next = Math.max(0, Math.min(1, volume));
-      setGuideVolume(next);
-      persistConfig({ guide_volume: next });
-    },
-    [persistConfig, setGuideVolume],
-  );
-
-  if (!hasTouch) {
-    return null;
-  }
 
   const touchLayoutClass = position === 'bottom' ? 'mb-2 flex-col-reverse' : 'mt-2 flex-col';
 
   return (
-    <div className={`flex w-[min(18rem,80vw)] items-end gap-2 ${touchLayoutClass}`}>
+    <div
+      className={`flex w-[min(18rem,80vw)] items-end gap-2 ${hasTouch ? '' : 'sm:hidden'} ${touchLayoutClass}`}
+    >
       <div className="sm:hidden">
         <SettingsInfo
-          guideVolume={guideVolume}
-          guideAvailable={guideAvailable}
           micUserEnabled={micUserEnabled}
           micName={micName}
           micMonitorUserEnabled={micMonitorUserEnabled}
@@ -215,43 +182,34 @@ function TouchControls({
       </button>
 
       {open && (
-        <div className="grid w-full grid-cols-3 gap-2 text-center">
-          <TouchButton label={t('common.actions.pause')} onClick={handlePause} />
-          {guideAvailable && (
-            <>
-              <TouchButton
-                label={t(guideVolume === 0 ? 'playback.hud.guideOn' : 'playback.hud.guideOff')}
-                onClick={() => setPersistedGuideVolume(guideVolume > 0 ? 0 : 0.3)}
-              />
-              <TouchButton
-                label={t('playback.playbackHud.guide')}
-                onClick={() => setPersistedGuideVolume(guideVolume + 0.1)}
-              />
-              <TouchButton
-                label={t('playback.playbackHud.guide2')}
-                onClick={() => setPersistedGuideVolume(guideVolume - 0.1)}
-              />
-            </>
-          )}
-          {!multiplayer && (
-            <>
-              <TouchButton
-                label={t(micUserEnabled ? 'playback.hud.micOff' : 'playback.hud.micOn')}
-                onClick={handleToggleMic}
-              />
-              <TouchButton label={t('playback.playbackHud.micSelect')} onClick={handleCycleMic} />
-            </>
-          )}
-          <TouchButton
-            label={t(micMonitorUserEnabled ? 'playback.hud.monitorOff' : 'playback.hud.monitorOn')}
-            onClick={handleToggleMicMonitor}
-          />
-          <TouchButton label={t('playback.playbackHud.theme')} onClick={cycleTheme} />
-          <TouchButton
-            label={t('playback.playbackHud.flavor')}
-            onClick={cycleFlavor}
-            disabled={!isPixabayTheme(theme)}
-          />
+        <div className="flex w-full flex-col gap-3">
+          <div className="sm:hidden">
+            <PlaybackVolumeControl config={config} showShortcuts={false} />
+          </div>
+          <div className="grid w-full grid-cols-3 gap-2 text-center">
+            <TouchButton label={t('common.actions.pause')} onClick={handlePause} />
+            {!multiplayer && (
+              <>
+                <TouchButton
+                  label={t(micUserEnabled ? 'playback.hud.micOff' : 'playback.hud.micOn')}
+                  onClick={handleToggleMic}
+                />
+                <TouchButton label={t('playback.playbackHud.micSelect')} onClick={handleCycleMic} />
+              </>
+            )}
+            <TouchButton
+              label={t(
+                micMonitorUserEnabled ? 'playback.hud.monitorOff' : 'playback.hud.monitorOn',
+              )}
+              onClick={handleToggleMicMonitor}
+            />
+            <TouchButton label={t('playback.playbackHud.theme')} onClick={cycleTheme} />
+            <TouchButton
+              label={t('playback.playbackHud.flavor')}
+              onClick={cycleFlavor}
+              disabled={!isPixabayTheme(theme)}
+            />
+          </div>
         </div>
       )}
     </div>
@@ -389,7 +347,7 @@ function PlaybackHudImpl({
   windowControls = false,
 }: PlaybackHudProps) {
   useTranslation();
-  const { duration, guideVolume, guideAvailable } = usePlaybackTransportState();
+  const { duration, guideAvailable } = usePlaybackTransportState();
   const { subscribe, getCurrentTime } = usePlaybackTransportActions();
   const { theme, videoFlavor } = usePlaybackThemeState();
   const { firstSegmentStart, lastSegmentEnd, introSkipLeadSec, segments, transcriptSource } =
@@ -453,14 +411,14 @@ function PlaybackHudImpl({
       <div
         className={`pointer-events-auto absolute inset-x-0 z-20 flex justify-between gap-3 px-3 md:px-4 ${hudPosition}`}
       >
-        <div className="flex w-[70vw] min-w-0 max-w-[420px] flex-col sm:max-w-[55%]">
+        <div className="flex w-[70vw] min-w-0 max-w-80 flex-col sm:max-w-[48%] lg:max-w-96">
           <h1 className="line-clamp-2 [overflow-wrap:anywhere] text-base leading-tight text-white md:text-[1.375rem]">
             {title}
           </h1>
           <p className="line-clamp-1 [overflow-wrap:anywhere] text-sm text-white/70 md:text-base">
             {artist}
           </p>
-          <PlaybackTransportControls duration={duration} segments={segments} config={config} />
+          <PlaybackTransportControls duration={duration} segments={segments} />
           <output
             ref={gapCaptionRef}
             aria-live="polite"
@@ -494,9 +452,8 @@ function PlaybackHudImpl({
             <div className="my-1.5 hidden h-px w-full bg-white/20 sm:block" aria-hidden="true" />
           </div>
           <div className="hidden sm:block">
+            <PlaybackVolumeControl config={config} showShortcuts={!hasTouch} />
             <SettingsInfo
-              guideVolume={guideVolume}
-              guideAvailable={guideAvailable}
               micUserEnabled={micUserEnabled}
               micName={micName}
               micMonitorUserEnabled={micMonitorUserEnabled}

@@ -16,7 +16,7 @@ below.
 ### Features
 
 - Added French as an interface language.
-- Added a live master volume slider immediately beside the song progress bar, styled like the playback controls. It saves its setting for future songs and also controls the final score sound.
+- Playback now has matching sliders for overall volume and guide vocals, plus keyboard shortcuts for both. Your choices carry over to future songs, and overall volume also controls the final score sound.
 
 ### Fixes
 
