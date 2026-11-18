@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 
 import de from './translations/de.json';
 import en from './translations/en.json';
+import fr from './translations/fr.json';
 import zhCn from './translations/zh-cn.json';
 
 const RTL_LANGUAGES = new Set<string>(['ar', 'fa', 'he', 'ur']);
@@ -17,7 +18,10 @@ type PluralKeyOf<Key extends string> = Key extends `${infer Base}.other`
   : never;
 export type PluralKey = PluralKeyOf<TranslationKey>;
 
-const catalogs = { en, de, 'zh-cn': zhCn } satisfies Record<string, Record<TranslationKey, string>>;
+const catalogs = { en, de, fr, 'zh-cn': zhCn } satisfies Record<
+  string,
+  Record<TranslationKey, string>
+>;
 
 export type Locale = keyof typeof catalogs;
 export type LanguagePreference = Locale | 'system';
@@ -30,6 +34,7 @@ const locales = Object.keys(catalogs).filter(isLocale);
 const languageLabels = {
   de: 'languages.german',
   en: 'languages.english',
+  fr: 'languages.french',
   'zh-cn': 'languages.simplifiedChinese',
 } satisfies Record<Locale, TranslationKey>;
 
