@@ -97,9 +97,6 @@ pub struct Song {
     pub title: String,
     pub artist: String,
     pub album: String,
-    /// File/source-tagged genre, or `None` when untagged. Display code
-    /// substitutes a fallback label (e.g. "Unknown Genre") rather than
-    /// baking that sentinel into persisted data.
     #[serde(default)]
     pub genre: Option<String>,
     pub duration_secs: f64,

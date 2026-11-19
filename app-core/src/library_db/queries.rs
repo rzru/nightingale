@@ -22,6 +22,13 @@ use super::sql_functions::{
 };
 type SongQuery = songs::BoxedQuery<'static, Sqlite>;
 
+/// Sentinel `LibraryMenuFilters.genre` value selecting untagged songs
+/// (`songs.genre IS NULL`), and the menu-item value for the equivalent
+/// bucket in the Genres sidebar section. Shared constant so the filter
+/// check, the bucket-key assignment, and the display-label check can't
+/// drift apart.
+const UNKNOWN_GENRE: &str = "unknown_genre";
+
 #[derive(Clone, Copy)]
 enum ExtraFilter {
     None,
@@ -173,7 +180,7 @@ fn filtered_songs(
         query = query.filter(instr(songs::path, folder.to_string()).eq(1));
     }
     if let Some(genre) = filters.genre.as_deref().filter(|value| !value.is_empty()) {
-        if genre == "unknown_genre" {
+        if genre == UNKNOWN_GENRE {
             query = query.filter(songs::genre.is_null());
         } else {
             query = query.filter(songs::genre.eq(genre.to_string()));
@@ -601,7 +608,7 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
             all.add(analyzed, status.as_deref());
             let genre_key = genre
                 .filter(|value| !value.is_empty())
-                .unwrap_or_else(|| "unknown_genre".to_string());
+                .unwrap_or_else(|| UNKNOWN_GENRE.to_string());
             if !genre_counts.contains_key(&genre_key) {
                 genre_order.push(genre_key.clone());
             }
@@ -722,7 +729,7 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
         let genres = genre_order
             .into_iter()
             .map(|genre| {
-                let label = if genre == "unknown_genre" {
+                let label = if genre == UNKNOWN_GENRE {
                     "Unknown Genre".to_string()
                 } else {
                     genre.clone()

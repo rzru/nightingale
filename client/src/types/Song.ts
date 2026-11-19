@@ -9,11 +9,6 @@ export type Song = {
   title: string;
   artist: string;
   album: string;
-  /**
-   * File/source-tagged genre, or `None` when untagged. Display code
-   * substitutes a fallback label (e.g. "Unknown Genre") rather than
-   * baking that sentinel into persisted data.
-   */
   genre: string | null;
   duration_secs: number;
   album_art_path: string | null;
