@@ -19,7 +19,7 @@ below.
 
 ### Improvements
 
-- Playback now requests a screen wake lock while a song is actively playing, so mobile and desktop browsers stop dimming or locking the screen mid-song. The lock releases on pause, on song end, and when the tab is backgrounded, and is re-requested automatically once the tab is visible again while still playing. No effect where the browser doesn't support the Wake Lock API.
+- Playback now requests a screen wake lock while a song is actively playing, so mobile and desktop browsers stop dimming or locking the screen mid-song. The lock releases on pause, on song end, and when the tab is backgrounded, and is re-requested automatically once the tab is visible again while still playing. No effect where the browser doesn't support the Wake Lock API. Check [caniuse](https://caniuse.com/wake-lock) for capabilities. 
 
 ### Fixes
 
