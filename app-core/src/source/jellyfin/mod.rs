@@ -313,13 +313,13 @@ impl JellyfinSource {
             "Unknown Artist",
         );
         let album = pick_string(item.album.as_deref(), "Unknown Album");
-        let genre = pick_string(
-            item.genres
-                .as_ref()
-                .and_then(|g| g.first())
-                .map(|s| s.as_str()),
-            "Unknown Genre",
-        );
+        let genre = item
+            .genres
+            .as_ref()
+            .and_then(|g| g.first())
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string());
 
         let duration_secs = item
             .run_time_ticks

@@ -14,7 +14,7 @@ diesel::table! {
         title -> Text,
         artist -> Text,
         album -> Text,
-        genre -> Text,
+        genre -> Nullable<Text>,
         duration_secs -> Double,
         album_art_path -> Nullable<Text>,
         is_analyzed -> Bool,

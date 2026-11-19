@@ -4,9 +4,9 @@ export type LibraryMenuFilters = {
   artist: string | null;
   album: string | null;
   /**
-   * File/source-tagged genre, exact match against `Song.genre` (a real
-   * column, always populated -- untagged songs read as `"Unknown
-   * Genre"`).
+   * File/source-tagged genre, exact match against `Song.genre`, or the
+   * sentinel value `"unknown_genre"` to match untagged songs (`NULL` in
+   * storage).
    */
   genre: string | null;
   playlist: string | null;

@@ -82,7 +82,6 @@ pub(super) fn run_migrations(conn: &mut SqliteConnection) -> Result<(), Nighting
                 title TEXT NOT NULL,
                 artist TEXT NOT NULL,
                 album TEXT NOT NULL,
-                genre TEXT NOT NULL DEFAULT 'Unknown Genre',
                 duration_secs REAL NOT NULL,
                 album_art_path TEXT,
                 is_analyzed INTEGER NOT NULL,
@@ -135,7 +134,7 @@ pub(super) fn run_migrations(conn: &mut SqliteConnection) -> Result<(), Nighting
     if version < 3 {
         conn.batch_execute(
             "
-            ALTER TABLE songs ADD COLUMN genre TEXT NOT NULL DEFAULT 'Unknown Genre';
+            ALTER TABLE songs ADD COLUMN genre TEXT;
         ",
         )?;
     }

@@ -22,7 +22,7 @@ struct NewSongRow {
     title: String,
     artist: String,
     album: String,
-    genre: String,
+    genre: Option<String>,
     duration_secs: f64,
     album_art_path: Option<String>,
     is_analyzed: bool,

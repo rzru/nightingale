@@ -224,7 +224,7 @@ export const songSchema: z.ZodType<Song> = z.object({
   title: z.string(),
   artist: z.string(),
   album: z.string(),
-  genre: z.string(),
+  genre: nullableString,
   duration_secs: z.number(),
   album_art_path: nullableString,
   is_analyzed: z.boolean(),

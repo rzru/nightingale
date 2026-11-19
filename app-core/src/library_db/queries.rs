@@ -173,7 +173,11 @@ fn filtered_songs(
         query = query.filter(instr(songs::path, folder.to_string()).eq(1));
     }
     if let Some(genre) = filters.genre.as_deref().filter(|value| !value.is_empty()) {
-        query = query.filter(songs::genre.eq(genre.to_string()));
+        if genre == "unknown_genre" {
+            query = query.filter(songs::genre.is_null());
+        } else {
+            query = query.filter(songs::genre.eq(genre.to_string()));
+        }
     }
     match filters.query.as_deref() {
         Some("analysed") => query = query.filter(songs::is_analyzed.eq(true)),
@@ -563,7 +567,7 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
                 String,
                 String,
                 String,
-                String,
+                Option<String>,
                 bool,
                 bool,
                 Option<String>,
@@ -595,11 +599,14 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
         for (path, artist, album, genre, analyzed, is_video, transcript_source, status) in song_rows
         {
             all.add(analyzed, status.as_deref());
-            if !genre_counts.contains_key(&genre) {
-                genre_order.push(genre.clone());
+            let genre_key = genre
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "unknown_genre".to_string());
+            if !genre_counts.contains_key(&genre_key) {
+                genre_order.push(genre_key.clone());
             }
             genre_counts
-                .entry(genre)
+                .entry(genre_key)
                 .or_default()
                 .add(analyzed, status.as_deref());
             let mut folder_key = Vec::new();
@@ -715,10 +722,15 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
         let genres = genre_order
             .into_iter()
             .map(|genre| {
+                let label = if genre == "unknown_genre" {
+                    "Unknown Genre".to_string()
+                } else {
+                    genre.clone()
+                };
                 genre_counts
                     .remove(&genre)
                     .unwrap_or_default()
-                    .item(genre.clone(), genre)
+                    .item(genre, label)
             })
             .collect();
 

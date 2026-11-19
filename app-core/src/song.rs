@@ -97,8 +97,11 @@ pub struct Song {
     pub title: String,
     pub artist: String,
     pub album: String,
-    #[serde(default = "default_genre")]
-    pub genre: String,
+    /// File/source-tagged genre, or `None` when untagged. Display code
+    /// substitutes a fallback label (e.g. "Unknown Genre") rather than
+    /// baking that sentinel into persisted data.
+    #[serde(default)]
+    pub genre: Option<String>,
     pub duration_secs: f64,
     pub album_art_path: Option<PathBuf>,
     pub is_analyzed: bool,
@@ -129,10 +132,6 @@ fn default_tempo() -> f64 {
     1.0
 }
 
-fn default_genre() -> String {
-    "Unknown Genre".to_string()
-}
-
 #[derive(Debug, Clone)]
 pub(crate) struct TranscriptMetaInfo {
     pub source: TranscriptSource,
@@ -150,7 +149,7 @@ struct FileDerivedFields {
     title: String,
     artist: String,
     album: String,
-    genre: String,
+    genre: Option<String>,
     duration_secs: f64,
     album_art_path: Option<PathBuf>,
 }
@@ -160,11 +159,12 @@ fn try_read_file_derived_fields(
     is_video: bool,
     cache: &CacheDir,
 ) -> Result<FileDerivedFields, NightingaleError> {
-    let (mut title, mut artist, mut album, mut genre, duration_secs, cover_bytes) = if is_video {
+    let (mut title, mut artist, mut album, genre, duration_secs, cover_bytes) = if is_video {
         read_video_metadata(path)?
     } else {
         read_metadata(path)?
     };
+    let genre = if genre.is_empty() { None } else { Some(genre) };
 
     if title.is_empty() {
         title = path
@@ -178,9 +178,6 @@ fn try_read_file_derived_fields(
     }
     if album.is_empty() {
         album = "Unknown Album".to_string();
-    }
-    if genre.is_empty() {
-        genre = default_genre();
     }
 
     // Content-addressed: writes only if a cover with this exact hash isn't
@@ -217,7 +214,7 @@ fn read_file_derived_fields(path: &Path, is_video: bool, cache: &CacheDir) -> Fi
             .to_string(),
         artist: "Unknown Artist".to_string(),
         album: "Unknown Album".to_string(),
-        genre: default_genre(),
+        genre: None,
         duration_secs: 0.0,
         album_art_path: None,
     })
@@ -422,7 +419,7 @@ pub(crate) fn build_nge_song(path: &Path, cache: &CacheDir) -> Result<Song, Nigh
         title: meta.title,
         artist: meta.artist,
         album: meta.album,
-        genre: default_genre(),
+        genre: None,
         duration_secs: meta.duration_secs,
         album_art_path: extract_nge_cover(&nge, cache),
         is_analyzed: meta.is_analyzed,
