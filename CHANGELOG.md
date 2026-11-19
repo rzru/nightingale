@@ -16,6 +16,7 @@ below.
 ### Features
 
 - Added French as an interface language.
+- Songs now carry a genre, read from file tags or the source library (Jellyfin/Navidrome/Plex) when available. The library sidebar gets a new Genres section, and genre is a filter alongside artist and album.
 
 ### Fixes
 

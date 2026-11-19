@@ -313,6 +313,13 @@ impl JellyfinSource {
             "Unknown Artist",
         );
         let album = pick_string(item.album.as_deref(), "Unknown Album");
+        let genre = pick_string(
+            item.genres
+                .as_ref()
+                .and_then(|g| g.first())
+                .map(|s| s.as_str()),
+            "Unknown Genre",
+        );
 
         let duration_secs = item
             .run_time_ticks
@@ -349,6 +356,7 @@ impl JellyfinSource {
             title,
             artist,
             album,
+            genre,
             duration_secs,
             album_art_path,
             is_analyzed: false,
@@ -796,6 +804,8 @@ struct JellyfinItem {
     album_artist: Option<String>,
     #[serde(rename = "Artists", default)]
     artists: Option<Vec<String>>,
+    #[serde(rename = "Genres", default)]
+    genres: Option<Vec<String>>,
     #[serde(rename = "RunTimeTicks", default)]
     run_time_ticks: Option<u64>,
     #[serde(rename = "Container", default)]

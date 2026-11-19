@@ -530,6 +530,9 @@ pub(crate) fn build_usdx_song(path: &Path, cache: &CacheDir) -> Result<Song, Nig
         title: file.title.clone(),
         artist: file.artist.clone(),
         album,
+        // USDX .txt charts don't carry a #GENRE tag we parse today; falls
+        // back to the same sentinel untagged local/remote songs use.
+        genre: "Unknown Genre".to_string(),
         duration_secs,
         album_art_path,
         is_analyzed: true,

@@ -22,6 +22,7 @@ struct NewSongRow {
     title: String,
     artist: String,
     album: String,
+    genre: String,
     duration_secs: f64,
     album_art_path: Option<String>,
     is_analyzed: bool,
@@ -39,6 +40,7 @@ impl NewSongRow {
             title: song.title.clone(),
             artist: song.artist.clone(),
             album: song.album.clone(),
+            genre: song.genre.clone(),
             duration_secs: song.duration_secs,
             album_art_path: song
                 .album_art_path
@@ -231,6 +233,7 @@ pub(crate) fn rekey_song(
                     songs::title.eq(&row.title),
                     songs::artist.eq(&row.artist),
                     songs::album.eq(&row.album),
+                    songs::genre.eq(&row.genre),
                     songs::duration_secs.eq(row.duration_secs),
                     songs::is_analyzed.eq(row.is_analyzed),
                     songs::language.eq(&row.language),
@@ -256,6 +259,7 @@ pub(crate) fn update_song_fields(file_hash: &str, song: &Song) -> Result<(), Nig
                 songs::title.eq(&row.title),
                 songs::artist.eq(&row.artist),
                 songs::album.eq(&row.album),
+                songs::genre.eq(&row.genre),
                 songs::duration_secs.eq(row.duration_secs),
                 songs::album_art_path.eq(&row.album_art_path),
                 songs::is_analyzed.eq(row.is_analyzed),
