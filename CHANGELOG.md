@@ -16,6 +16,7 @@ below.
 ### Features
 
 - Added French as an interface language.
+- Playback now has matching sliders for overall volume and guide vocals, plus keyboard shortcuts for both. Your choices carry over to future songs, and overall volume also controls the final score sound.
 
 ### Fixes
 
