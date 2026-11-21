@@ -3,7 +3,7 @@
 import re
 
 import cjk
-from audio import detect_vocal_region, highpass_filter, normalize_rms
+from audio import ALIGNMENT_SAMPLE_RATE, detect_vocal_region, highpass_filter, normalize_rms
 from gpu import gpu_model, hard_free_gpu
 from hallucination import is_hallucination, remove_hallucinated_words
 from language import detect_language_multiwindow
@@ -41,15 +41,15 @@ def transcribe_vocals(
 
     progress(55, f"Loading audio ({vocals_path})...")
     full_audio = whisperx.load_audio(vocals_path)
-    duration_secs = len(full_audio) / 16000
+    duration_secs = len(full_audio) / ALIGNMENT_SAMPLE_RATE
     print(f"[nightingale:LOG] Audio loaded: {len(full_audio)} samples ({duration_secs:.1f}s) from {vocals_path}", flush=True)
 
     progress(56, "Detecting vocal region...")
     vocal_start, vocal_end = detect_vocal_region(full_audio)
-    trim_start_samples = int(vocal_start * 16000)
-    trim_end_samples = int(vocal_end * 16000)
+    trim_start_samples = int(vocal_start * ALIGNMENT_SAMPLE_RATE)
+    trim_end_samples = int(vocal_end * ALIGNMENT_SAMPLE_RATE)
     audio = full_audio[trim_start_samples:trim_end_samples]
-    trimmed_duration = len(audio) / 16000
+    trimmed_duration = len(audio) / ALIGNMENT_SAMPLE_RATE
     print(f"[nightingale:LOG] Trimmed to vocal region: {vocal_start:.1f}s-{vocal_end:.1f}s ({trimmed_duration:.1f}s)", flush=True)
 
     audio = highpass_filter(audio)

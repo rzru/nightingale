@@ -6,7 +6,7 @@ import math
 import re
 
 import cjk
-from audio import detect_vocal_region, silent_gaps
+from audio import ALIGNMENT_SAMPLE_RATE, detect_vocal_region, silent_gaps
 from gpu import gpu_model
 from language import detect_language_multiwindow
 from whisper_compat import progress, align_device_for, compute_type_for, align_with_fallback, get_align_backend, load_whisper_model
@@ -67,7 +67,7 @@ def align_lyrics(
         )
 
     audio = whisperx.load_audio(vocals_path)
-    duration_secs = len(audio) / 16000
+    duration_secs = len(audio) / ALIGNMENT_SAMPLE_RATE
     print(f"[nightingale:LOG] Vocals audio loaded: {len(audio)} samples ({duration_secs:.1f}s)", flush=True)
 
     progress(56, "Detecting vocal regions...")
@@ -502,7 +502,7 @@ def _align_lyrics_qwen(
     import qwen_align
 
     if line_windows is not None:
-        raw_segments = _window_segments(clean_lines, line_windows, len(audio) / 16000)
+        raw_segments = _window_segments(clean_lines, line_windows, len(audio) / ALIGNMENT_SAMPLE_RATE)
     else:
         full_text = "\n".join(clean_lines)
         raw_segments = [{"text": full_text, "start": vocal_start, "end": vocal_end}]

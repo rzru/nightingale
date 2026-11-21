@@ -16,7 +16,7 @@ below.
 ### Features
 
 - Added French as an interface language.
-- Added an experimental "Wav2Vec2-BERT Two-Pass Alignment" lyric timing option for English songs. It splits each song at natural pauses and re-times each chunk with a singing-tuned Wav2Vec2-BERT model, falling back to the usual WhisperX timing wherever that model isn't confident or a song has no safe pause structure.
+- Added an experimental "Wav2Vec2-BERT Two-Pass Alignment" lyric timing option for English songs. It splits each song at natural pauses and re-times each chunk with a second model, falling back to the usual WhisperX timing wherever that model isn't confident or a song has no safe pause structure.
 
 ### Fixes
 

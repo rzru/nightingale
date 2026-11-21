@@ -21,8 +21,9 @@ from torchaudio.functional import forced_align, merge_tokens
 import nltk
 from nltk.data import load as nltk_load
 
-from whisperx.audio import SAMPLE_RATE
 from whisperx.utils import interpolate_nans, PUNKT_LANGUAGES
+
+from audio import ALIGNMENT_SAMPLE_RATE
 
 LANGUAGES_WITHOUT_SPACES = ["ja", "zh"]
 
@@ -66,7 +67,7 @@ def ctc_align(
     if len(audio.shape) == 1:
         audio = audio.unsqueeze(0)
 
-    max_duration = audio.shape[1] / SAMPLE_RATE
+    max_duration = audio.shape[1] / ALIGNMENT_SAMPLE_RATE
 
     model_dictionary = align_model_metadata["dictionary"]
     model_lang = align_model_metadata["language"]
@@ -163,8 +164,8 @@ def ctc_align(
 
         text_clean = "".join(segment_data[sdx]["clean_char"])
 
-        f1 = int(t1 * SAMPLE_RATE)
-        f2 = int(t2 * SAMPLE_RATE)
+        f1 = int(t1 * ALIGNMENT_SAMPLE_RATE)
+        f2 = int(t2 * ALIGNMENT_SAMPLE_RATE)
 
         waveform_segment = audio[:, f1:f2]
         if waveform_segment.shape[-1] < 400:

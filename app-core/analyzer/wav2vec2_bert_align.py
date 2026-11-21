@@ -2,17 +2,6 @@
 (``hf-audio/wav2vec2-bert-CV16-en``, loaded through Hugging Face
 ``transformers`` rather than torchaudio).
 
-Alternative acoustic model to the default wav2vec2-base WhisperX/CTC path:
-same per-segment ``transcript``/``audio``/``device`` call shape and
-``{"segments": [...], "word_segments": [...]}`` output contract as
-:func:`ctc_align.ctc_align`, so callers don't need to know which ran.
-Reuses :func:`ctc_align.add_wildcard_column`
-and :func:`ctc_align.forced_align_segment` for the actual forced-align step
--- only model loading and feature extraction differ, since Wav2Vec2-BERT
-takes log-mel ``input_features`` (via its own processor) rather than the raw
-waveform ``input_values`` whisperx's wav2vec2-base model and ``ctc_align``'s
-"huggingface" branch expect.
-
 ``hf-audio/wav2vec2-bert-CV16-en`` is fine-tuned from the MIT-licensed
 ``facebook/w2v-bert-2.0`` encoder on Common Voice 16 (CC0) English speech
 only; non-English transcripts aren't supported by this backend.
@@ -20,7 +9,7 @@ only; non-English transcripts aren't supported by this backend.
 
 import torch
 
-from whisperx.audio import SAMPLE_RATE
+from audio import ALIGNMENT_SAMPLE_RATE
 
 import ctc_align
 
@@ -61,7 +50,7 @@ def wav2vec2_bert_align(transcript, model_state: dict, audio, device: str) -> di
     if len(audio.shape) == 1:
         audio = audio.unsqueeze(0)
 
-    max_duration = audio.shape[1] / SAMPLE_RATE
+    max_duration = audio.shape[1] / ALIGNMENT_SAMPLE_RATE
 
     model = model_state["model"]
     processor = model_state["processor"]
@@ -100,8 +89,8 @@ def wav2vec2_bert_align(transcript, model_state: dict, audio, device: str) -> di
             aligned_segments.append(aligned_seg)
             continue
 
-        f1 = int(t1 * SAMPLE_RATE)
-        f2 = int(t2 * SAMPLE_RATE)
+        f1 = int(t1 * ALIGNMENT_SAMPLE_RATE)
+        f2 = int(t2 * ALIGNMENT_SAMPLE_RATE)
         waveform_segment = audio[:, f1:f2]
         if waveform_segment.shape[-1] < 400:
             waveform_segment = torch.nn.functional.pad(
@@ -111,7 +100,7 @@ def wav2vec2_bert_align(transcript, model_state: dict, audio, device: str) -> di
         try:
             inputs = processor(
                 waveform_segment.squeeze(0).cpu().numpy(),
-                sampling_rate=SAMPLE_RATE,
+                sampling_rate=ALIGNMENT_SAMPLE_RATE,
                 return_tensors="pt",
             )
             with torch.inference_mode():
@@ -148,7 +137,7 @@ def wav2vec2_bert_align(transcript, model_state: dict, audio, device: str) -> di
             continue
 
         num_frames = emission.size(0)
-        ratio = waveform_segment.size(1) / num_frames / SAMPLE_RATE
+        ratio = waveform_segment.size(1) / num_frames / ALIGNMENT_SAMPLE_RATE
 
         seg_words = []
         cur_spans: list[dict] = []

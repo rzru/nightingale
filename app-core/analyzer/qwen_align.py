@@ -29,10 +29,9 @@ os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 import numpy as np
 import torch
 
+from audio import ALIGNMENT_SAMPLE_RATE
 from gpu import gpu_model
 from whisper_compat import detect_device
-
-SAMPLE_RATE = 16000
 QWEN_MODEL_ID = "Qwen/Qwen3-ForcedAligner-0.6B-hf"
 
 # Languages the forced aligner supports (transformers FORCED_ALIGNER_LANGUAGES).
@@ -85,7 +84,7 @@ def qwen_align(raw_segments, audio, language: str, device: str) -> dict:
     else:
         audio_np = np.asarray(audio)
     audio_np = np.ascontiguousarray(audio_np, dtype=np.float32)
-    total_seconds = len(audio_np) / SAMPLE_RATE
+    total_seconds = len(audio_np) / ALIGNMENT_SAMPLE_RATE
 
     # Prepare per-segment slices; None marks empty/too-short segments we skip.
     prepared: list[dict | None] = []
@@ -106,8 +105,8 @@ def qwen_align(raw_segments, audio, language: str, device: str) -> dict:
                 f"{MAX_SEGMENT_SECONDS:.0f}s"
             )
 
-        f1 = int(start * SAMPLE_RATE)
-        f2 = int(end * SAMPLE_RATE)
+        f1 = int(start * ALIGNMENT_SAMPLE_RATE)
+        f2 = int(end * ALIGNMENT_SAMPLE_RATE)
         arr = audio_np[f1:f2]
         if len(arr) < _MIN_SAMPLES:
             prepared.append(None)
