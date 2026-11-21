@@ -111,6 +111,7 @@ pub(crate) fn apply_refreshed_metadata(song: &mut Song, refreshed: Song) {
     song.title = refreshed.title;
     song.artist = refreshed.artist;
     song.album = refreshed.album;
+    song.genre = refreshed.genre;
     song.duration_secs = refreshed.duration_secs;
     song.album_art_path = refreshed.album_art_path;
     song.is_video = refreshed.is_video;

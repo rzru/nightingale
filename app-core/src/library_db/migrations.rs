@@ -21,7 +21,7 @@ use super::schema::songs;
 use super::songs::{append_songs, update_library_meta};
 use super::sql_functions::json_extract_text;
 
-const SCHEMA_VERSION: i32 = 2;
+const SCHEMA_VERSION: i32 = 3;
 
 static MIGRATING: AtomicBool = AtomicBool::new(false);
 static MIGRATION_TOTAL: AtomicUsize = AtomicUsize::new(0);
@@ -128,6 +128,13 @@ pub(super) fn run_migrations(conn: &mut SqliteConnection) -> Result<(), Nighting
                 ON playlist_songs(playlist_id, position);
             CREATE INDEX IF NOT EXISTS idx_playlist_songs_song
                 ON playlist_songs(song_id);
+        ",
+        )?;
+    }
+    if version < 3 {
+        conn.batch_execute(
+            "
+            ALTER TABLE songs ADD COLUMN genre TEXT;
         ",
         )?;
     }

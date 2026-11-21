@@ -34,6 +34,8 @@ pub struct SongSort {
 pub struct LibraryMenuFilters {
     pub artist: Option<String>,
     pub album: Option<String>,
+    #[serde(default)]
+    pub genre: Option<String>,
     pub playlist: Option<String>,
     pub query: Option<String>,
     #[serde(default)]

@@ -768,7 +768,7 @@ fn refresh_metadata_one(
     else {
         return Ok(false);
     };
-    if song.usdx.is_some() {
+    if song.usdx.is_some() || crate::playback::song_is_nge(&song) {
         return Ok(false);
     }
     source
