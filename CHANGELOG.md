@@ -17,6 +17,10 @@ below.
 
 - Added French as an interface language.
 
+### Improvements
+
+- Playback now requests a screen wake lock while a song is actively playing, so mobile and desktop browsers stop dimming or locking the screen mid-song. The lock releases on pause, on song end, and when the tab is backgrounded, and is re-requested automatically once the tab is visible again while still playing. No effect where the browser doesn't support the Wake Lock API. Check [caniuse](https://caniuse.com/wake-lock) for capabilities.
+
 ### Fixes
 
 - The phone queue link now keeps the same address across launches, so a QR code scanned earlier keeps working. A phone that scans a new code is also no longer turned away as "remote link is not valid" because of a cookie left from an earlier code.
