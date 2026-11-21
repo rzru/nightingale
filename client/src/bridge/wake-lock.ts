@@ -1,26 +1,25 @@
-/**
- * Screen Wake Lock wrapper: keeps the display from dimming/locking while a
- * song is actively playing. Backed by the standard `navigator.wakeLock` API,
- * which Tauri's webviews (WebView2, WKWebView) expose the same as a browser
- * tab, so no Tauri-specific adapter is needed here.
- *
- * The browser force-releases the lock whenever the document goes hidden (tab
- * switch, app backgrounded, screen locked), so `setWakeLockDesired` tracks
- * whether a lock is wanted and re-requests it on `visibilitychange` once the
- * page is visible again.
- */
-
 let sentinel: WakeLockSentinel | null = null;
 let desired = false;
+let pending = false;
 
-const supported = typeof navigator !== 'undefined' && 'wakeLock' in navigator;
+const supported =
+  typeof navigator !== 'undefined' && 'wakeLock' in navigator && typeof document !== 'undefined';
+
+function pageVisible(): boolean {
+  return document.visibilityState === 'visible';
+}
 
 async function acquire(): Promise<void> {
-  if (!supported || sentinel !== null || document.visibilityState !== 'visible') {
+  if (!supported || sentinel !== null || pending || !pageVisible()) {
     return;
   }
+  pending = true;
   try {
     const lock = await navigator.wakeLock.request('screen');
+    if (!desired || !pageVisible()) {
+      await lock.release();
+      return;
+    }
     sentinel = lock;
     lock.addEventListener('release', () => {
       if (sentinel === lock) {
@@ -28,13 +27,12 @@ async function acquire(): Promise<void> {
       }
     });
   } catch {
-    // Denied or unsupported in this context (e.g. low battery on some
-    // platforms) -- the screen may dim; there's no user-facing recovery.
     sentinel = null;
+  } finally {
+    pending = false;
   }
 }
 
-/** Marks whether the caller currently wants the screen kept awake. */
 export function setWakeLockDesired(next: boolean): void {
   if (desired === next) {
     return;
@@ -51,7 +49,7 @@ export function setWakeLockDesired(next: boolean): void {
 
 if (supported) {
   document.addEventListener('visibilitychange', () => {
-    if (desired && document.visibilityState === 'visible') {
+    if (desired && pageVisible()) {
       void acquire();
     }
   });
