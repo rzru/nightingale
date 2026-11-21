@@ -8,6 +8,7 @@
 //!  - [`songs`] — core song row CRUD, scan-aware inserts, rekey/update helpers
 //!  - [`queries`] — search / pagination / library-menu aggregation queries
 //!  - [`rebase`] — one-shot path rewrite when the data root moves
+//!  - [`wishes`] — playlists imported from linked accounts and their match state
 //!  - [`remote`] — generic helpers for non-local song origins (Jellyfin, Navidrome, …),
 //!    keyed on `$.origin.kind` instead of duplicating SQL per source
 //!
@@ -31,6 +32,7 @@ pub(crate) mod remote;
 mod schema;
 mod songs;
 mod sql_functions;
+mod wishes;
 
 pub(crate) use analysis_queue::{
     analysis_queue_clear, analysis_queue_delete, analysis_queue_load_rows,
@@ -49,6 +51,11 @@ pub(crate) use songs::{
     append_songs_for_scan, delete_songs_not_in_paths, load_all_songs, load_song_by_hash,
     load_song_path_strings, load_songs_by_hashes, read_library_meta, rekey_song,
     replace_all_songs_sorted, update_library_meta, update_song_fields,
+};
+pub(crate) use wishes::{
+    NewWish, SongMatchCandidate, WishPlaylistInput, WishPlaylistRow, WishRow, delete_wish_playlist,
+    load_all_wishes, load_playlist_wishes, load_song_match_candidates, load_wish_playlist_row,
+    load_wish_playlists, normalize_for_match, replace_wish_playlist, set_wish_match,
 };
 
 /// Incremented at the start of each `start_scan` so in-flight scan threads stop writing

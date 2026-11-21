@@ -110,6 +110,12 @@ pub fn start_scan() {
         }
 
         if library_db::scan_generation_is_current(scan_generation)
+            && let Err(e) = crate::wishes::refresh_wish_matches()
+        {
+            warn!("[scanner] Failed to refresh wish matches: {e}");
+        }
+
+        if library_db::scan_generation_is_current(scan_generation)
             && AppConfig::load().auto_analyze()
         {
             let _ = analyzer::enqueue(SongTarget::Filter {

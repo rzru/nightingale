@@ -674,6 +674,109 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
                 .map_err(blocking_task_err)?;
             Ok(serde_json::to_value(result).map_err(serde_err)?)
         }
+        // ── Linked accounts ──────────────────────────────────────────────
+        "accounts_overview" => {
+            let overview = tokio::task::spawn_blocking(app_core::accounts_overview)
+                .await
+                .map_err(blocking_task_err)?;
+            Ok(serde_json::to_value(overview).map_err(serde_err)?)
+        }
+        "youtube_begin_auth" => {
+            let start = tokio::task::spawn_blocking(app_core::youtube_begin_link)
+                .await
+                .map_err(blocking_task_err)?
+                .map_err(|error| ApiError::bad_request(error.to_string()))?;
+            Ok(serde_json::to_value(start).map_err(serde_err)?)
+        }
+        "account_poll_auth" => {
+            let args: AuthIdArgs = deserialize(payload)?;
+            let result = app_core::poll_account_auth(&args.auth_id);
+            if result.status == app_core::AuthStatus::Authorized {
+                events.emit("accounts-changed", &app_core::linked_accounts());
+            }
+            Ok(serde_json::to_value(result).map_err(serde_err)?)
+        }
+        "account_cancel_auth" => {
+            let args: AuthIdArgs = deserialize(payload)?;
+            Ok(Value::from(app_core::cancel_account_auth(&args.auth_id)))
+        }
+        "account_unlink" => {
+            #[derive(Deserialize)]
+            struct Args {
+                provider: app_core::AccountProvider,
+            }
+            let args: Args = deserialize(payload)?;
+            let removed =
+                tokio::task::spawn_blocking(move || app_core::unlink_account(args.provider))
+                    .await
+                    .map_err(blocking_task_err)?
+                    .map_err(|error| ApiError::internal(error.to_string()))?;
+            events.emit("accounts-changed", &app_core::linked_accounts());
+            Ok(Value::from(removed))
+        }
+        "youtube_list_playlists" => {
+            let playlists = tokio::task::spawn_blocking(app_core::youtube_list_playlists)
+                .await
+                .map_err(blocking_task_err)?
+                .map_err(|error| ApiError::bad_request(error.to_string()))?;
+            Ok(serde_json::to_value(playlists).map_err(serde_err)?)
+        }
+
+        // ── Wishes (« Envies ») ──────────────────────────────────────────
+        "wishes_import_youtube_playlist" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Args {
+                playlist_id: String,
+                #[serde(default)]
+                name: String,
+            }
+            let args: Args = deserialize(payload)?;
+            let detail = tokio::task::spawn_blocking(move || {
+                app_core::import_youtube_playlist(&args.playlist_id, &args.name)
+            })
+            .await
+            .map_err(blocking_task_err)?
+            .map_err(|error| ApiError::bad_request(error.to_string()))?;
+            events.emit("wishes-changed", &detail.playlist);
+            Ok(serde_json::to_value(detail).map_err(serde_err)?)
+        }
+        "wishes_list_playlists" => {
+            let playlists = tokio::task::spawn_blocking(app_core::list_wish_playlists)
+                .await
+                .map_err(blocking_task_err)?
+                .map_err(|error| ApiError::internal(error.to_string()))?;
+            Ok(serde_json::to_value(playlists).map_err(serde_err)?)
+        }
+        "wishes_load_playlist" => {
+            let args: IdArgs = deserialize(payload)?;
+            let detail =
+                tokio::task::spawn_blocking(move || app_core::load_wish_playlist(&args.id))
+                    .await
+                    .map_err(blocking_task_err)?
+                    .map_err(|error| ApiError::internal(error.to_string()))?;
+            Ok(serde_json::to_value(detail).map_err(serde_err)?)
+        }
+        "wishes_delete_playlist" => {
+            let args: IdArgs = deserialize(payload)?;
+            let removed =
+                tokio::task::spawn_blocking(move || app_core::delete_wish_playlist(&args.id))
+                    .await
+                    .map_err(blocking_task_err)?
+                    .map_err(|error| ApiError::internal(error.to_string()))?;
+            events.emit("wishes-changed", &Value::Null);
+            Ok(Value::from(removed))
+        }
+        "wishes_refresh_matches" => {
+            let changed = tokio::task::spawn_blocking(app_core::refresh_wish_matches)
+                .await
+                .map_err(blocking_task_err)?
+                .map_err(|error| ApiError::internal(error.to_string()))?;
+            if changed > 0 {
+                events.emit("wishes-changed", &Value::Null);
+            }
+            Ok(Value::from(changed))
+        }
         "load_songs" => {
             #[derive(Deserialize)]
             struct Args {
@@ -882,6 +985,17 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
             message: format!("unknown command {name}"),
         }),
     }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AuthIdArgs {
+    auth_id: String,
+}
+
+#[derive(Deserialize)]
+struct IdArgs {
+    id: String,
 }
 
 fn serde_err(e: serde_json::Error) -> ApiError {

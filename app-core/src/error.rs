@@ -26,6 +26,12 @@ pub enum NightingaleError {
         stage: &'static str,
         source: Box<dyn std::error::Error + Send + Sync + 'static>,
     },
+    /// A YouTube Data API request/parsing failure. Access tokens travel in
+    /// the `Authorization` header only, never in request URLs.
+    YouTube {
+        stage: &'static str,
+        source: Box<dyn std::error::Error + Send + Sync + 'static>,
+    },
     Other(String),
 }
 
@@ -38,6 +44,7 @@ impl fmt::Display for NightingaleError {
             Self::Jellyfin { stage, source } => write!(f, "Jellyfin {stage}: {source}"),
             Self::Navidrome { stage, source } => write!(f, "Navidrome {stage}: {source}"),
             Self::Plex { stage, source } => write!(f, "Plex {stage}: {source}"),
+            Self::YouTube { stage, source } => write!(f, "YouTube {stage}: {source}"),
             Self::Other(msg) => write!(f, "{msg}"),
         }
     }
@@ -52,6 +59,7 @@ impl std::error::Error for NightingaleError {
             Self::Jellyfin { source, .. } => Some(source.as_ref()),
             Self::Navidrome { source, .. } => Some(source.as_ref()),
             Self::Plex { source, .. } => Some(source.as_ref()),
+            Self::YouTube { source, .. } => Some(source.as_ref()),
             Self::Other(_) => None,
         }
     }
@@ -83,6 +91,18 @@ impl NightingaleError {
         E: std::error::Error + Send + Sync + 'static,
     {
         Self::Plex {
+            stage,
+            source: Box::new(source),
+        }
+    }
+}
+
+impl NightingaleError {
+    pub fn youtube<E>(stage: &'static str, source: E) -> Self
+    where
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        Self::YouTube {
             stage,
             source: Box::new(source),
         }

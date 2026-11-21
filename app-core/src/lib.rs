@@ -1,3 +1,4 @@
+mod accounts;
 mod analyzer;
 mod backgrounds;
 mod cache;
@@ -23,7 +24,17 @@ mod source;
 mod usdx;
 mod vendor;
 mod vendor_scripts;
+mod wishes;
 
+pub use accounts::{
+    AccountProvider, AccountsOverview, AuthPollResult, AuthStart, AuthStatus, LinkedAccount,
+    accounts_overview, cancel_auth as cancel_account_auth, linked_accounts,
+    poll_auth as poll_account_auth, unlink_account,
+    youtube::{
+        YouTubePlaylist, YouTubePlaylistKind, begin_link as youtube_begin_link,
+        is_configured as youtube_is_configured, list_playlists as youtube_list_playlists,
+    },
+};
 pub use analyzer::{
     AnalysisQueue, cancel_analysis, delete_cache, enqueue, realign, reanalyze_force_transcribe,
     reanalyze_full, reanalyze_transcript, refresh_metadata, shutdown_server,
@@ -88,6 +99,10 @@ pub use vendor::{
     refresh_analyzer_scripts_if_ready, resolve_data_path_input, run_vendor_setup, step_create_venv,
     step_download_ffmpeg, step_download_uv, step_extract_scripts, step_install_packages,
     step_install_python,
+};
+pub use wishes::{
+    Wish, WishCounts, WishPlaylist, WishPlaylistDetail, WishStatus, delete_wish_playlist,
+    import_youtube_playlist, list_wish_playlists, load_wish_playlist, refresh_wish_matches,
 };
 
 pub fn startup() -> Result<(), String> {

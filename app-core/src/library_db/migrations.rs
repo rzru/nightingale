@@ -21,7 +21,7 @@ use super::schema::songs;
 use super::songs::{append_songs, update_library_meta};
 use super::sql_functions::json_extract_text;
 
-const SCHEMA_VERSION: i32 = 2;
+const SCHEMA_VERSION: i32 = 3;
 
 static MIGRATING: AtomicBool = AtomicBool::new(false);
 static MIGRATION_TOTAL: AtomicUsize = AtomicUsize::new(0);
@@ -128,6 +128,46 @@ pub(super) fn run_migrations(conn: &mut SqliteConnection) -> Result<(), Nighting
                 ON playlist_songs(playlist_id, position);
             CREATE INDEX IF NOT EXISTS idx_playlist_songs_song
                 ON playlist_songs(song_id);
+        ",
+        )?;
+    }
+    if version < 3 {
+        conn.batch_execute(
+            "
+            CREATE TABLE IF NOT EXISTS wishes (
+                id INTEGER PRIMARY KEY,
+                provider TEXT NOT NULL,
+                external_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                artist TEXT NOT NULL,
+                duration_secs REAL,
+                source_url TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'missing' CHECK (status IN (
+                    'missing', 'available', 'downloading', 'analyzing', 'ready', 'failed'
+                )),
+                matched_file_hash TEXT,
+                error TEXT,
+                added_at INTEGER NOT NULL,
+                UNIQUE (provider, external_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_wishes_status ON wishes(status);
+            CREATE TABLE IF NOT EXISTS wish_playlists (
+                id TEXT PRIMARY KEY,
+                provider TEXT NOT NULL,
+                external_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                imported_at INTEGER NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS wish_playlist_items (
+                playlist_id TEXT NOT NULL REFERENCES wish_playlists(id) ON DELETE CASCADE,
+                wish_id INTEGER NOT NULL REFERENCES wishes(id) ON DELETE CASCADE,
+                position INTEGER NOT NULL,
+                PRIMARY KEY (playlist_id, wish_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_wish_playlist_items_order
+                ON wish_playlist_items(playlist_id, position);
+            CREATE INDEX IF NOT EXISTS idx_wish_playlist_items_wish
+                ON wish_playlist_items(wish_id);
         ",
         )?;
     }

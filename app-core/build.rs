@@ -5,7 +5,11 @@ use std::path::PathBuf;
 /// Each is sourced from the process env first, then from a `.env` at the
 /// workspace root. Missing values are silently skipped so `option_env!`
 /// resolves to `None` and the code falls back to runtime lookups.
-const FORWARDED_KEYS: &[&str] = &["PIXABAY_API_KEY"];
+const FORWARDED_KEYS: &[&str] = &[
+    "PIXABAY_API_KEY",
+    "YOUTUBE_CLIENT_ID",
+    "YOUTUBE_CLIENT_SECRET",
+];
 
 fn main() {
     let manifest_dir =

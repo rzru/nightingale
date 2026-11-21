@@ -49,8 +49,44 @@ diesel::table! {
     }
 }
 
+diesel::table! {
+    wishes (id) {
+        id -> BigInt,
+        provider -> Text,
+        external_id -> Text,
+        title -> Text,
+        artist -> Text,
+        duration_secs -> Nullable<Double>,
+        source_url -> Text,
+        status -> Text,
+        matched_file_hash -> Nullable<Text>,
+        error -> Nullable<Text>,
+        added_at -> BigInt,
+    }
+}
+
+diesel::table! {
+    wish_playlists (id) {
+        id -> Text,
+        provider -> Text,
+        external_id -> Text,
+        name -> Text,
+        imported_at -> BigInt,
+    }
+}
+
+diesel::table! {
+    wish_playlist_items (playlist_id, wish_id) {
+        playlist_id -> Text,
+        wish_id -> BigInt,
+        position -> BigInt,
+    }
+}
+
 diesel::joinable!(playlist_songs -> playlists (playlist_id));
 diesel::joinable!(playlist_songs -> songs (song_id));
+diesel::joinable!(wish_playlist_items -> wish_playlists (playlist_id));
+diesel::joinable!(wish_playlist_items -> wishes (wish_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     library_meta,
@@ -58,4 +94,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     analysis_queue,
     playlists,
     playlist_songs,
+    wishes,
+    wish_playlists,
+    wish_playlist_items,
 );
