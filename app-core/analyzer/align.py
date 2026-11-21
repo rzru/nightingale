@@ -111,6 +111,47 @@ def align_lyrics(
             flush=True,
         )
 
+    if get_align_backend() == "wav2vec2_bert_2pass" and language == "en":
+        # Pass 1: plain WhisperX on the whole song, same call every other
+        # backend already falls back to. Not one of `_run_align`'s
+        # specially-dispatched backend names, so this transparently runs
+        # the default wav2vec2-base CTC path regardless of the
+        # "wav2vec2_bert_2pass" backend configured above. Line windows are
+        # deliberately bypassed here (`line_windows=None` below): pass 2's
+        # pause-bounded chunks don't line up with per-line LRC windows, so
+        # reconciling the two isn't attempted -- this backend always maps
+        # from its own whole-song passes.
+        pass1_result = align_with_fallback(
+            [{"text": " ".join(clean_lines), "start": vocal_start, "end": vocal_end}],
+            audio, language, a_device, pre_align_cleanup,
+        )
+        pass1_segments = _map_words_to_lines(pass1_result, clean_lines, line_spans, language, None)
+
+        import wav2vec2_bert_2pass
+        try:
+            pass2_result = wav2vec2_bert_2pass.refine_with_pauses(
+                pass1_segments, audio, vocal_start, vocal_end, a_device,
+            )
+        except Exception as e:
+            print(
+                f"[nightingale:LOG] wav2vec2-bert-2pass: pass 2 failed ({e}); "
+                f"using pass 1 (whisperx) timing only",
+                flush=True,
+            )
+            pass2_result = None
+
+        segments = pass1_segments
+        if pass2_result is not None:
+            pass2_segments = _map_words_to_lines(pass2_result, clean_lines, line_spans, language, None)
+            segments = wav2vec2_bert_2pass.merge_with_pass1(pass1_segments, pass2_segments)
+
+        _trim_words_to_vocals(segments, audio)
+        progress(90, f"Alignment complete: {len(segments)} segments, lang={language}")
+        if segments:
+            print(f"[nightingale:LOG] First segment: '{segments[0]['text'][:100]}'", flush=True)
+            print(f"[nightingale:LOG] Last segment: '{segments[-1]['text'][:100]}'", flush=True)
+        return {"language": language, "segments": segments, "source": "lyrics"}
+
     line_token_pairs: list[list[tuple[str, str]]] | None = None
     if cjk.is_cjk(language):
         line_token_pairs = [

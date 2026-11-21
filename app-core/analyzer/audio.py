@@ -27,6 +27,15 @@ def get_vocal_threshold_pct() -> float:
     return _vocal_threshold_pct
 
 
+def _windowed_rms(audio, sr: int, win_secs: float) -> list[float]:
+    """RMS energy for each non-overlapping ``win_secs`` window across ``audio``."""
+    window_samples = int(win_secs * sr)
+    return [
+        float(np.sqrt(np.mean(audio[start_idx : start_idx + window_samples] ** 2)))
+        for start_idx in range(0, len(audio), window_samples)
+    ]
+
+
 def detect_vocal_region(audio, sr: int = 16000, win_secs: float = 0.5,
                         threshold_pct=None, min_consecutive: int = 4,
                         padding: float = 1.0) -> tuple[float, float]:
@@ -37,11 +46,7 @@ def detect_vocal_region(audio, sr: int = 16000, win_secs: float = 0.5,
     """
     if threshold_pct is None:
         threshold_pct = _vocal_threshold_pct
-    window_samples = int(win_secs * sr)
-    rms_values = []
-    for start_idx in range(0, len(audio), window_samples):
-        chunk = audio[start_idx : start_idx + window_samples]
-        rms_values.append(float(np.sqrt(np.mean(chunk ** 2))))
+    rms_values = _windowed_rms(audio, sr, win_secs)
 
     duration_secs = len(audio) / sr
 
@@ -81,6 +86,55 @@ def detect_vocal_region(audio, sr: int = 16000, win_secs: float = 0.5,
     print(f"[nightingale:LOG] Vocal region (with {padding}s padding): {vocal_start:.1f}s - {vocal_end:.1f}s (song duration: {duration_secs:.1f}s)", flush=True)
 
     return vocal_start, vocal_end
+
+
+def detect_pause_chunks(audio, vocal_start: float, vocal_end: float, sr: int = 16000,
+                        win_secs: float = 0.5, threshold_pct=None,
+                        min_pause_secs: float = 0.6) -> list[tuple[float, float]]:
+    """Split ``[vocal_start, vocal_end]`` into chunks at detected silence gaps.
+
+    Reuses the same windowed-RMS/threshold logic as ``detect_vocal_region``,
+    but to find every *internal* run of ``>= min_pause_secs`` consecutive
+    low-RMS windows rather than just the first/last active one. Cuts at the
+    midpoint of each such run. A song with no internal pause long enough
+    returns a single chunk covering the whole vocal region.
+    """
+    if threshold_pct is None:
+        threshold_pct = _vocal_threshold_pct
+    rms_values = _windowed_rms(audio, sr, win_secs)
+    if not rms_values:
+        return [(vocal_start, vocal_end)]
+
+    peak_rms = max(rms_values)
+    threshold = peak_rms * threshold_pct
+    active = [rms >= threshold for rms in rms_values]
+    min_pause_windows = max(1, int(min_pause_secs / win_secs))
+
+    pauses = []
+    i, n = 0, len(active)
+    while i < n:
+        if not active[i]:
+            j = i
+            while j < n and not active[j]:
+                j += 1
+            if j - i >= min_pause_windows:
+                pauses.append((i, j))
+            i = j
+        else:
+            i += 1
+
+    cut_points = sorted(
+        c for c in (((i + j) / 2) * win_secs for i, j in pauses) if vocal_start < c < vocal_end
+    )
+    bounds = [vocal_start, *cut_points, vocal_end]
+    chunks = [(bounds[k], bounds[k + 1]) for k in range(len(bounds) - 1)]
+    print(
+        f"[nightingale:LOG] Pause-detected chunks: {len(chunks)} chunk(s), "
+        f"max={max(e - s for s, e in chunks):.1f}s",
+        flush=True,
+    )
+    return chunks
+
 
 def silent_gaps(audio, sr: int = 16000, win_secs: float = 0.5,
                 min_gap_secs: float = 3.0, threshold_pct=None) -> list[tuple[float, float]]:

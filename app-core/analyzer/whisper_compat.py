@@ -44,9 +44,17 @@ def set_align_backend(name):
       falls outside its support (unsupported language, over-length audio, or any
       failure) the callers fall through to the wav2vec2 path, where ``_run_align``
       treats any non-``"ctc"`` backend as ``whisperx``.
+    - ``"wav2vec2_bert_2pass"``: handled directly by ``align.py``, same as
+      ``"qwen"`` above -- a cheap WhisperX pass locates natural pauses'
+      line boundaries, then Wav2Vec2-BERT refines each pause-bounded chunk.
+      Falls back to the plain WhisperX pass alone (never attempts the
+      Wav2Vec2-BERT pass) when no chunk-safe pause structure is found; see
+      ``wav2vec2_bert_2pass.py``.
     """
     global _align_backend
-    _align_backend = name if name in ("whisperx", "ctc", "qwen") else "whisperx"
+    _align_backend = name if name in (
+        "whisperx", "ctc", "qwen", "wav2vec2_bert_2pass",
+    ) else "whisperx"
 
 
 def get_align_backend() -> str:

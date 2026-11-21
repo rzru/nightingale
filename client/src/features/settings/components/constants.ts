@@ -63,6 +63,11 @@ export const ALIGN_BACKENDS: SettingsOption[] = [
     label: 'settings.constants.qwenForcedAlignmentExperimental',
     description: 'settings.constants.aFastAiModelCoveringDescription',
   },
+  {
+    value: 'wav2vec2_bert_2pass',
+    label: 'settings.constants.wav2vec2BertTwoPassAlignmentExperimental',
+    description: 'settings.constants.splitsTheSongAtNaturalDescription',
+  },
 ];
 
 export const MODELS = ['large-v3', 'large-v3-turbo', 'medium', 'small', 'base', 'tiny'];
