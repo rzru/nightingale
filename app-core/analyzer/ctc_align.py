@@ -21,10 +21,26 @@ from torchaudio.functional import forced_align, merge_tokens
 import nltk
 from nltk.data import load as nltk_load
 
-from whisperx.audio import SAMPLE_RATE
 from whisperx.utils import interpolate_nans, PUNKT_LANGUAGES
 
+from audio import ALIGNMENT_SAMPLE_RATE
+
 LANGUAGES_WITHOUT_SPACES = ["ja", "zh"]
+
+
+def add_wildcard_column(emission: torch.Tensor, blank_id: int) -> tuple[torch.Tensor, int]:
+    """Append a synthetic wildcard class to ``emission`` (the per-frame max
+    logit across every non-blank class) so a character outside the model's
+    dictionary can still be used as a forced_align target instead of
+    aborting the whole segment. Returns ``(expanded_emission, wildcard_id)``.
+    Shared with :func:`wav2vec2_bert_align.wav2vec2_bert_align`, which has
+    the same out-of-vocabulary problem against a different model/dictionary.
+    """
+    non_blank_mask = torch.ones(emission.size(1), dtype=torch.bool, device=emission.device)
+    non_blank_mask[blank_id] = False
+    wildcard_col = emission[:, non_blank_mask].max(dim=1).values
+    expanded = torch.cat([emission, wildcard_col.unsqueeze(1)], dim=1)
+    return expanded, expanded.size(1) - 1
 
 
 def ctc_align(
@@ -51,7 +67,7 @@ def ctc_align(
     if len(audio.shape) == 1:
         audio = audio.unsqueeze(0)
 
-    max_duration = audio.shape[1] / SAMPLE_RATE
+    max_duration = audio.shape[1] / ALIGNMENT_SAMPLE_RATE
 
     model_dictionary = align_model_metadata["dictionary"]
     model_lang = align_model_metadata["language"]
@@ -148,8 +164,8 @@ def ctc_align(
 
         text_clean = "".join(segment_data[sdx]["clean_char"])
 
-        f1 = int(t1 * SAMPLE_RATE)
-        f2 = int(t2 * SAMPLE_RATE)
+        f1 = int(t1 * ALIGNMENT_SAMPLE_RATE)
+        f2 = int(t2 * ALIGNMENT_SAMPLE_RATE)
 
         waveform_segment = audio[:, f1:f2]
         if waveform_segment.shape[-1] < 400:
@@ -175,18 +191,14 @@ def ctc_align(
 
         has_wildcard = any(c not in model_dictionary for c in text_clean)
         if has_wildcard:
-            non_blank_mask = torch.ones(emission.size(1), dtype=torch.bool, device=emission.device)
-            non_blank_mask[blank_id] = False
-            wildcard_col = emission[:, non_blank_mask].max(dim=1).values
-            emission = torch.cat([emission, wildcard_col.unsqueeze(1)], dim=1)
-            wildcard_id = emission.size(1) - 1
+            emission, wildcard_id = add_wildcard_column(emission, blank_id)
             tokens = [model_dictionary.get(c, wildcard_id) for c in text_clean]
         else:
             tokens = [model_dictionary[c] for c in text_clean]
 
         num_frame = emission.size(0)
 
-        char_segments = _forced_align_segment(emission, tokens, blank_id)
+        char_segments = forced_align_segment(emission, tokens, blank_id)
         if char_segments is None or len(char_segments) != len(text_clean):
             print(
                 f"[nightingale:LOG] ctc-align: forced_align failed for segment "
@@ -315,7 +327,7 @@ def ctc_align(
     return {"segments": aligned_segments, "word_segments": word_segments}
 
 
-def _forced_align_segment(emission: torch.Tensor, tokens: list[int], blank_id: int):
+def forced_align_segment(emission: torch.Tensor, tokens: list[int], blank_id: int):
     """Run torchaudio forced_align for one segment.
 
     Returns a list of ``{"start", "end", "score"}`` (one per target token, in
