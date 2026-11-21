@@ -21,6 +21,10 @@ from audio import detect_pause_chunks
 from gpu import gpu_model
 import wav2vec2_bert_align
 
+# hf-audio/wav2vec2-bert-CV16-en (see wav2vec2_bert_align.py) is fine-tuned
+# on English Common Voice only.
+SUPPORTED_LANGS = frozenset({"en"})
+
 # A maximum length of a chunk that would pass the bounds of regular memory usage
 # Potentially can be adjusted based on available capacity
 MAX_CHUNK_SECS = 30.0
@@ -28,6 +32,10 @@ MAX_CHUNK_SECS = 30.0
 # Below this median per-word CTC confidence, pass 2's placement is no more
 # trustworthy than a guess rather than an improvement on pass 1.
 MIN_MEDIAN_CONFIDENCE = 0.3
+
+
+def is_supported(language: str) -> bool:
+    return language in SUPPORTED_LANGS
 
 
 def _chunk_index_for(mid: float, chunks: list[tuple[float, float]]) -> int:

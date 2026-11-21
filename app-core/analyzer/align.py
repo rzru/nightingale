@@ -111,7 +111,8 @@ def align_lyrics(
             flush=True,
         )
 
-    if get_align_backend() == "wav2vec2_bert_2pass" and language == "en":
+    import wav2vec2_bert_2pass
+    if get_align_backend() == "wav2vec2_bert_2pass" and wav2vec2_bert_2pass.is_supported(language):
         # Pass 1: plain WhisperX on the whole song, same call every other
         # backend already falls back to. Not one of `_run_align`'s
         # specially-dispatched backend names, so this transparently runs
@@ -127,7 +128,6 @@ def align_lyrics(
         )
         pass1_segments = _map_words_to_lines(pass1_result, clean_lines, line_spans, language, None)
 
-        import wav2vec2_bert_2pass
         try:
             pass2_result = wav2vec2_bert_2pass.refine_with_pauses(
                 pass1_segments, audio, vocal_start, vocal_end, a_device,
