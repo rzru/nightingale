@@ -22,11 +22,6 @@ use super::sql_functions::{
 };
 type SongQuery = songs::BoxedQuery<'static, Sqlite>;
 
-/// Sentinel `LibraryMenuFilters.genre` value selecting untagged songs
-/// (`songs.genre IS NULL`), and the menu-item value for the equivalent
-/// bucket in the Genres sidebar section. Shared constant so the filter
-/// check, the bucket-key assignment, and the display-label check can't
-/// drift apart.
 const UNKNOWN_GENRE: &str = "unknown_genre";
 
 #[derive(Clone, Copy)]

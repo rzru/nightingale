@@ -530,7 +530,6 @@ pub(crate) fn build_usdx_song(path: &Path, cache: &CacheDir) -> Result<Song, Nig
         title: file.title.clone(),
         artist: file.artist.clone(),
         album,
-        // USDX .txt charts don't carry a #GENRE tag we parse today.
         genre: None,
         duration_secs,
         album_art_path,

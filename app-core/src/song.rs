@@ -218,7 +218,7 @@ fn read_file_derived_fields(path: &Path, is_video: bool, cache: &CacheDir) -> Fi
 }
 
 impl Song {
-    /// Re-reads title/artist/album/genre/duration/album art straight from
+    /// Re-reads title/artist/album/duration/album art straight from
     /// `self.path`, overwriting the current values in place. Everything
     /// analysis-derived (key, tempo,
     /// transcript_source, is_analyzed, ...) is untouched -- this is a
