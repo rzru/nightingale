@@ -33,7 +33,7 @@ const SCOPES: &[&str] = &["https://www.googleapis.com/auth/youtube.readonly"];
 const AUTH_PARAMS: &[(&str, &str)] = &[("access_type", "offline"), ("prompt", "consent")];
 const PAGE_SIZE: &str = "50";
 /// Guard against runaway paging on huge "liked" lists.
-const MAX_TRACKS: usize = 5000;
+pub(crate) const MAX_TRACKS: usize = 5000;
 
 /// Pseudo playlist id for the user's liked videos (`videos?myRating=like`).
 pub(crate) const LIKED_PLAYLIST_ID: &str = "liked";
@@ -121,6 +121,7 @@ fn complete_link(
             .filter(|title| !title.trim().is_empty())
             .unwrap_or_else(|| "YouTube".into()),
         linked_at: now_secs(),
+        browser: None,
     };
     super::save_account(StoredAccount {
         account: account.clone(),
@@ -197,6 +198,9 @@ impl RemoteTrack {
 }
 
 pub fn list_playlists() -> Result<Vec<YouTubePlaylist>, NightingaleError> {
+    if let Some(browser) = super::session_browser(AccountProvider::Youtube) {
+        return super::youtube_session::list_playlists(&browser);
+    }
     let api = linked_api()?;
     let mut playlists = vec![YouTubePlaylist {
         id: LIKED_PLAYLIST_ID.into(),
@@ -233,6 +237,9 @@ pub(crate) fn fetch_playlist_tracks(
 ) -> Result<Vec<RemoteTrack>, NightingaleError> {
     if !is_valid_playlist_id(playlist_id) {
         return Err(NightingaleError::from("invalid YouTube playlist id"));
+    }
+    if let Some(browser) = super::session_browser(AccountProvider::Youtube) {
+        return super::youtube_session::fetch_playlist_tracks(&browser, playlist_id);
     }
     let api = linked_api()?;
     if playlist_id == LIKED_PLAYLIST_ID {

@@ -16,4 +16,9 @@ export type LinkedAccount = {
    * Unix seconds.
    */
   linked_at: number;
+  /**
+   * Set for "use my YouTube session" links: the browser (yt-dlp name)
+   * whose cookies are read. `None` for OAuth links.
+   */
+  browser: string | null;
 };

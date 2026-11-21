@@ -23,6 +23,7 @@ use crate::secret;
 
 mod oauth;
 pub(crate) mod youtube;
+pub(crate) mod youtube_session;
 
 pub use oauth::{AuthPollResult, AuthStart, AuthStatus, cancel as cancel_auth, poll as poll_auth};
 
@@ -65,6 +66,10 @@ pub struct LinkedAccount {
     /// Unix seconds.
     #[ts(type = "number")]
     pub linked_at: u64,
+    /// Set for "use my YouTube session" links: the browser (yt-dlp name)
+    /// whose cookies are read. `None` for OAuth links.
+    #[serde(default)]
+    pub browser: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -216,6 +221,17 @@ pub fn unlink_account(provider: AccountProvider) -> Result<bool, NightingaleErro
     Ok(true)
 }
 
+/// Browser to read cookies from, when `provider` was linked through the
+/// browser session rather than OAuth.
+pub(crate) fn session_browser(provider: AccountProvider) -> Option<String> {
+    let _guard = lock_store().ok()?;
+    read_store()
+        .accounts
+        .into_iter()
+        .find(|stored| stored.account.provider == provider)
+        .and_then(|stored| stored.account.browser)
+}
+
 /// One account per provider: linking again replaces the previous one.
 pub(crate) fn save_account(account: StoredAccount) -> Result<(), NightingaleError> {
     let _guard = lock_store()?;
@@ -283,6 +299,7 @@ mod tests {
                 account_id: "UC123".into(),
                 display_name: "Someone".into(),
                 linked_at: 1,
+                browser: None,
             },
             refresh_token: "refresh-secret".into(),
             access_token: "access-secret".into(),

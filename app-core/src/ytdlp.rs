@@ -211,6 +211,51 @@ pub(crate) fn download_audio(
         .ok_or_else(|| "yt-dlp finished without producing an audio file".to_string())
 }
 
+/// Run yt-dlp in metadata-only mode (`--dump-single-json --flat-playlist`)
+/// with the cookies of `browser`, and parse the JSON it prints. Nothing is
+/// downloaded.
+pub(crate) fn fetch_json_with_browser_cookies(
+    url: &str,
+    browser: &str,
+    extra_args: &[&str],
+) -> Result<serde_json::Value, String> {
+    let mut command = silent_command(vendor::python_path());
+    command
+        .args([
+            "-m",
+            "yt_dlp",
+            "--dump-single-json",
+            "--flat-playlist",
+            "--no-warnings",
+            "--no-colors",
+            "--cookies-from-browser",
+            browser,
+        ])
+        .args(extra_args);
+    if let Some(deno) = deno_path() {
+        command
+            .arg("--js-runtimes")
+            .arg(format!("deno:{}", deno.display()));
+    }
+    let output = command
+        .arg("--")
+        .arg(url)
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|error| format!("failed to start yt-dlp: {error}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let tail: VecDeque<String> = stderr
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .map(str::to_owned)
+            .collect();
+        return Err(summarize_error(&tail));
+    }
+    serde_json::from_slice(&output.stdout)
+        .map_err(|error| format!("yt-dlp returned unreadable data: {error}"))
+}
+
 fn spawn_line_reader(
     stream: impl Read + Send + 'static,
     is_stderr: bool,

@@ -5,6 +5,7 @@ import {
   DownloadIcon,
   HeartIcon,
   InfoIcon,
+  ListMusicIcon,
   RefreshCcwDotIcon,
   TrophyIcon,
   UserIcon,
@@ -218,6 +219,18 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
               >
                 <CogIcon />
                 {t('common.settings')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setDropdownOpen(false);
+                  if (isMobile) {
+                    setOpen(false);
+                  }
+                  void navigate('/playlists');
+                }}
+              >
+                <ListMusicIcon />
+                {t('playlists.page.title')}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setMode('update')}>
                 <DownloadIcon />

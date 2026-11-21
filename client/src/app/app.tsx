@@ -10,6 +10,7 @@ import { LibraryPage } from '@/features/library/library-page';
 import { MenuLayout } from '@/features/menu/menu';
 import { MenuFocusProvider } from '@/features/menu/providers/menu-focus-context';
 import { Playback } from '@/features/playback/playback';
+import { PlaylistsPage } from '@/features/playlists/playlists-page';
 import { RemoteQueuePage } from '@/features/remote/remote-queue';
 import { SettingsPage } from '@/features/settings/settings';
 import { useUpdate } from '@/features/updates/queries/use-update';
@@ -45,6 +46,7 @@ const InnerWrapper = () => (
           <Route path="/" element={<MenuLayout />}>
             <Route index element={<LibraryPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="playlists" element={<PlaylistsPage />} />
           </Route>
           <Route path="/playback" element={<Playback />} />
         </Routes>

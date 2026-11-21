@@ -714,6 +714,29 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
             events.emit("accounts-changed", &app_core::linked_accounts());
             Ok(Value::from(removed))
         }
+        "youtube_session_begin" => {
+            let start = tokio::task::spawn_blocking(app_core::youtube_session_begin)
+                .await
+                .map_err(blocking_task_err)?;
+            Ok(serde_json::to_value(start).map_err(serde_err)?)
+        }
+        "youtube_session_connect" => {
+            #[derive(Deserialize)]
+            struct Args {
+                browser: String,
+            }
+            let args: Args = deserialize(payload)?;
+            let result = tokio::task::spawn_blocking(move || {
+                app_core::youtube_session_connect(&args.browser)
+            })
+            .await
+            .map_err(blocking_task_err)?
+            .map_err(|error| ApiError::bad_request(error.to_string()))?;
+            if result.status == app_core::SessionConnectStatus::Connected {
+                events.emit("accounts-changed", &app_core::linked_accounts());
+            }
+            Ok(serde_json::to_value(result).map_err(serde_err)?)
+        }
         "youtube_list_playlists" => {
             let playlists = tokio::task::spawn_blocking(app_core::youtube_list_playlists)
                 .await

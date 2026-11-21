@@ -36,6 +36,10 @@ pub use accounts::{
         YouTubePlaylist, YouTubePlaylistKind, begin_link as youtube_begin_link,
         is_configured as youtube_is_configured, list_playlists as youtube_list_playlists,
     },
+    youtube_session::{
+        SessionConnectResult, SessionConnectStatus, SessionStart,
+        begin_session as youtube_session_begin, connect_session as youtube_session_connect,
+    },
 };
 pub use analyzer::{
     AnalysisQueue, cancel_analysis, delete_cache, enqueue, realign, reanalyze_force_transcribe,

@@ -4,6 +4,8 @@ import type { AuthPollResult } from '@/types/AuthPollResult';
 import type { AuthStart } from '@/types/AuthStart';
 import type { DownloaderStatus } from '@/types/DownloaderStatus';
 import type { PrepareSummary } from '@/types/PrepareSummary';
+import type { SessionConnectResult } from '@/types/SessionConnectResult';
+import type { SessionStart } from '@/types/SessionStart';
 import type { WishPlaylist } from '@/types/WishPlaylist';
 import type { WishPlaylistDetail } from '@/types/WishPlaylistDetail';
 import type { YouTubePlaylist } from '@/types/YouTubePlaylist';
@@ -34,6 +36,16 @@ export const cancelAccountAuth = async (authId: string): Promise<boolean> => {
 
 export const unlinkAccount = async (provider: AccountProvider): Promise<boolean> => {
   return await invoke<boolean>('account_unlink', { provider });
+};
+
+/** Detect the default browser for "use my YouTube session". */
+export const youtubeSessionBegin = async (): Promise<SessionStart> => {
+  return await invoke<SessionStart>('youtube_session_begin');
+};
+
+/** Read the YouTube session of `browser` (installs yt-dlp the first time). */
+export const youtubeSessionConnect = async (browser: string): Promise<SessionConnectResult> => {
+  return await invoke<SessionConnectResult>('youtube_session_connect', { browser });
 };
 
 export const youtubeListPlaylists = async (): Promise<YouTubePlaylist[]> => {
