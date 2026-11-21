@@ -777,6 +777,39 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
             }
             Ok(Value::from(changed))
         }
+        "wishes_prepare_playlist" => {
+            let args: IdArgs = deserialize(payload)?;
+            let summary =
+                tokio::task::spawn_blocking(move || app_core::prepare_wish_playlist(&args.id))
+                    .await
+                    .map_err(blocking_task_err)?
+                    .map_err(|error| ApiError::bad_request(error.to_string()))?;
+            events.emit("wishes-changed", &Value::Null);
+            Ok(serde_json::to_value(summary).map_err(serde_err)?)
+        }
+        "wishes_prepare" => {
+            #[derive(Deserialize)]
+            struct Args {
+                ids: Vec<i64>,
+            }
+            let args: Args = deserialize(payload)?;
+            let summary = tokio::task::spawn_blocking(move || app_core::prepare_wishes(&args.ids))
+                .await
+                .map_err(blocking_task_err)?
+                .map_err(|error| ApiError::bad_request(error.to_string()))?;
+            events.emit("wishes-changed", &Value::Null);
+            Ok(serde_json::to_value(summary).map_err(serde_err)?)
+        }
+        "wishes_downloader_status" => {
+            Ok(serde_json::to_value(app_core::wish_downloader_status()).map_err(serde_err)?)
+        }
+        "wishes_cancel_downloads" => {
+            let dropped = tokio::task::spawn_blocking(app_core::cancel_wish_downloads)
+                .await
+                .map_err(blocking_task_err)?;
+            events.emit("wishes-changed", &Value::Null);
+            Ok(Value::from(dropped))
+        }
         "load_songs" => {
             #[derive(Deserialize)]
             struct Args {

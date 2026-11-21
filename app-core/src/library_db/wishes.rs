@@ -52,6 +52,11 @@ pub(crate) struct WishRow {
     pub(crate) status: String,
     pub(crate) matched_file_hash: Option<String>,
     pub(crate) error: Option<String>,
+    /// File this wish was downloaded to, once yt-dlp finished.
+    pub(crate) downloaded_path: Option<String>,
+    /// The user asked to get this wish ready to sing ("Tout préparer"): once it
+    /// is in the library the matcher queues its analysis.
+    pub(crate) prepare_requested: bool,
 }
 
 #[derive(Debug, Clone, Queryable, Selectable)]
@@ -68,6 +73,7 @@ pub(crate) struct WishPlaylistRow {
 /// Library rows the matcher compares wishes against.
 #[derive(Debug, Clone, Queryable)]
 pub(crate) struct SongMatchCandidate {
+    pub(crate) path: String,
     pub(crate) file_hash: String,
     pub(crate) title: String,
     pub(crate) artist: String,
@@ -220,16 +226,42 @@ pub(crate) fn load_all_wishes() -> Result<Vec<WishRow>, NightingaleError> {
     })
 }
 
-pub(crate) fn set_wish_match(
+/// Matcher result: status, linked library song and (analysis) error.
+pub(crate) fn set_wish_state(
     id: i64,
     status: &str,
     matched_file_hash: Option<&str>,
+    error: Option<&str>,
 ) -> Result<(), NightingaleError> {
     with_conn_mut(|conn| {
         diesel::update(wishes::table.filter(wishes::id.eq(id)))
             .set((
                 wishes::status.eq(status),
                 wishes::matched_file_hash.eq(matched_file_hash),
+                wishes::error.eq(error),
+            ))
+            .execute(conn)?;
+        Ok(())
+    })
+}
+
+/// Status change that clears any previous error.
+pub(crate) fn set_wish_status(id: i64, status: &str) -> Result<(), NightingaleError> {
+    with_conn_mut(|conn| {
+        diesel::update(wishes::table.filter(wishes::id.eq(id)))
+            .set((wishes::status.eq(status), wishes::error.eq(None::<String>)))
+            .execute(conn)?;
+        Ok(())
+    })
+}
+
+/// The file is on disk; the wish stays `downloading` until a scan adds it to
+/// the library and the matcher links it.
+pub(crate) fn set_wish_downloaded(id: i64, path: &str) -> Result<(), NightingaleError> {
+    with_conn_mut(|conn| {
+        diesel::update(wishes::table.filter(wishes::id.eq(id)))
+            .set((
+                wishes::downloaded_path.eq(Some(path)),
                 wishes::error.eq(None::<String>),
             ))
             .execute(conn)?;
@@ -237,10 +269,63 @@ pub(crate) fn set_wish_match(
     })
 }
 
+pub(crate) fn set_wish_failed(id: i64, error: &str) -> Result<(), NightingaleError> {
+    with_conn_mut(|conn| {
+        diesel::update(wishes::table.filter(wishes::id.eq(id)))
+            .set((wishes::status.eq("failed"), wishes::error.eq(Some(error))))
+            .execute(conn)?;
+        Ok(())
+    })
+}
+
+pub(crate) fn set_prepare_requested(ids: &[i64], value: bool) -> Result<(), NightingaleError> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    with_conn_mut(|conn| {
+        diesel::update(wishes::table.filter(wishes::id.eq_any(ids)))
+            .set(wishes::prepare_requested.eq(value))
+            .execute(conn)?;
+        Ok(())
+    })
+}
+
+pub(crate) fn load_wish_by_id(id: i64) -> Result<Option<WishRow>, NightingaleError> {
+    with_conn(|conn| {
+        Ok(wishes::table
+            .filter(wishes::id.eq(id))
+            .select(WishRow::as_select())
+            .first(conn)
+            .optional()?)
+    })
+}
+
+pub(crate) fn load_wishes_by_ids(ids: &[i64]) -> Result<Vec<WishRow>, NightingaleError> {
+    with_conn(|conn| {
+        Ok(wishes::table
+            .filter(wishes::id.eq_any(ids))
+            .order(wishes::id.asc())
+            .select(WishRow::as_select())
+            .load(conn)?)
+    })
+}
+
+/// Downloads do not survive a restart: put interrupted ones back to `missing`.
+pub(crate) fn reset_interrupted_downloads() -> Result<usize, NightingaleError> {
+    with_conn_mut(|conn| {
+        Ok(
+            diesel::update(wishes::table.filter(wishes::status.eq("downloading")))
+                .set(wishes::status.eq("missing"))
+                .execute(conn)?,
+        )
+    })
+}
+
 pub(crate) fn load_song_match_candidates() -> Result<Vec<SongMatchCandidate>, NightingaleError> {
     with_conn(|conn| {
         Ok(songs::table
             .select((
+                songs::path,
                 songs::file_hash,
                 songs::title,
                 songs::artist,

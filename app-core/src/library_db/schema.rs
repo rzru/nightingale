@@ -62,6 +62,8 @@ diesel::table! {
         matched_file_hash -> Nullable<Text>,
         error -> Nullable<Text>,
         added_at -> BigInt,
+        downloaded_path -> Nullable<Text>,
+        prepare_requested -> Bool,
     }
 }
 

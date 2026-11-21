@@ -78,7 +78,7 @@ pub(crate) fn analyzer_dir() -> PathBuf {
     vendor_dir().join("analyzer")
 }
 
-fn uv_path() -> PathBuf {
+pub(crate) fn uv_path() -> PathBuf {
     let name = if cfg!(windows) { "uv.exe" } else { "uv" };
     vendor_dir().join(name)
 }

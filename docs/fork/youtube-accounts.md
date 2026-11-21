@@ -43,7 +43,27 @@ cette limite (vérification Google nécessaire pour un usage public).
   Statuts : `missing` (à télécharger), `available` (présent), `ready` (analysé).
   La correspondance est recalculée après chaque scan.
 
-## 3. Commandes disponibles (`client/src/bridge/accounts.ts`)
+## 3. Téléchargement (« Tout préparer »)
+
+- `wishes_prepare_playlist` (ou `wishes_prepare` pour des titres choisis) :
+  - titres `missing` → file de téléchargement yt-dlp, un à la fois, vers
+    `<dossier de musique>/YouTube/Artiste - Titre [id].m4a` (pochette et tags
+    inclus) ;
+  - titres `available` → analyse directement.
+- Après le lot (et tous les 10 fichiers), un scan ajoute les fichiers à la
+  bibliothèque. Chaque envie est reliée à son fichier par son chemin, puis son
+  analyse est lancée automatiquement. Les statuts `analyzing`, `ready` et
+  `failed` suivent la file d'analyse.
+- **Outils** : au premier téléchargement, Nightingale installe dans son propre
+  environnement Python `yt-dlp[default]` (qui contient `yt-dlp-ejs`) et `deno`,
+  le moteur JavaScript que YouTube exige depuis yt-dlp 2025.11. Les deux sont
+  remis à jour tous les 3 jours au plus. Rien n'est installé sur le système.
+- Ne marche qu'avec une bibliothèque de type **dossier** : Nightingale n'écrit
+  pas dans Plex, Jellyfin ni Navidrome.
+- Un téléchargement interrompu par la fermeture de l'application revient en
+  `missing` au démarrage suivant.
+
+## 4. Commandes disponibles (`client/src/bridge/accounts.ts`)
 
 | Commande | Rôle |
 | --- | --- |
@@ -54,15 +74,15 @@ cette limite (vérification Google nécessaire pour un usage public).
 | `wishes_import_youtube_playlist` | importer / réimporter une playlist |
 | `wishes_list_playlists` / `wishes_load_playlist` / `wishes_delete_playlist` | consulter |
 | `wishes_refresh_matches` | relancer la correspondance avec la bibliothèque |
+| `wishes_prepare_playlist` / `wishes_prepare` | tout préparer / préparer une sélection |
+| `wishes_downloader_status` / `wishes_cancel_downloads` | suivre / arrêter les téléchargements |
 
 Événements émis : `accounts-changed`, `wishes-changed`.
 
-## 4. Suite prévue
+## 5. Suite prévue
 
-1. Téléchargement des `missing` avec yt-dlp vers le dossier de musique
-   (statuts `downloading` → `analyzing` → `ready`).
-2. Écran « Mes playlists » avec le statut par titre et « Tout préparer ».
-3. Spotify (même module `accounts/oauth.rs`, client PKCE sans secret).
+1. Écran « Mes playlists » avec le statut par titre et « Tout préparer ».
+2. Spotify (même module `accounts/oauth.rs`, client PKCE sans secret).
 
 ## Vérifier la branche
 

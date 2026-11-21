@@ -361,10 +361,14 @@ fn update_queue_status(file_hash: &str, status: QueuedStatus) {
         QueuedStatus::Failed(s) => ("failed", None, Some(s.clone())),
     };
     let _ = library_db::analysis_queue_upsert_row(file_hash, st, pct, msg.as_deref());
+    if matches!(status, QueuedStatus::Failed(_)) {
+        crate::wishes::schedule_refresh();
+    }
 }
 
 fn remove_from_queue(file_hash: &str) {
     let _ = library_db::analysis_queue_delete(file_hash);
+    crate::wishes::schedule_refresh();
 }
 
 fn take_cancelled(initial_hash: &str, file_hash: &str) -> bool {

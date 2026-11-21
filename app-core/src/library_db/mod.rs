@@ -54,8 +54,10 @@ pub(crate) use songs::{
 };
 pub(crate) use wishes::{
     NewWish, SongMatchCandidate, WishPlaylistInput, WishPlaylistRow, WishRow, delete_wish_playlist,
-    load_all_wishes, load_playlist_wishes, load_song_match_candidates, load_wish_playlist_row,
-    load_wish_playlists, normalize_for_match, replace_wish_playlist, set_wish_match,
+    load_all_wishes, load_playlist_wishes, load_song_match_candidates, load_wish_by_id,
+    load_wish_playlist_row, load_wish_playlists, load_wishes_by_ids, normalize_for_match,
+    replace_wish_playlist, reset_interrupted_downloads, set_prepare_requested, set_wish_downloaded,
+    set_wish_failed, set_wish_state, set_wish_status,
 };
 
 /// Incremented at the start of each `start_scan` so in-flight scan threads stop writing

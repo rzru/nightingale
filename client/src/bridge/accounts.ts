@@ -2,6 +2,8 @@ import type { AccountProvider } from '@/types/AccountProvider';
 import type { AccountsOverview } from '@/types/AccountsOverview';
 import type { AuthPollResult } from '@/types/AuthPollResult';
 import type { AuthStart } from '@/types/AuthStart';
+import type { DownloaderStatus } from '@/types/DownloaderStatus';
+import type { PrepareSummary } from '@/types/PrepareSummary';
 import type { WishPlaylist } from '@/types/WishPlaylist';
 import type { WishPlaylistDetail } from '@/types/WishPlaylistDetail';
 import type { YouTubePlaylist } from '@/types/YouTubePlaylist';
@@ -61,4 +63,24 @@ export const deleteWishPlaylist = async (id: string): Promise<boolean> => {
 
 export const refreshWishMatches = async (): Promise<number> => {
   return await invoke<number>('wishes_refresh_matches');
+};
+
+/**
+ * « Tout préparer » : download what is missing (into `<music folder>/YouTube`)
+ * and queue the analysis of what is already in the library.
+ */
+export const prepareWishPlaylist = async (id: string): Promise<PrepareSummary> => {
+  return await invoke<PrepareSummary>('wishes_prepare_playlist', { id });
+};
+
+export const prepareWishes = async (ids: number[]): Promise<PrepareSummary> => {
+  return await invoke<PrepareSummary>('wishes_prepare', { ids });
+};
+
+export const loadWishDownloaderStatus = async (): Promise<DownloaderStatus> => {
+  return await invoke<DownloaderStatus>('wishes_downloader_status');
+};
+
+export const cancelWishDownloads = async (): Promise<number> => {
+  return await invoke<number>('wishes_cancel_downloads');
 };

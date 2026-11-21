@@ -16,4 +16,8 @@ export type Wish = {
    */
   matched_file_hash: string | null;
   error: string | null;
+  /**
+   * Where the downloader saved this track, for wishes it fetched.
+   */
+  downloaded_path: string | null;
 };
