@@ -19,7 +19,7 @@ USDX bundles bypass stem separation and transcription. Nightingale parses the bu
 
 ## Analyzer Server
 
-The analyzer is a long-lived Python process that Nightingale spawns once on startup and talks to over a token-authenticated loopback TCP socket using newline-delimited JSON (NDJSON). Per-song startup costs (model load, CUDA init, Python imports) are paid once at boot, after which `analyze` requests stream `progress` events and complete with `done` or `error` messages. This makes back-to-back analyses noticeably faster than the previous per-song subprocess model.
+The analyzer is a long-lived Python process that Nightingale spawns on the first analysis and talks to over a token-authenticated loopback TCP socket using newline-delimited JSON (NDJSON). Per-song startup costs (model load, CUDA init, Python imports) are paid once, after which `analyze` requests stream `progress` events and complete with `done` or `error` messages. This makes back-to-back analyses noticeably faster than the previous per-song subprocess model. Once no analysis has run for a few minutes, the process stops to give its memory and GPU context back; the next analysis starts it again. It also exits with Nightingale, even mid-analysis or after an unexpected close.
 
 ## Caching
 
