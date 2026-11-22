@@ -8,7 +8,8 @@ length as any transformer. Running it on a whole song in one shot uses a larger 
 Real pause-to-pause chunk lengths measured across a large analyzed library
 average under 10s and are rarely above ~20s, comfortably inside a smaller window.
 
-Skips the song if the MAX_CHUNK_SECS is larger than expected, we return and uses the first pass result.
+If the longest pause-bounded chunk exceeds MAX_CHUNK_SECS, this skips pass 2
+entirely and the caller falls back to the first pass's result.
 
 The caller's pass-1 line boundaries are only trusted here for the coarse
 "which lines are in this chunk" question. All precise timing comes from pass 2, which

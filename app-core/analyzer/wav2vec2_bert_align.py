@@ -59,18 +59,18 @@ def wav2vec2_bert_align(transcript, model_state: dict, audio, device: str) -> di
 
     aligned_segments = []
     for segment in transcript:
-        t1 = segment["start"]
-        t2 = segment["end"]
+        seg_start = segment["start"]
+        seg_end = segment["end"]
         text = segment["text"]
         avg_logprob = segment.get("avg_logprob")
 
-        aligned_seg = {"start": t1, "end": t2, "text": text, "words": []}
+        aligned_seg = {"start": seg_start, "end": seg_end, "text": text, "words": []}
         if avg_logprob is not None:
             aligned_seg["avg_logprob"] = avg_logprob
 
         original_words = text.split()
         stripped = text.strip().lower()
-        chars = ["|" if c == " " else c for c in stripped]
+        chars = ["|" if ch == " " else ch for ch in stripped]
         if not original_words:
             print(
                 f"[nightingale:LOG] wav2vec2-bert-align: empty segment text, "
@@ -80,18 +80,18 @@ def wav2vec2_bert_align(transcript, model_state: dict, audio, device: str) -> di
             aligned_segments.append(aligned_seg)
             continue
 
-        if t1 >= max_duration:
+        if seg_start >= max_duration:
             print(
-                f"[nightingale:LOG] wav2vec2-bert-align: segment start {t1:.1f}s "
+                f"[nightingale:LOG] wav2vec2-bert-align: segment start {seg_start:.1f}s "
                 f"beyond audio duration {max_duration:.1f}s, skipping",
                 flush=True,
             )
             aligned_segments.append(aligned_seg)
             continue
 
-        f1 = int(t1 * ALIGNMENT_SAMPLE_RATE)
-        f2 = int(t2 * ALIGNMENT_SAMPLE_RATE)
-        waveform_segment = audio[:, f1:f2]
+        frame_start = int(seg_start * ALIGNMENT_SAMPLE_RATE)
+        frame_end = int(seg_end * ALIGNMENT_SAMPLE_RATE)
+        waveform_segment = audio[:, frame_start:frame_end]
         if waveform_segment.shape[-1] < 400:
             waveform_segment = torch.nn.functional.pad(
                 waveform_segment, (0, 400 - waveform_segment.shape[-1])
@@ -110,12 +110,12 @@ def wav2vec2_bert_align(transcript, model_state: dict, audio, device: str) -> di
                 ).logits
                 emission = torch.log_softmax(logits, dim=-1)[0].detach().float().contiguous()
 
-            has_wildcard = any(c not in vocab for c in chars)
+            has_wildcard = any(ch not in vocab for ch in chars)
             if has_wildcard:
                 emission, wildcard_id = ctc_align.add_wildcard_column(emission, blank_id)
-                tokens = [vocab.get(c, wildcard_id) for c in chars]
+                tokens = [vocab.get(ch, wildcard_id) for ch in chars]
             else:
-                tokens = [vocab[c] for c in chars]
+                tokens = [vocab[ch] for ch in chars]
 
             char_spans = ctc_align.forced_align_segment(emission, tokens, blank_id)
         except Exception as e:
@@ -145,9 +145,11 @@ def wav2vec2_bert_align(transcript, model_state: dict, audio, device: str) -> di
         for ch, span in list(zip(chars, char_spans)) + [("|", None)]:
             if ch == "|":
                 if cur_spans and word_idx < len(original_words):
-                    start = round(t1 + cur_spans[0]["start"] * ratio, 3)
-                    end = round(t1 + cur_spans[-1]["end"] * ratio, 3)
-                    score = round(sum(s["score"] for s in cur_spans) / len(cur_spans), 3)
+                    start = round(seg_start + cur_spans[0]["start"] * ratio, 3)
+                    end = round(seg_start + cur_spans[-1]["end"] * ratio, 3)
+                    score = round(
+                        sum(char_span["score"] for char_span in cur_spans) / len(cur_spans), 3
+                    )
                     seg_words.append(
                         {"word": original_words[word_idx], "start": start, "end": end, "score": score}
                     )
