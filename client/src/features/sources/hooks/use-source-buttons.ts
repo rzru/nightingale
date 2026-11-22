@@ -1,8 +1,10 @@
-import { Disc3Icon, FolderIcon, RefreshCwIcon } from 'lucide-react';
+import { Disc3Icon, FolderIcon, RefreshCwIcon, YoutubeIcon } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
+import { useNavigate } from 'react-router';
 
 import type { BadgeTone } from '@/features/menu/components/sidebar/source-action-button';
 import { useDialog } from '@/features/menu/hooks/use-dialog';
+import { useAccounts } from '@/features/playlists/queries/use-playlists-data';
 import { useLibrarySourceActions } from '@/features/sources/hooks/use-library-source-actions';
 import { t, useTranslation } from '@/i18n';
 import { JellyfinIcon } from '@/shared/components/icons/jellyfin';
@@ -48,8 +50,29 @@ const remoteBadge = ({
   };
 };
 
+/** Opens the YouTube screen: song search first, playlists below. */
+const useYoutubeButton = (): SourceButton => {
+  const navigate = useNavigate();
+  const { data: overview } = useAccounts();
+  const account = overview?.accounts.at(0);
+
+  return {
+    key: 'youtube',
+    icon: YoutubeIcon,
+    label: t('playlists.home.youtube'),
+    tooltip:
+      account === undefined
+        ? t('playlists.search.title')
+        : t('playlists.home.connectedAs', { name: account.display_name }),
+    handler: () => void navigate('/playlists'),
+    disabled: false,
+    badge: account === undefined ? undefined : 'ok',
+  };
+};
+
 export const useSourceButtons = (): SourceButton[] => {
   const { setMode } = useDialog();
+  const youtube = useYoutubeButton();
   useTranslation();
   const {
     selectFolder,
@@ -121,6 +144,8 @@ export const useSourceButtons = (): SourceButton[] => {
           disabled: isPending,
         },
       ];
+
+  buttons.push(youtube);
 
   if (hasSource) {
     buttons.push({

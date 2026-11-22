@@ -6,4 +6,8 @@ export type SessionConnectResult = {
   status: SessionConnectStatus;
   account: LinkedAccount | null;
   error: string | null;
+  /**
+   * Browsers checked, in order (several when searching automatically).
+   */
+  tried: Array<string>;
 };

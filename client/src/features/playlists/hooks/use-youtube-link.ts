@@ -23,6 +23,10 @@ export const BROWSER_LABELS: Record<string, string> = {
   opera: 'Opera',
   vivaldi: 'Vivaldi',
   safari: 'Safari',
+  zen: 'Zen',
+  librewolf: 'LibreWolf',
+  floorp: 'Floorp',
+  waterfox: 'Waterfox',
 };
 
 export const browserLabel = (browser: string | null): string =>
@@ -36,7 +40,10 @@ export const browserLabel = (browser: string | null): string =>
 export const useYoutubeSession = () => {
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<SessionPhase>('idle');
+  /** Explicit choice from the picker; `null` searches every browser. */
   const [browser, setBrowser] = useState<string | null>(null);
+  /** Default browser, where the sign-in page opens. */
+  const [defaultBrowser, setDefaultBrowser] = useState<string | null>(null);
   const [supported, setSupported] = useState<string[]>([]);
   const [signInUrl, setSignInUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +62,11 @@ export const useYoutubeSession = () => {
       if (result.status === 'not_signed_in') {
         setPhase('waiting');
         if (openOnSignedOut === null) {
-          setError(t('playlists.session.stillSignedOut'));
+          setError(
+            t('playlists.session.stillSignedOut', {
+              browsers: result.tried.map((name) => browserLabel(name)).join(', '),
+            }),
+          );
         } else {
           await openUrl(openOnSignedOut);
         }
@@ -68,7 +79,7 @@ export const useYoutubeSession = () => {
   );
 
   const check = useCallback(
-    async (target: string, openOnSignedOut: string | null) => {
+    async (target: string | null, openOnSignedOut: string | null) => {
       setPhase('checking');
       setError(null);
       try {
@@ -86,22 +97,15 @@ export const useYoutubeSession = () => {
       const session = await youtubeSessionBegin();
       setSupported(session.supported_browsers);
       setSignInUrl(session.sign_in_url);
-      const target = browser ?? session.detected_browser;
-      if (target === null) {
-        setError(t('playlists.session.noBrowser'));
-        return;
-      }
-      setBrowser(target);
-      await check(target, session.sign_in_url);
+      setDefaultBrowser(session.detected_browser);
+      await check(browser, session.sign_in_url);
     } catch (caught) {
       setError(t('playlists.session.readFailed', { value1: errorMessage(caught) }));
     }
   }, [browser, check]);
 
   const confirmSignedIn = useCallback(async () => {
-    if (browser !== null) {
-      await check(browser, null);
-    }
+    await check(browser, null);
   }, [browser, check]);
 
   const reopen = useCallback(async () => {
@@ -118,6 +122,7 @@ export const useYoutubeSession = () => {
   return {
     phase,
     browser,
+    defaultBrowser,
     setBrowser,
     supported,
     error,

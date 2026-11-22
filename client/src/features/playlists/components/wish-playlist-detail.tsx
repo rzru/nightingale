@@ -1,5 +1,6 @@
 import { SparklesIcon, Trash2Icon } from 'lucide-react';
 
+import { wishPlaylistName } from '@/features/playlists/lib/playlist-name';
 import {
   useDownloaderStatus,
   useWishPlaylist,
@@ -64,7 +65,7 @@ export const WishPlaylistDetail = ({ id, onDeleted }: WishPlaylistDetailProps) =
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{playlist.name}</CardTitle>
+        <CardTitle>{wishPlaylistName(playlist)}</CardTitle>
         <CardDescription>{countsSummary(playlist.counts)}</CardDescription>
         <CardAction className="flex gap-2">
           <Button

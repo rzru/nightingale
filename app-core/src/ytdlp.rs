@@ -219,19 +219,29 @@ pub(crate) fn fetch_json_with_browser_cookies(
     browser: &str,
     extra_args: &[&str],
 ) -> Result<serde_json::Value, String> {
+    fetch_json(url, Some(browser), extra_args)
+}
+
+/// [`fetch_json_with_browser_cookies`], with the browser cookies optional:
+/// public data such as a search needs none.
+pub(crate) fn fetch_json(
+    url: &str,
+    browser: Option<&str>,
+    extra_args: &[&str],
+) -> Result<serde_json::Value, String> {
     let mut command = silent_command(vendor::python_path());
-    command
-        .args([
-            "-m",
-            "yt_dlp",
-            "--dump-single-json",
-            "--flat-playlist",
-            "--no-warnings",
-            "--no-colors",
-            "--cookies-from-browser",
-            browser,
-        ])
-        .args(extra_args);
+    command.args([
+        "-m",
+        "yt_dlp",
+        "--dump-single-json",
+        "--flat-playlist",
+        "--no-warnings",
+        "--no-colors",
+    ]);
+    if let Some(browser) = browser {
+        command.arg("--cookies-from-browser").arg(browser);
+    }
+    command.args(extra_args);
     if let Some(deno) = deno_path() {
         command
             .arg("--js-runtimes")

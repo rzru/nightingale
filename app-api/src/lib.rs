@@ -723,7 +723,8 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
         "youtube_session_connect" => {
             #[derive(Deserialize)]
             struct Args {
-                browser: String,
+                #[serde(default)]
+                browser: Option<String>,
             }
             let args: Args = deserialize(payload)?;
             let result = tokio::task::spawn_blocking(move || {
@@ -822,6 +823,45 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
                 .map_err(|error| ApiError::bad_request(error.to_string()))?;
             events.emit("wishes-changed", &Value::Null);
             Ok(serde_json::to_value(summary).map_err(serde_err)?)
+        }
+        "youtube_search" => {
+            #[derive(Deserialize)]
+            struct Args {
+                query: String,
+            }
+            let args: Args = deserialize(payload)?;
+            let results =
+                tokio::task::spawn_blocking(move || app_core::search_youtube(&args.query))
+                    .await
+                    .map_err(blocking_task_err)?
+                    .map_err(|error| ApiError::bad_request(error.to_string()))?;
+            Ok(serde_json::to_value(results).map_err(serde_err)?)
+        }
+        "wishes_add_youtube_video" => {
+            #[derive(Deserialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Args {
+                video_id: String,
+                title: String,
+                #[serde(default)]
+                artist: String,
+                #[serde(default)]
+                duration_secs: Option<f64>,
+            }
+            let args: Args = deserialize(payload)?;
+            let wish = tokio::task::spawn_blocking(move || {
+                app_core::add_youtube_search_result(
+                    &args.video_id,
+                    &args.title,
+                    &args.artist,
+                    args.duration_secs,
+                )
+            })
+            .await
+            .map_err(blocking_task_err)?
+            .map_err(|error| ApiError::bad_request(error.to_string()))?;
+            events.emit("wishes-changed", &Value::Null);
+            Ok(serde_json::to_value(wish).map_err(serde_err)?)
         }
         "wishes_downloader_status" => {
             Ok(serde_json::to_value(app_core::wish_downloader_status()).map_err(serde_err)?)

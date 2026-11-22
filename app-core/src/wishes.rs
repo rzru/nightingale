@@ -305,6 +305,77 @@ pub fn prepare_wishes(ids: &[i64]) -> Result<PrepareSummary, NightingaleError> {
     Ok(summary)
 }
 
+/// Local id of the playlist that collects the songs found by search.
+pub const SEARCH_PLAYLIST_ID: &str = "youtube:search";
+
+/// One YouTube search hit, with its wish when it was already added.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct YoutubeSearchResult {
+    pub video_id: String,
+    pub title: String,
+    pub artist: String,
+    pub duration_secs: Option<f64>,
+    pub wish: Option<Wish>,
+}
+
+/// Search YouTube for a song. Works without a linked account.
+pub fn search_youtube(query: &str) -> Result<Vec<YoutubeSearchResult>, NightingaleError> {
+    let tracks = accounts::youtube_session::search(query, 20)?;
+    let provider = AccountProvider::Youtube.as_str();
+    let known: HashMap<String, Wish> = library_db::load_all_wishes()?
+        .into_iter()
+        .filter(|row| row.provider == provider)
+        .filter_map(wish_from_row)
+        .map(|wish| (wish.external_id.clone(), wish))
+        .collect();
+    Ok(tracks
+        .into_iter()
+        .map(|track| YoutubeSearchResult {
+            wish: known.get(&track.video_id).cloned(),
+            video_id: track.video_id,
+            title: track.title,
+            artist: track.artist,
+            duration_secs: track.duration_secs,
+        })
+        .collect())
+}
+
+/// Add a song found by search to the "Search" playlist and get it ready to
+/// sing right away (download, then analysis).
+pub fn add_youtube_search_result(
+    video_id: &str,
+    title: &str,
+    artist: &str,
+    duration_secs: Option<f64>,
+) -> Result<Wish, NightingaleError> {
+    if !accounts::youtube_session::is_video_id(video_id) {
+        return Err(NightingaleError::from("not a YouTube video id"));
+    }
+    let url = format!("https://www.youtube.com/watch?v={video_id}");
+    let added_at = i64::try_from(accounts::now_secs()).unwrap_or(i64::MAX);
+    let wish_id = library_db::prepend_wish_to_playlist(
+        &WishPlaylistInput {
+            id: SEARCH_PLAYLIST_ID,
+            provider: AccountProvider::Youtube.as_str(),
+            external_id: "search",
+            name: "Search",
+            imported_at: added_at,
+        },
+        &NewWish {
+            external_id: video_id,
+            title: title.trim(),
+            artist: artist.trim(),
+            duration_secs: duration_secs.filter(|seconds| *seconds > 0.0),
+            source_url: &url,
+        },
+    )?;
+    prepare_wishes(&[wish_id])?;
+    library_db::load_wish_by_id(wish_id)?
+        .and_then(wish_from_row)
+        .ok_or_else(|| NightingaleError::from("added wish disappeared"))
+}
+
 /// [`prepare_wishes`] for every wish of a playlist.
 pub fn prepare_wish_playlist(id: &str) -> Result<PrepareSummary, NightingaleError> {
     let ids: Vec<i64> = library_db::load_playlist_wishes(id)?

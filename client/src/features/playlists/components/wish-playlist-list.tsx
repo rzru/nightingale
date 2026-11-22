@@ -1,3 +1,4 @@
+import { wishPlaylistName } from '@/features/playlists/lib/playlist-name';
 import { t } from '@/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { cn } from '@/shared/utils/cn';
@@ -29,7 +30,7 @@ export const WishPlaylistList = ({ playlists, selectedId, onSelect }: WishPlayli
                   selectedId === playlist.id && 'bg-accent',
                 )}
               >
-                <span className="truncate text-sm font-medium">{playlist.name}</span>
+                <span className="truncate text-sm font-medium">{wishPlaylistName(playlist)}</span>
                 <span className="text-xs text-muted-foreground">
                   {t('playlists.list.counts', {
                     ready: playlist.counts.ready,

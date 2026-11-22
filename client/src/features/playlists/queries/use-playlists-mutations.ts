@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import {
+  addYoutubeVideo,
   cancelWishDownloads,
   deleteWishPlaylist,
   importYoutubePlaylist,
@@ -123,6 +124,21 @@ export const useDeleteWishPlaylist = (onDeleted: () => void) => {
     },
     onError: (error) => {
       toast.error(t('playlists.detail.deleteFailed', { value1: errorMessage(error) }));
+    },
+  });
+};
+
+/** Add a song found by search and start getting it ready to sing. */
+export const useAddYoutubeVideo = () => {
+  const invalidate = useInvalidateWishes();
+  return useMutation({
+    mutationFn: addYoutubeVideo,
+    onSuccess: async (wish) => {
+      toast.success(t('playlists.search.added', { title: wish.title }));
+      await invalidate();
+    },
+    onError: (error) => {
+      toast.error(t('playlists.search.addFailed', { value1: errorMessage(error) }));
     },
   });
 };

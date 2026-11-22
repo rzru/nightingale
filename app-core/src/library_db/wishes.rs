@@ -90,21 +90,7 @@ pub(crate) fn replace_wish_playlist(
 ) -> Result<(), NightingaleError> {
     with_conn_mut(|conn| {
         conn.transaction::<_, NightingaleError, _>(|conn| {
-            diesel::insert_into(wish_playlists::table)
-                .values((
-                    wish_playlists::id.eq(playlist.id),
-                    wish_playlists::provider.eq(playlist.provider),
-                    wish_playlists::external_id.eq(playlist.external_id),
-                    wish_playlists::name.eq(playlist.name),
-                    wish_playlists::imported_at.eq(playlist.imported_at),
-                ))
-                .on_conflict(wish_playlists::id)
-                .do_update()
-                .set((
-                    wish_playlists::name.eq(playlist.name),
-                    wish_playlists::imported_at.eq(playlist.imported_at),
-                ))
-                .execute(conn)?;
+            upsert_playlist(conn, playlist)?;
 
             diesel::delete(
                 wish_playlist_items::table.filter(wish_playlist_items::playlist_id.eq(playlist.id)),
@@ -116,32 +102,7 @@ pub(crate) fn replace_wish_playlist(
                 if track.external_id.is_empty() {
                     continue;
                 }
-                diesel::insert_into(wishes::table)
-                    .values((
-                        wishes::provider.eq(playlist.provider),
-                        wishes::external_id.eq(track.external_id),
-                        wishes::title.eq(track.title),
-                        wishes::artist.eq(track.artist),
-                        wishes::duration_secs.eq(track.duration_secs),
-                        wishes::source_url.eq(track.source_url),
-                        wishes::status.eq("missing"),
-                        wishes::added_at.eq(playlist.imported_at),
-                    ))
-                    .on_conflict((wishes::provider, wishes::external_id))
-                    .do_update()
-                    .set((
-                        wishes::title.eq(track.title),
-                        wishes::artist.eq(track.artist),
-                        wishes::duration_secs.eq(track.duration_secs),
-                        wishes::source_url.eq(track.source_url),
-                    ))
-                    .execute(conn)?;
-
-                let wish_id = wishes::table
-                    .filter(wishes::provider.eq(playlist.provider))
-                    .filter(wishes::external_id.eq(track.external_id))
-                    .select(wishes::id)
-                    .first::<i64>(conn)?;
+                let wish_id = upsert_wish(conn, playlist, track)?;
                 if !seen.insert(wish_id) {
                     continue;
                 }
@@ -156,6 +117,95 @@ pub(crate) fn replace_wish_playlist(
 
             delete_orphan_wishes(conn)?;
             Ok(())
+        })
+    })
+}
+
+fn upsert_playlist(
+    conn: &mut SqliteConnection,
+    playlist: &WishPlaylistInput<'_>,
+) -> Result<(), NightingaleError> {
+    diesel::insert_into(wish_playlists::table)
+        .values((
+            wish_playlists::id.eq(playlist.id),
+            wish_playlists::provider.eq(playlist.provider),
+            wish_playlists::external_id.eq(playlist.external_id),
+            wish_playlists::name.eq(playlist.name),
+            wish_playlists::imported_at.eq(playlist.imported_at),
+        ))
+        .on_conflict(wish_playlists::id)
+        .do_update()
+        .set((
+            wish_playlists::name.eq(playlist.name),
+            wish_playlists::imported_at.eq(playlist.imported_at),
+        ))
+        .execute(conn)?;
+    Ok(())
+}
+
+/// Insert a wish or refresh its metadata (keeping its status); returns its id.
+fn upsert_wish(
+    conn: &mut SqliteConnection,
+    playlist: &WishPlaylistInput<'_>,
+    track: &NewWish<'_>,
+) -> Result<i64, NightingaleError> {
+    diesel::insert_into(wishes::table)
+        .values((
+            wishes::provider.eq(playlist.provider),
+            wishes::external_id.eq(track.external_id),
+            wishes::title.eq(track.title),
+            wishes::artist.eq(track.artist),
+            wishes::duration_secs.eq(track.duration_secs),
+            wishes::source_url.eq(track.source_url),
+            wishes::status.eq("missing"),
+            wishes::added_at.eq(playlist.imported_at),
+        ))
+        .on_conflict((wishes::provider, wishes::external_id))
+        .do_update()
+        .set((
+            wishes::title.eq(track.title),
+            wishes::artist.eq(track.artist),
+            wishes::duration_secs.eq(track.duration_secs),
+            wishes::source_url.eq(track.source_url),
+        ))
+        .execute(conn)?;
+
+    Ok(wishes::table
+        .filter(wishes::provider.eq(playlist.provider))
+        .filter(wishes::external_id.eq(track.external_id))
+        .select(wishes::id)
+        .first::<i64>(conn)?)
+}
+
+/// Add one track at the top of a playlist (created if needed), without
+/// touching its other tracks. Returns the wish id.
+pub(crate) fn prepend_wish_to_playlist(
+    playlist: &WishPlaylistInput<'_>,
+    track: &NewWish<'_>,
+) -> Result<i64, NightingaleError> {
+    with_conn_mut(|conn| {
+        conn.transaction::<_, NightingaleError, _>(|conn| {
+            upsert_playlist(conn, playlist)?;
+            let wish_id = upsert_wish(conn, playlist, track)?;
+            diesel::delete(
+                wish_playlist_items::table
+                    .filter(wish_playlist_items::playlist_id.eq(playlist.id))
+                    .filter(wish_playlist_items::wish_id.eq(wish_id)),
+            )
+            .execute(conn)?;
+            let first = wish_playlist_items::table
+                .filter(wish_playlist_items::playlist_id.eq(playlist.id))
+                .select(diesel::dsl::min(wish_playlist_items::position))
+                .first::<Option<i64>>(conn)?
+                .unwrap_or(0);
+            diesel::insert_into(wish_playlist_items::table)
+                .values((
+                    wish_playlist_items::playlist_id.eq(playlist.id),
+                    wish_playlist_items::wish_id.eq(wish_id),
+                    wish_playlist_items::position.eq(first - 1),
+                ))
+                .execute(conn)?;
+            Ok(wish_id)
         })
     })
 }

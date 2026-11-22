@@ -13,8 +13,13 @@ Aucune configuration : pas de projet Google Cloud, pas de clé.
    (`xdg-settings` sous Linux, LaunchServices sous macOS, registre sous
    Windows), installe yt-dlp si besoin, puis vérifie si ce navigateur est déjà
    connecté à YouTube (`--cookies-from-browser`, en lisant les « J'aime »).
-3. Si ce n'est pas le cas, la page de connexion YouTube s'ouvre dans le
-   navigateur. Tu te connectes, puis tu cliques sur **J'ai terminé**.
+   S'il n'a pas de session, Nightingale essaie automatiquement les autres
+   navigateurs installés, y compris les dérivés de Firefox (Zen, LibreWolf,
+   Floorp, Waterfox), dont le dossier de profil est passé à yt-dlp
+   (`firefox:<dossier>`). La liste permet aussi d'en imposer un.
+3. Si aucune session n'est trouvée, la page de connexion YouTube s'ouvre dans
+   le navigateur par défaut. Tu te connectes, puis tu cliques sur
+   **J'ai terminé**.
 4. Seul le nom du navigateur est enregistré (`accounts.json`), jamais de
    cookie ni de mot de passe. Les cookies sont relus à chaque lecture de
    playlist.
@@ -85,8 +90,11 @@ mais l'interface ne l'affiche plus. Il demande un client OAuth Google
 
 ## 5. Écran « Mes playlists »
 
-Accessible depuis le menu du profil (en bas de la barre latérale), à côté de
-« Paramètres ». Code : `client/src/features/playlists/`.
+Accessible par le bouton **YouTube** de la barre latérale (avec Plex,
+Navidrome, Jellyfin et Dossier) et de l'accueil quand la bibliothèque est vide.
+Ce bouton ouvre `/playlists?connect=1`, ce qui lance tout de suite la recherche
+de session. L'écran est aussi accessible depuis le menu du profil. Code :
+`client/src/features/playlists/`.
 
 - Carte **Compte YouTube** : connexion, attente de l'accord dans le navigateur
   (avec « Rouvrir » et « Annuler »), déconnexion. Un message s'affiche si le
@@ -103,7 +111,32 @@ Accessible depuis le menu du profil (en bas de la barre latérale), à côté de
 Pas encore géré : la navigation à la manette et au clavier, que les autres
 écrans gèrent avec `useMenuFocus`.
 
-## 6. Suite prévue
+## 6. Réglage automatique de l'analyse (`analysis_tuning.rs`)
+
+- **Au premier démarrage**, Nightingale détecte la carte graphique
+  (`nvidia-smi`, mémoire unifiée Apple Silicon, ou processeur) et choisit le
+  modèle de transcription et la taille de lot :
+
+  | Mémoire GPU (CUDA) | Modèle | Lot |
+  | --- | --- | --- |
+  | ≥ 11 Go | large-v3 | 8 |
+  | ≥ 7,5 Go | large-v3 | 4 |
+  | ≥ 5,5 Go (ex. RTX 2060 6 Go) | large-v3-turbo | 4 |
+  | ≥ 3,5 Go | large-v3-turbo | 2 |
+  | moins | small | 2 |
+  | processeur / Apple | large-v3-turbo | 4 (8 avec ≥ 16 Go) |
+
+- **Calibrage** : si une analyse manque quand même de mémoire graphique,
+  l'analyseur baisse les réglages d'un cran (lot ÷ 2 jusqu'à 2, puis un modèle
+  plus léger, puis lot 1), les enregistre et relance aussitôt.
+- **Les choix manuels sont respectés** : le réglage automatique ne touche
+  qu'aux valeurs qu'il a lui-même choisies, ou aux valeurs par défaut.
+  Paramètres → Analyse → **Régler automatiquement** relance la détection et
+  remplace les réglages.
+- L'interface relit la configuration avant chaque enregistrement, pour ne pas
+  écraser un réglage modifié par le calibrage.
+
+## 7. Suite prévue
 
 1. Navigation manette/clavier sur l'écran « Mes playlists ».
 2. Spotify (même module `accounts/oauth.rs`, client PKCE sans secret).
@@ -116,3 +149,16 @@ cargo clippy -p app-core -p app-api --all-targets -- -D warnings
 cargo test -p app-core accounts wishes   # régénère aussi client/src/types/*.ts
 pnpm --dir client quality
 ```
+
+## Recherche de chansons (sans compte)
+
+L'écran YouTube commence par une barre de recherche ; les playlists passent en dessous.
+
+- `youtube_search { query }` lance `yt-dlp ytsearch20:<requête>` sans cookies (données publiques) et renvoie
+  `YoutubeSearchResult[]` : identifiant de vidéo, titre et artiste séparés comme pour les playlists, durée,
+  et l'envie correspondante si la chanson a déjà été ajoutée.
+- `wishes_add_youtube_video { videoId, title, artist, durationSecs }` place la chanson en tête de la playlist
+  virtuelle `youtube:search` (affichée « Recherches »), puis la prépare aussitôt : téléchargement, scan, analyse.
+- Dans les résultats, chaque ligne propose « Ajouter », puis affiche l'état en direct, puis « Chanter » quand
+  la chanson est prête.
+

@@ -6,9 +6,11 @@ import type { DownloaderStatus } from '@/types/DownloaderStatus';
 import type { PrepareSummary } from '@/types/PrepareSummary';
 import type { SessionConnectResult } from '@/types/SessionConnectResult';
 import type { SessionStart } from '@/types/SessionStart';
+import type { Wish } from '@/types/Wish';
 import type { WishPlaylist } from '@/types/WishPlaylist';
 import type { WishPlaylistDetail } from '@/types/WishPlaylistDetail';
 import type { YouTubePlaylist } from '@/types/YouTubePlaylist';
+import type { YoutubeSearchResult } from '@/types/YoutubeSearchResult';
 
 import { invoke } from './runtime';
 
@@ -43,13 +45,36 @@ export const youtubeSessionBegin = async (): Promise<SessionStart> => {
   return await invoke<SessionStart>('youtube_session_begin');
 };
 
-/** Read the YouTube session of `browser` (installs yt-dlp the first time). */
-export const youtubeSessionConnect = async (browser: string): Promise<SessionConnectResult> => {
+/**
+ * Find a YouTube session: in `browser`, or — when `null` — in the default
+ * browser first, then every other installed one. Installs yt-dlp the first time.
+ */
+export const youtubeSessionConnect = async (
+  browser: string | null,
+): Promise<SessionConnectResult> => {
   return await invoke<SessionConnectResult>('youtube_session_connect', { browser });
 };
 
 export const youtubeListPlaylists = async (): Promise<YouTubePlaylist[]> => {
   return await invoke<YouTubePlaylist[]>('youtube_list_playlists');
+};
+
+/** Local id of the playlist that collects the songs added from search. */
+export const SEARCH_PLAYLIST_ID = 'youtube:search';
+
+/** Search YouTube for a song; works without a linked account. */
+export const searchYoutube = async (query: string): Promise<YoutubeSearchResult[]> => {
+  return await invoke<YoutubeSearchResult[]>('youtube_search', { query });
+};
+
+/** Add a search hit to the "Search" playlist and get it ready to sing. */
+export const addYoutubeVideo = async (result: YoutubeSearchResult): Promise<Wish> => {
+  return await invoke<Wish>('wishes_add_youtube_video', {
+    videoId: result.video_id,
+    title: result.title,
+    artist: result.artist,
+    durationSecs: result.duration_secs,
+  });
 };
 
 // ── Wishes ──────────────────────────────────────────────────────────────

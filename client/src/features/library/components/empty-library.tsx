@@ -1,4 +1,5 @@
-import { Disc3Icon, FolderIcon, MusicIcon } from 'lucide-react';
+import { Disc3Icon, FolderIcon, MusicIcon, YoutubeIcon } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 import { useDialog } from '@/features/menu/hooks/use-dialog';
 import { useLibrarySourceActions } from '@/features/sources/hooks/use-library-source-actions';
@@ -18,6 +19,7 @@ import {
 export const EmptyLibrary = () => {
   const { selectFolder, isPending, libraryPinned } = useLibrarySourceActions();
   const { setMode } = useDialog();
+  const navigate = useNavigate();
 
   // Pinned library: nothing to pick in-app. An empty list here means the
   // configured folder is still scanning or has no supported files.
@@ -64,6 +66,10 @@ export const EmptyLibrary = () => {
         <Button variant="outline" onClick={() => selectFolder()} disabled={isPending}>
           <FolderIcon />
           {t('library.emptyLibrary.selectFolder')}
+        </Button>
+        <Button variant="outline" onClick={() => void navigate('/playlists?connect=1')}>
+          <YoutubeIcon />
+          {t('playlists.session.use')}
         </Button>
       </EmptyContent>
     </Empty>

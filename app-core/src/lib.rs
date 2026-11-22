@@ -113,9 +113,10 @@ pub use wish_downloader::{
     downloader_status as wish_downloader_status,
 };
 pub use wishes::{
-    PrepareSummary, Wish, WishCounts, WishPlaylist, WishPlaylistDetail, WishStatus,
-    delete_wish_playlist, import_youtube_playlist, list_wish_playlists, load_wish_playlist,
-    prepare_wish_playlist, prepare_wishes, refresh_wish_matches,
+    PrepareSummary, SEARCH_PLAYLIST_ID, Wish, WishCounts, WishPlaylist, WishPlaylistDetail,
+    WishStatus, YoutubeSearchResult, add_youtube_search_result, delete_wish_playlist,
+    import_youtube_playlist, list_wish_playlists, load_wish_playlist, prepare_wish_playlist,
+    prepare_wishes, refresh_wish_matches, search_youtube,
 };
 
 pub fn startup() -> Result<(), String> {

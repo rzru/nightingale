@@ -21,6 +21,7 @@ export const REMOTE_MICROPHONES = ['remote-microphones'];
 export const REMOTE_LANGUAGE = ['remote-language'];
 export const ACCOUNTS = ['accounts'];
 export const YOUTUBE_PLAYLISTS = ['youtube-playlists'];
+export const YOUTUBE_SEARCH = ['youtube-search'];
 export const WISH_PLAYLISTS = ['wish-playlists'];
 export const WISH_PLAYLIST = ['wish-playlist'];
 export const WISH_DOWNLOADER = ['wish-downloader'];
