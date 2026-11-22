@@ -826,5 +826,13 @@
   "playlists.session.connected": "已通过 {{browser}} 以 {{name}} 的身份连接",
   "playlists.session.stillSignedOut": "仍未找到 YouTube 登录状态。请确认你已在该浏览器中登录 youtube.com。",
   "playlists.session.readFailed": "无法读取 YouTube 登录状态：{{value1}}。请尝试其他浏览器（Firefox 效果最好）。",
-  "playlists.session.noBrowser": "无法识别你的默认浏览器，或该浏览器不受支持。请选择你用来看 YouTube 的浏览器。"
+  "playlists.session.noBrowser": "无法识别你的默认浏览器，或该浏览器不受支持。请选择你用来看 YouTube 的浏览器。",
+  "settings.autoTune.label": "自动调整",
+  "settings.autoTune.run": "按我的硬件自动调整",
+  "settings.autoTune.notYet": "尚未进行。Nightingale 会根据你的显卡选择模型和批大小。",
+  "settings.autoTune.applied": "已针对 {{hardware}} 调整：{{model}}，批大小 {{batch}}。",
+  "settings.autoTune.reduced": "因显存不足已调低。",
+  "settings.autoTune.manual": "已检测到 {{hardware}}。保留你在下方的自定义设置。",
+  "settings.autoTune.gpu": "{{name}}（{{memory}} GB）",
+  "settings.autoTune.cpu": "处理器（未找到兼容的显卡）"
 }

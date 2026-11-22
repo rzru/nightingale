@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Deserializer, Serialize};
 use ts_rs::TS;
 
+use crate::analysis_tuning::AnalysisAutoTune;
 use crate::secret;
 use crate::{
     backgrounds::{BackgroundSelection, CustomBackground},
@@ -234,6 +235,10 @@ pub struct AppConfig {
     /// `zh-cn`). `None` follows the system language.
     pub language: Option<String>,
     pub language_overrides: Option<HashMap<String, String>>,
+    /// Hardware-based analysis settings chosen on first launch (and lowered
+    /// after GPU out-of-memory errors). See `analysis_tuning.rs`.
+    #[serde(default)]
+    pub analysis_auto_tune: Option<AnalysisAutoTune>,
 }
 
 fn default_data_path_option() -> Option<PathBuf> {
@@ -303,6 +308,7 @@ impl Default for AppConfig {
             song_list_sort: None,
             language: None,
             language_overrides: None,
+            analysis_auto_tune: None,
         }
     }
 }

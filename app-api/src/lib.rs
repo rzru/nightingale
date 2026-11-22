@@ -833,6 +833,12 @@ pub async fn dispatch(state: CommandState, name: &str, payload: Value) -> CmdRes
             events.emit("wishes-changed", &Value::Null);
             Ok(Value::from(dropped))
         }
+        "auto_tune_analysis" => {
+            let state = tokio::task::spawn_blocking(app_core::auto_tune_analysis)
+                .await
+                .map_err(blocking_task_err)?;
+            Ok(serde_json::to_value(state).map_err(serde_err)?)
+        }
         "load_songs" => {
             #[derive(Deserialize)]
             struct Args {

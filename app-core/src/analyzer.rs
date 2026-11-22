@@ -929,7 +929,7 @@ fn process_song(initial_hash: &str, cache: &CacheDir) {
         return;
     }
 
-    let json_str = match serde_json::to_string(&cmd_json) {
+    let mut json_str = match serde_json::to_string(&cmd_json) {
         Ok(json) => json,
         Err(error) => {
             if !discard_cancelled_job(initial_hash, file_hash) {
@@ -990,6 +990,18 @@ fn process_song(initial_hash: &str, cache: &CacheDir) {
             Ok(SongResult::Oom) => {
                 warn!("[analyzer] CUDA OOM, killing server to free GPU memory");
                 *guard = None;
+
+                // Calibration: lighter settings (saved for later songs), then retry.
+                if let Some((model, batch_size)) = crate::analysis_tuning::step_down_after_oom() {
+                    info!("[analyzer] Retrying with model={model} batch_size={batch_size}");
+                    cmd_json["model"] = serde_json::json!(model);
+                    cmd_json["batch_size"] = serde_json::json!(batch_size);
+                    if let Ok(next) = serde_json::to_string(&cmd_json) {
+                        json_str = next;
+                    }
+                    update_queue_status(file_hash, QueuedStatus::Analyzing(0));
+                    continue;
+                }
 
                 if !retried {
                     retried = true;

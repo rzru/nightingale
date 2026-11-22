@@ -826,5 +826,13 @@
   "playlists.session.connected": "Connected as {{name}} through {{browser}}",
   "playlists.session.stillSignedOut": "Still no YouTube session found. Make sure you are signed in to youtube.com in this browser.",
   "playlists.session.readFailed": "Could not read the YouTube session: {{value1}}. Try another browser (Firefox works best).",
-  "playlists.session.noBrowser": "Your default browser could not be detected or is not supported. Pick the one you use for YouTube."
+  "playlists.session.noBrowser": "Your default browser could not be detected or is not supported. Pick the one you use for YouTube.",
+  "settings.autoTune.label": "Automatic tuning",
+  "settings.autoTune.run": "Tune for my hardware",
+  "settings.autoTune.notYet": "Not done yet. Nightingale picks the model and batch size from your graphics card.",
+  "settings.autoTune.applied": "Tuned for {{hardware}}: {{model}}, batch size {{batch}}.",
+  "settings.autoTune.reduced": "Lowered after the GPU ran out of memory.",
+  "settings.autoTune.manual": "Detected {{hardware}}. Your own settings below are kept.",
+  "settings.autoTune.gpu": "{{name}} ({{memory}} GB)",
+  "settings.autoTune.cpu": "the processor (no compatible GPU found)"
 }

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { PLAYER_COLOR_VALUES } from '@/shared/player-colors';
+import type { AnalysisAutoTune } from '@/types/AnalysisAutoTune';
 import type { AppConfig } from '@/types/AppConfig';
 import type { CachePaths } from '@/types/CachePaths';
 import type { LibrarySource } from '@/types/LibrarySource';
@@ -129,6 +130,15 @@ export const remoteMicrophonesSchema = z.array(remoteMicrophoneSchema);
 
 export type RemoteMicrophone = z.infer<typeof remoteMicrophoneSchema>;
 
+const analysisAutoTuneSchema: z.ZodType<AnalysisAutoTune> = z.object({
+  device: z.string(),
+  gpu_name: nullableString,
+  memory_mib: nullableNumber,
+  model: nullableString,
+  batch_size: nullableNumber,
+  reduced_after_oom: z.boolean(),
+});
+
 export const appConfigSchema: z.ZodType<AppConfig> = z.object({
   data_path: nullableString,
   cache_paths: cachePathsSchema.nullable(),
@@ -176,6 +186,7 @@ export const appConfigSchema: z.ZodType<AppConfig> = z.object({
     .nullable(),
   language: nullableString,
   language_overrides: z.record(z.string(), z.string()).nullable(),
+  analysis_auto_tune: analysisAutoTuneSchema.nullable(),
 });
 
 export const songsMetaSchema: z.ZodType<SongsMeta> = z.object({

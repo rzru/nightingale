@@ -1,4 +1,5 @@
 mod accounts;
+mod analysis_tuning;
 mod analyzer;
 mod backgrounds;
 mod cache;
@@ -41,6 +42,7 @@ pub use accounts::{
         begin_session as youtube_session_begin, connect_session as youtube_session_connect,
     },
 };
+pub use analysis_tuning::{AnalysisAutoTune, auto_tune_analysis};
 pub use analyzer::{
     AnalysisQueue, cancel_analysis, delete_cache, enqueue, realign, reanalyze_force_transcribe,
     reanalyze_full, reanalyze_transcript, refresh_metadata, shutdown_server,
@@ -120,6 +122,7 @@ pub fn startup() -> Result<(), String> {
     init_library().map_err(|e| e.to_string())?;
 
     AnalysisQueue::clear();
+    analysis_tuning::auto_configure_once();
     wishes::recover_interrupted_downloads();
 
     let cache = CacheDir::new();

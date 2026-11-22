@@ -13,7 +13,14 @@ export const useConfigMutation = (enabled = true) => {
 
   return useMutation({
     mutationFn: async (partialConfig: Partial<AppConfig>) => {
-      const current = config ?? queryClient.getQueryData<AppConfig>(CONFIG) ?? (await loadConfig());
+      // Merge into the backend's current config, not the cached copy: the
+      // analyzer may have changed settings since (GPU memory calibration).
+      const current = await loadConfig().catch(
+        () => config ?? queryClient.getQueryData<AppConfig>(CONFIG),
+      );
+      if (current === undefined) {
+        throw new Error(t('common.errors.unknown'));
+      }
       return saveConfig({ ...current, ...partialConfig });
     },
     onSuccess: (savedConfig) => {

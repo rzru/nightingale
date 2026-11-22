@@ -826,5 +826,13 @@
   "playlists.session.connected": "Verbunden als {{name}} über {{browser}}",
   "playlists.session.stillSignedOut": "Noch immer keine YouTube-Sitzung gefunden. Prüfe, ob du in diesem Browser bei youtube.com angemeldet bist.",
   "playlists.session.readFailed": "Die YouTube-Sitzung konnte nicht gelesen werden: {{value1}}. Versuch einen anderen Browser (Firefox funktioniert am besten).",
-  "playlists.session.noBrowser": "Dein Standardbrowser wurde nicht erkannt oder wird nicht unterstützt. Wähle den Browser, den du für YouTube nutzt."
+  "playlists.session.noBrowser": "Dein Standardbrowser wurde nicht erkannt oder wird nicht unterstützt. Wähle den Browser, den du für YouTube nutzt.",
+  "settings.autoTune.label": "Automatische Einstellung",
+  "settings.autoTune.run": "Für meine Hardware einstellen",
+  "settings.autoTune.notYet": "Noch nicht erfolgt. Nightingale wählt Modell und Batchgröße passend zu deiner Grafikkarte.",
+  "settings.autoTune.applied": "Eingestellt für {{hardware}}: {{model}}, Batchgröße {{batch}}.",
+  "settings.autoTune.reduced": "Nach Speichermangel der GPU reduziert.",
+  "settings.autoTune.manual": "{{hardware}} erkannt. Deine eigenen Einstellungen unten bleiben erhalten.",
+  "settings.autoTune.gpu": "{{name}} ({{memory}} GB)",
+  "settings.autoTune.cpu": "den Prozessor (keine kompatible GPU gefunden)"
 }

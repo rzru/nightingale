@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router';
 import { setFullScreen, isFullScreen as tauriIsFullScreen } from '@/bridge/fullScreen';
 import { openUrl } from '@/bridge/opener';
 import { clampPlaybackScale, DEFAULT_PLAYBACK_SCALE } from '@/features/playback/lib/display-scale';
+import { AnalysisAutoTuneField } from '@/features/settings/components/analysis-auto-tune';
 import { BackgroundSettings } from '@/features/settings/components/background-settings';
 import {
   ALIGN_BACKENDS,
@@ -494,6 +495,8 @@ export const SettingsPage = () => {
 
           <TabsContent value="analysis" className="mt-4">
             <FieldGroup>
+              <AnalysisAutoTuneField config={config} />
+
               <Field>
                 <Label htmlFor="separator-1">{t('settings.vocalSeparator')}</Label>
                 <Hint>{t('settings.howVocalsAreSplitFromTheMusic')}</Hint>

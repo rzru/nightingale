@@ -1,3 +1,4 @@
+import type { AnalysisAutoTune } from '@/types/AnalysisAutoTune';
 import type { AppConfig } from '@/types/AppConfig';
 
 import { updateMicMonitorGain } from './microphone';
@@ -23,4 +24,9 @@ export const saveConfig = async (config: AppConfig): Promise<AppConfig> => {
   }
 
   return saved;
+};
+
+/** Detect the GPU again and pick fitting analysis settings (model, batch size). */
+export const autoTuneAnalysis = async (): Promise<AnalysisAutoTune> => {
+  return await invoke<AnalysisAutoTune>('auto_tune_analysis');
 };

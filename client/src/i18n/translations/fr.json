@@ -826,5 +826,13 @@
   "playlists.session.connected": "Connecté en tant que {{name}} via {{browser}}",
   "playlists.session.stillSignedOut": "Toujours aucune session YouTube trouvée. Vérifie que tu es bien connecté à youtube.com dans ce navigateur.",
   "playlists.session.readFailed": "Impossible de lire la session YouTube : {{value1}}. Essaie un autre navigateur (Firefox marche le mieux).",
-  "playlists.session.noBrowser": "Ton navigateur par défaut n'a pas pu être détecté ou n'est pas pris en charge. Choisis celui que tu utilises pour YouTube."
+  "playlists.session.noBrowser": "Ton navigateur par défaut n'a pas pu être détecté ou n'est pas pris en charge. Choisis celui que tu utilises pour YouTube.",
+  "settings.autoTune.label": "Réglage automatique",
+  "settings.autoTune.run": "Régler automatiquement",
+  "settings.autoTune.notYet": "Pas encore fait. Nightingale choisit le modèle et la taille de lot selon ta carte graphique.",
+  "settings.autoTune.applied": "Réglé pour {{hardware}} : {{model}}, lot de {{batch}}.",
+  "settings.autoTune.reduced": "Abaissé après un manque de mémoire graphique.",
+  "settings.autoTune.manual": "{{hardware}} détecté. Tes réglages ci-dessous sont conservés.",
+  "settings.autoTune.gpu": "{{name}} ({{memory}} Go)",
+  "settings.autoTune.cpu": "le processeur (aucune carte graphique compatible)"
 }
