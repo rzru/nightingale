@@ -184,6 +184,12 @@ impl NavidromeSource {
         let title = pick_string(item.title.as_deref(), "Unknown");
         let artist = pick_artist_or_album(item.artist.as_deref(), "Unknown Artist");
         let album = pick_artist_or_album(item.album.as_deref(), "Unknown Album");
+        let genre = item
+            .genre
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string());
 
         let duration_secs = item.duration.map(|d| d as f64).unwrap_or(0.0);
 
@@ -203,6 +209,7 @@ impl NavidromeSource {
             title,
             artist,
             album,
+            genre,
             duration_secs,
             album_art_path,
             is_analyzed: false,
@@ -681,6 +688,8 @@ struct SubsonicSong {
     artist: Option<String>,
     #[serde(default)]
     album: Option<String>,
+    #[serde(default)]
+    genre: Option<String>,
     #[serde(default)]
     duration: Option<u64>,
     #[serde(default)]

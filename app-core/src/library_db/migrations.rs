@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use diesel::connection::SimpleConnection;
 use diesel::prelude::*;
-use diesel::sql_types::Integer;
+use diesel::sql_types::{Integer, Text};
 use diesel::sqlite::SqliteConnection;
 
 use crate::cache::songs_path;
@@ -21,7 +21,7 @@ use super::schema::songs;
 use super::songs::{append_songs, update_library_meta};
 use super::sql_functions::json_extract_text;
 
-const SCHEMA_VERSION: i32 = 4;
+const SCHEMA_VERSION: i32 = 5;
 
 static MIGRATING: AtomicBool = AtomicBool::new(false);
 static MIGRATION_TOTAL: AtomicUsize = AtomicUsize::new(0);
@@ -132,6 +132,9 @@ pub(super) fn run_migrations(conn: &mut SqliteConnection) -> Result<(), Nighting
         )?;
     }
     if version < 3 {
+        add_column_if_missing(conn, "songs", "genre", "TEXT")?;
+    }
+    if version < 4 {
         conn.batch_execute(
             "
             CREATE TABLE IF NOT EXISTS wishes (
@@ -171,15 +174,44 @@ pub(super) fn run_migrations(conn: &mut SqliteConnection) -> Result<(), Nighting
         ",
         )?;
     }
-    if version < 4 {
-        conn.batch_execute(
-            "
-            ALTER TABLE wishes ADD COLUMN downloaded_path TEXT;
-            ALTER TABLE wishes ADD COLUMN prepare_requested INTEGER NOT NULL DEFAULT 0;
-        ",
+    if version < 5 {
+        add_column_if_missing(conn, "wishes", "downloaded_path", "TEXT")?;
+        add_column_if_missing(
+            conn,
+            "wishes",
+            "prepare_requested",
+            "INTEGER NOT NULL DEFAULT 0",
         )?;
+        // Databases created by this fork before `songs.genre` existed upstream
+        // used versions 3 and 4 for the wishes tables: give them the genre too.
+        add_column_if_missing(conn, "songs", "genre", "TEXT")?;
     }
     conn.batch_execute(&format!("PRAGMA user_version = {SCHEMA_VERSION}"))?;
+    Ok(())
+}
+
+#[derive(QueryableByName)]
+struct ColumnName {
+    #[diesel(sql_type = Text)]
+    name: String,
+}
+
+/// `ALTER TABLE … ADD COLUMN` unless the column is already there, so a step
+/// can run on databases whose versions were numbered differently.
+fn add_column_if_missing(
+    conn: &mut SqliteConnection,
+    table: &str,
+    column: &str,
+    definition: &str,
+) -> Result<(), NightingaleError> {
+    let columns: Vec<ColumnName> =
+        diesel::sql_query(format!("SELECT name FROM pragma_table_info('{table}')")).load(conn)?;
+    if columns.iter().any(|existing| existing.name == column) {
+        return Ok(());
+    }
+    conn.batch_execute(&format!(
+        "ALTER TABLE {table} ADD COLUMN {column} {definition}"
+    ))?;
     Ok(())
 }
 

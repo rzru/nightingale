@@ -9,6 +9,7 @@ export type Song = {
   title: string;
   artist: string;
   album: string;
+  genre: string | null;
   duration_secs: number;
   album_art_path: string | null;
   is_analyzed: boolean;
