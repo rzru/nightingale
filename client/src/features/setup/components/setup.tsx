@@ -479,7 +479,7 @@ export const Setup = () => {
     <AlertDialog open={shouldRunSetup}>
       <AlertDialogContent
         data-nav-passthrough
-        className="max-h-[calc(100svh-2rem)] overflow-y-auto"
+        className="max-h-[calc(100svh-var(--titlebar-offset)-2rem)] overflow-y-auto"
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <img src={logoSrc} width={80} height={80} alt="Nightingale" />

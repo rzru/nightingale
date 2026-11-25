@@ -228,6 +228,9 @@ pub struct AppConfig {
     /// after a short countdown.
     pub auto_continue_queue: Option<bool>,
     pub song_list_view: Option<String>,
+    /// Detail level the playback HUD settings block was left in:
+    /// `collapsed`, `expanded`, or `hidden`.
+    pub playback_hud_view: Option<String>,
     #[serde(default, deserialize_with = "deserialize_song_list_sort")]
     pub song_list_sort: Option<Vec<SongSort>>,
     /// Interface language preference (`system` or a BCP 47 tag such as
@@ -300,6 +303,7 @@ impl Default for AppConfig {
             auto_analyze: None,
             auto_continue_queue: None,
             song_list_view: None,
+            playback_hud_view: None,
             song_list_sort: None,
             language: None,
             language_overrides: None,

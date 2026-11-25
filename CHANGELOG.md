@@ -16,10 +16,11 @@ below.
 ### Features
 
 - Added French as an interface language.
-- Playback now has matching sliders for overall volume and guide vocals, plus keyboard shortcuts for both. Your choices carry over to future songs, and overall volume also controls the final score sound.
+- Playback now has matching sliders for overall volume and guide vocals, plus pickers for microphone, background theme and video flavor, a monitor toggle, and a play/pause button, shown compactly with a single click to reveal the full controls and another to hide them for an uncluttered screen, with Nightingale remembering which of the three you left them in, with keyboard shortcuts shown as key caps beside each control. On touch screens these replace the old block of large on-screen buttons. Your choices carry over to future songs, and overall volume also controls the final score sound.
 
 ### Fixes
 
+- The desktop window bar stays visible and usable while the setup wizard or the small-screen sidebar menu is open, and it no longer takes up space over the playback screen.
 - The phone queue link now keeps the same address across launches, so a QR code scanned earlier keeps working. A phone that scans a new code is also no longer turned away as "remote link is not valid" because of a cookie left from an earlier code.
 
 ## [1.4.1] - 2026-11-09

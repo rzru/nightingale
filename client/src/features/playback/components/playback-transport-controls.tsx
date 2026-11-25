@@ -1,4 +1,6 @@
 import {
+  PauseIcon,
+  PlayIcon,
   RotateCcwIcon,
   RotateCwIcon,
   SkipBackIcon,
@@ -63,6 +65,7 @@ export type TransportControlsProps = {
   getCurrentTime: () => number;
   seek: (seconds: number) => void;
   lines: TransportLines;
+  playToggle?: { paused: boolean; onToggle: () => void };
   className?: string;
 };
 
@@ -76,6 +79,7 @@ export function TransportControls({
   getCurrentTime,
   seek,
   lines,
+  playToggle,
   className,
 }: TransportControlsProps) {
   const timerRef = useRef<HTMLParagraphElement>(null);
@@ -133,11 +137,18 @@ export function TransportControls({
       className={cn('mt-1.5 w-full max-w-[340px]', className)}
       aria-label={t('playback.playbackTransportControls.playbackPosition')}
     >
-      <div className="flex h-[28px] items-center justify-between gap-3 [@media(any-pointer:coarse)]:h-[44px]">
-        <p ref={timerRef} className="text-[16px] text-white/60 tabular-nums">
+      <div className="flex min-h-[28px] flex-wrap items-center justify-between gap-3 [@media(any-pointer:coarse)]:min-h-[44px]">
+        <p ref={timerRef} className="whitespace-nowrap text-[16px] text-white/60 tabular-nums">
           0:00 / {formatSeconds(duration)}
         </p>
         <div className="flex shrink-0 items-center gap-0.5">
+          {playToggle && (
+            <TransportButton
+              icon={playToggle.paused ? PlayIcon : PauseIcon}
+              label={t(playToggle.paused ? 'common.actions.play' : 'common.actions.pause')}
+              onClick={playToggle.onToggle}
+            />
+          )}
           <TransportButton
             icon={SkipBackIcon}
             label={t('playback.playbackTransportControls.previousLyricLine')}
@@ -190,9 +201,13 @@ export function TransportControls({
 export function PlaybackTransportControls({
   duration,
   segments,
+  paused,
+  onTogglePlay,
 }: {
   duration: number;
   segments: Segment[];
+  paused: boolean;
+  onTogglePlay: () => void;
 }) {
   const { subscribe, getCurrentTime, seek } = usePlaybackTransportActions();
   const hintRef = useRef(0);
@@ -229,6 +244,7 @@ export function PlaybackTransportControls({
       getCurrentTime={getCurrentTime}
       seek={seek}
       lines={lines}
+      playToggle={{ paused, onToggle: onTogglePlay }}
     />
   );
 }
