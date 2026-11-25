@@ -41,13 +41,15 @@ const InnerWrapper = () => (
   <>
     <MenuFocusProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<MenuLayout />}>
-            <Route index element={<LibraryPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-          </Route>
-          <Route path="/playback" element={<Playback />} />
-        </Routes>
+        <TauriAppShell>
+          <Routes>
+            <Route path="/" element={<MenuLayout />}>
+              <Route index element={<LibraryPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
+            <Route path="/playback" element={<Playback />} />
+          </Routes>
+        </TauriAppShell>
       </BrowserRouter>
     </MenuFocusProvider>
     <Toaster />
@@ -102,9 +104,7 @@ const ThemeWrapper = () => {
   return (
     <ThemeProvider defaultTheme={config?.dark_mode === false ? 'light' : 'dark'}>
       <TooltipProvider>
-        <TauriAppShell>
-          <InnerWrapper />
-        </TauriAppShell>
+        <InnerWrapper />
       </TooltipProvider>
     </ThemeProvider>
   );

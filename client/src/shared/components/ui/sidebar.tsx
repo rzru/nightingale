@@ -198,7 +198,7 @@ function Sidebar({
       {isMobile && (
         <div
           className={cn(
-            'fixed inset-0 z-40 flex text-sidebar-foreground transition-[visibility] duration-200',
+            'fixed inset-x-0 bottom-0 top-[var(--titlebar-offset)] z-40 flex text-sidebar-foreground transition-[visibility] duration-200',
             mobileVisibility(open),
           )}
         >

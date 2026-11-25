@@ -166,6 +166,7 @@ export const appConfigSchema: z.ZodType<AppConfig> = z.object({
   auto_analyze: nullableBoolean,
   auto_continue_queue: nullableBoolean,
   song_list_view: nullableString,
+  playback_hud_view: nullableString,
   song_list_sort: z
     .array(
       z.object({

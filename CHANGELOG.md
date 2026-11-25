@@ -16,6 +16,7 @@ below.
 ### Features
 
 - Added French as an interface language.
+- Playback now has matching sliders for overall volume and guide vocals, plus pickers for microphone, background theme and video flavor, a monitor toggle, and a play/pause button, shown compactly with a single click to reveal the full controls and another to hide them for an uncluttered screen, with Nightingale remembering which of the three you left them in, with keyboard shortcuts shown as key caps beside each control. On touch screens these replace the old block of large on-screen buttons. Your choices carry over to future songs, and overall volume also controls the final score sound.
 - Songs now carry a genre, read from file tags or the source library (Jellyfin/Navidrome/Plex) when available. The library sidebar gets a new Genres section, and genre is a filter alongside artist and album.
 
 ### Improvements
@@ -24,6 +25,7 @@ below.
 
 ### Fixes
 
+- The desktop window bar stays visible and usable while the setup wizard or the small-screen sidebar menu is open, and it no longer takes up space over the playback screen.
 - The phone queue link now keeps the same address across launches, so a QR code scanned earlier keeps working. A phone that scans a new code is also no longer turned away as "remote link is not valid" because of a cookie left from an earlier code.
 - The Python analyzer now stops itself after a few idle minutes instead of staying in memory until Nightingale closes. It also exits with Nightingale, even when a song is still being analyzed or the app closes unexpectedly, so no analyzer process is left behind. A stalled analysis is reported as a failure instead of waiting forever.
 - Apple Silicon Macs now release analyzer memory after each song instead of holding it until Nightingale closes.
