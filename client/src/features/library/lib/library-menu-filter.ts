@@ -6,12 +6,14 @@ export type LibraryMenuSection =
   | 'no_metadata'
   | 'artists'
   | 'albums'
+  | 'genres'
   | 'playlists'
   | 'folders';
 
 export const EMPTY_LIBRARY_FILTER: LibraryMenuFilters = {
   artist: null,
   album: null,
+  genre: null,
   playlist: null,
   query: null,
   status: null,
@@ -46,6 +48,8 @@ export function libraryFilterFromMenuSelection(
       return { ...EMPTY_LIBRARY_FILTER, artist: item.value };
     case 'albums':
       return { ...EMPTY_LIBRARY_FILTER, album: item.value };
+    case 'genres':
+      return { ...EMPTY_LIBRARY_FILTER, genre: item.value };
     case 'playlists':
       return { ...EMPTY_LIBRARY_FILTER, playlist: item.value };
     case 'folders':
@@ -59,6 +63,7 @@ export function libraryFiltersEqual(a: LibraryMenuFilters, b: LibraryMenuFilters
   return (
     a.artist === b.artist &&
     a.album === b.album &&
+    a.genre === b.genre &&
     a.playlist === b.playlist &&
     a.folder === b.folder &&
     a.query === b.query

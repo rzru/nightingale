@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 
 import { ensureMp3Stems, onStemsReady } from '@/bridge/playback';
 import { isSessionPlayback } from '@/bridge/playback-session';
+import { setWakeLockDesired } from '@/bridge/wake-lock';
 import { closePlaybackWindow } from '@/bridge/window';
 import {
   type AudioPlayer,
@@ -135,6 +136,11 @@ export function PlaybackTransportProvider({
       void navigate('/', { replace: true });
     }
   }, [audio.error, navigate]);
+
+  useEffect(() => {
+    setWakeLockDesired(audio.isPlaying);
+    return () => setWakeLockDesired(false);
+  }, [audio.isPlaying]);
 
   const handlePause = useCallback(() => {
     audio.pause();
