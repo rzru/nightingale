@@ -1,7 +1,9 @@
 """Multi-window language detection using WhisperX."""
 
+from audio import ALIGNMENT_SAMPLE_RATE
 
-def detect_language_multiwindow(model, audio, sample_rate=16000, window_secs=30) -> str:
+
+def detect_language_multiwindow(model, audio, sample_rate=ALIGNMENT_SAMPLE_RATE, window_secs=30) -> str:
     """Detect language by sampling multiple 30s windows and voting."""
     from whisperx.audio import log_mel_spectrogram
 

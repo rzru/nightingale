@@ -16,6 +16,7 @@ below.
 ### Features
 
 - Added French as an interface language.
+- Added an experimental "Wav2Vec2-BERT Two-Pass Alignment" lyric timing option for English songs. It splits each song at natural pauses and re-times each chunk with a second model, falling back to the usual WhisperX timing wherever that model isn't confident or a song has no safe pause structure.
 - Playback now has matching sliders for overall volume and guide vocals, plus pickers for microphone, background theme and video flavor, a monitor toggle, and a play/pause button, shown compactly with a single click to reveal the full controls and another to hide them for an uncluttered screen, with Nightingale remembering which of the three you left them in, with keyboard shortcuts shown as key caps beside each control. On touch screens these replace the old block of large on-screen buttons. Your choices carry over to future songs, and overall volume also controls the final score sound.
 - Songs now carry a genre, read from file tags or the source library (Jellyfin/Navidrome/Plex) when available. The library sidebar gets a new Genres section, and genre is a filter alongside artist and album.
 
