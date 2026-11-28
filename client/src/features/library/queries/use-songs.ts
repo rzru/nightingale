@@ -7,11 +7,29 @@ import { useSearch } from '@/features/menu/hooks/use-search';
 import { useConfig } from '@/shared/config/use-config';
 import { ANALYSIS_QUEUE, SONGS, SONGS_META, MENU } from '@/shared/query-keys';
 import type { AnalysisQueue } from '@/types/AnalysisQueue';
+import type { LibraryMenuFilters } from '@/types/LibraryMenuFilters';
 import type { LoadSongsParams } from '@/types/LoadSongsParams';
 import type { SongsMeta } from '@/types/SongsMeta';
 
 const PAGE_SIZE = 25;
 const DEFAULT_REFETCH_INTERVAL = 2500;
+
+type RawLibraryFilter = Pick<
+  ReturnType<typeof useLibraryFilter>,
+  'artist' | 'album' | 'genre' | 'playlist' | 'folder' | 'query' | 'status' | 'transcript_source'
+>;
+
+const buildLibraryMenuFilters = (filter: RawLibraryFilter): LibraryMenuFilters => ({
+  artist: filter.artist ?? null,
+  album: filter.album ?? null,
+  genre: filter.genre ?? null,
+  playlist: filter.playlist ?? null,
+  folder: filter.folder,
+  query: filter.query ?? null,
+  status: filter.status ?? null,
+  transcript_source: filter.transcript_source ?? null,
+  search: null,
+});
 
 export const useSongsMeta = () => {
   const queryClient = useQueryClient();
@@ -42,7 +60,8 @@ export const useSongsMeta = () => {
 export const useSongs = () => {
   const { data: config } = useConfig();
   const { search } = useSearch();
-  const { artist, album, playlist, folder, query, status, transcript_source } = useLibraryFilter();
+  const filter = useLibraryFilter();
+  const { artist, album, genre, playlist, folder, query, status, transcript_source } = filter;
   const sort = config?.song_list_sort ?? [];
 
   return useInfiniteQuery({
@@ -51,6 +70,7 @@ export const useSongs = () => {
       search,
       artist,
       album,
+      genre,
       playlist,
       folder,
       query,
@@ -61,16 +81,7 @@ export const useSongs = () => {
     queryFn: ({ pageParam = 0 }: { pageParam?: number }) => {
       const params: LoadSongsParams = {
         search: search || null,
-        filters: {
-          artist: artist ?? null,
-          album: album ?? null,
-          playlist: playlist ?? null,
-          folder,
-          query: query ?? null,
-          status: status ?? null,
-          transcript_source: transcript_source ?? null,
-          search: null,
-        },
+        filters: buildLibraryMenuFilters(filter),
         sort: sort.length === 0 ? null : sort,
         skip: pageParam,
         take: PAGE_SIZE,

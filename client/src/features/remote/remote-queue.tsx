@@ -41,6 +41,7 @@ import type { LoadSongsParams } from '@/types/LoadSongsParams';
 const REMOTE_FILTERS: LibraryMenuFilters = {
   artist: null,
   album: null,
+  genre: null,
   playlist: null,
   query: null,
   // Only analyzed songs can be queued, so don't offer the rest.

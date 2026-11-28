@@ -17,10 +17,19 @@ below.
 
 - Added French as an interface language.
 - Added an experimental "Wav2Vec2-BERT Two-Pass Alignment" lyric timing option for English songs. It splits each song at natural pauses and re-times each chunk with a second model, falling back to the usual WhisperX timing wherever that model isn't confident or a song has no safe pause structure.
+- Playback now has matching sliders for overall volume and guide vocals, plus pickers for microphone, background theme and video flavor, a monitor toggle, and a play/pause button, shown compactly with a single click to reveal the full controls and another to hide them for an uncluttered screen, with Nightingale remembering which of the three you left them in, with keyboard shortcuts shown as key caps beside each control. On touch screens these replace the old block of large on-screen buttons. Your choices carry over to future songs, and overall volume also controls the final score sound.
+- Songs now carry a genre, read from file tags or the source library (Jellyfin/Navidrome/Plex) when available. The library sidebar gets a new Genres section, and genre is a filter alongside artist and album.
+
+### Improvements
+
+- Playback now requests a screen wake lock while a song is actively playing, so mobile and desktop browsers stop dimming or locking the screen mid-song. The lock releases on pause, on song end, and when the tab is backgrounded, and is re-requested automatically once the tab is visible again while still playing. No effect where the browser doesn't support the Wake Lock API. Check [caniuse](https://caniuse.com/wake-lock) for capabilities.
 
 ### Fixes
 
+- The desktop window bar stays visible and usable while the setup wizard or the small-screen sidebar menu is open, and it no longer takes up space over the playback screen.
 - The phone queue link now keeps the same address across launches, so a QR code scanned earlier keeps working. A phone that scans a new code is also no longer turned away as "remote link is not valid" because of a cookie left from an earlier code.
+- The Python analyzer now stops itself after a few idle minutes instead of staying in memory until Nightingale closes. It also exits with Nightingale, even when a song is still being analyzed or the app closes unexpectedly, so no analyzer process is left behind. A stalled analysis is reported as a failure instead of waiting forever. On Windows this no longer risks stalling a running analysis.
+- Apple Silicon Macs now release analyzer memory after each song instead of holding it until Nightingale closes.
 
 ## [1.4.1] - 2026-11-09
 

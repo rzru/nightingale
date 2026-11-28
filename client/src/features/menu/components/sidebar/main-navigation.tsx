@@ -5,6 +5,7 @@ import {
   FileQuestionMark,
   FolderIcon,
   ListMusicIcon,
+  TagIcon,
   UserIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -71,6 +72,7 @@ const NAV_SECTIONS: NavSectionConfig[] = [
     icon: FileQuestionMark,
   },
   { section: 'artists', label: 'menu.sidebar.mainNavigation.artists', icon: UserIcon },
+  { section: 'genres', label: 'menu.sidebar.mainNavigation.genres', icon: TagIcon },
   { section: 'playlists', label: 'menu.sidebar.mainNavigation.playlists', icon: ListMusicIcon },
   { section: 'folders', label: 'menu.sidebar.mainNavigation.folders', icon: FolderIcon },
 ];

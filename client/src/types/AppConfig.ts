@@ -50,8 +50,17 @@ export type AppConfig = {
   align_backend: string | null;
   vocal_detection_threshold_pct: number | null;
   auto_analyze: boolean | null;
+  /**
+   * When `true`, the results screen starts the next queued song by itself
+   * after a short countdown.
+   */
   auto_continue_queue: boolean | null;
   song_list_view: string | null;
+  /**
+   * Detail level the playback HUD settings block was left in:
+   * `collapsed`, `expanded`, or `hidden`.
+   */
+  playback_hud_view: string | null;
   song_list_sort: Array<SongSort> | null;
   /**
    * Interface language preference (`system` or a BCP 47 tag such as

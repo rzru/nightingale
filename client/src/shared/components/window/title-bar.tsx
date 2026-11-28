@@ -1,6 +1,7 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { MinusIcon, SquareIcon, XIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router';
 
 import { loadConfig, saveConfig } from '@/bridge/config';
 import {
@@ -70,20 +71,20 @@ export function TauriAppShell({ children }: { children: React.ReactNode }) {
 }
 
 function TitleBar({ fullscreen }: { fullscreen: boolean }) {
+  const { pathname } = useLocation();
   const sessionPlayback = isSessionPlayback();
+  const playbackRoute = pathname === '/playback';
+  const chromeHidden = fullscreen || playbackRoute;
 
   useEffect(() => {
-    document.documentElement.style.setProperty(
-      '--titlebar-offset',
-      fullscreen || sessionPlayback ? '0px' : '2rem',
-    );
+    document.documentElement.style.setProperty('--titlebar-offset', chromeHidden ? '0px' : '2rem');
 
     return () => {
       document.documentElement.style.removeProperty('--titlebar-offset');
     };
-  }, [fullscreen, sessionPlayback]);
+  }, [chromeHidden]);
 
-  if (fullscreen) {
+  if (fullscreen || (playbackRoute && !sessionPlayback)) {
     return null;
   }
 
@@ -127,7 +128,7 @@ function TitleBar({ fullscreen }: { fullscreen: boolean }) {
   }
 
   return (
-    <header className="flex h-8 shrink-0 select-none items-stretch border-b border-border bg-background">
+    <header className="pointer-events-auto flex h-8 shrink-0 select-none items-stretch border-b border-border bg-background">
       <div
         className="min-h-0 min-w-0 flex-1"
         aria-hidden

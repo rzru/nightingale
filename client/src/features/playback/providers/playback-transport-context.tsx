@@ -22,6 +22,7 @@ import { toast } from 'sonner';
 
 import { ensureMp3Stems, onStemsReady } from '@/bridge/playback';
 import { isSessionPlayback } from '@/bridge/playback-session';
+import { setWakeLockDesired } from '@/bridge/wake-lock';
 import { closePlaybackWindow } from '@/bridge/window';
 import {
   type AudioPlayer,
@@ -37,6 +38,7 @@ export type PlaybackTransportState = {
   paused: boolean;
   duration: number;
   guideVolume: number;
+  masterVolume: number;
   guideAvailable: boolean;
   error: string | null;
 };
@@ -46,6 +48,7 @@ export type PlaybackTransportActions = {
   getCurrentTime: () => number;
   seek: (time: number) => void;
   setGuideVolume: (volume: number) => void;
+  setMasterVolume: (volume: number) => void;
   getVocalsBuffer: AudioPlayer['getVocalsBuffer'];
   getScoringBuffer: AudioPlayer['getScoringBuffer'];
   getAudioContext: AudioPlayer['getAudioContext'];
@@ -134,6 +137,11 @@ export function PlaybackTransportProvider({
     }
   }, [audio.error, navigate]);
 
+  useEffect(() => {
+    setWakeLockDesired(audio.isPlaying);
+    return () => setWakeLockDesired(false);
+  }, [audio.isPlaying]);
+
   const handlePause = useCallback(() => {
     audio.pause();
     setPaused(true);
@@ -161,6 +169,7 @@ export function PlaybackTransportProvider({
       paused,
       duration: audio.duration,
       guideVolume: audio.guideVolume,
+      masterVolume: audio.masterVolume,
       guideAvailable: audio.guideAvailable,
       error: audio.error,
     }),
@@ -170,6 +179,7 @@ export function PlaybackTransportProvider({
       audio.isFinished,
       audio.duration,
       audio.guideVolume,
+      audio.masterVolume,
       audio.guideAvailable,
       audio.error,
       paused,
@@ -182,6 +192,7 @@ export function PlaybackTransportProvider({
       getCurrentTime: audio.getCurrentTime,
       seek: audio.seek,
       setGuideVolume: audio.setGuideVolume,
+      setMasterVolume: audio.setMasterVolume,
       getVocalsBuffer: audio.getVocalsBuffer,
       getScoringBuffer: audio.getScoringBuffer,
       getAudioContext: audio.getAudioContext,
@@ -196,6 +207,7 @@ export function PlaybackTransportProvider({
       audio.getCurrentTime,
       audio.seek,
       audio.setGuideVolume,
+      audio.setMasterVolume,
       audio.getVocalsBuffer,
       audio.getScoringBuffer,
       audio.getAudioContext,

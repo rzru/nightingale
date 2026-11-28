@@ -22,9 +22,9 @@ export function usePlaybackConfigPersist(config: AppConfig | null) {
         return;
       }
 
-      void saveConfig({ ...current, ...patch }).then((savedConfig) =>
-        queryClient.setQueryData(CONFIG, savedConfig),
-      );
+      const next = { ...current, ...patch };
+      queryClient.setQueryData(CONFIG, next);
+      void saveConfig(next).then((savedConfig) => queryClient.setQueryData(CONFIG, savedConfig));
     },
     [configRef, queryClient],
   );

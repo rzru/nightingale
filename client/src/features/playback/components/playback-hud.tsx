@@ -1,7 +1,16 @@
-import { forwardRef, memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  ChevronDownIcon,
+  EarIcon,
+  ImageIcon,
+  MicIcon,
+  SlidersHorizontalIcon,
+  VideoIcon,
+} from 'lucide-react';
+import { forwardRef, memo, useEffect, useRef, useState, type ReactNode } from 'react';
 
+import type { MicDevice } from '@/features/microphone/queries/use-mic-devices';
 import { usePlaybackConfigPersist } from '@/features/playback/hooks/use-playback-config-persist';
-import type { VideoFlavor } from '@/features/playback/lib/video-flavor';
+import { FLAVORS, videoFlavorLabel, type VideoFlavor } from '@/features/playback/lib/video-flavor';
 import {
   usePlaybackMicActions,
   usePlaybackMicState,
@@ -16,26 +25,23 @@ import {
 import { computeLyricGapCaption, findCurrentSegment } from '@/features/playback/utils/lyrics-gap';
 import { playerDisplayName } from '@/features/playback/utils/player-display-name';
 import { t, useTranslation } from '@/i18n';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
 import { playerColorOption } from '@/shared/player-colors';
+import { cn } from '@/shared/utils/cn';
 import type { AppConfig } from '@/types/AppConfig';
 
 import { LiveStars } from './live-stars';
+import { HudSetting, HudSettingValue, ShortcutKeys } from './playback-hud-setting';
 import { PlaybackTransportControls } from './playback-transport-controls';
-import { isPixabayTheme, themeName, type PlaybackTheme } from './theme';
-
-function formatGuideText(volume: number): string {
-  const pct = Math.round(volume * 100);
-  return pct === 0
-    ? t('playback.hud.guideOffShortcut')
-    : t('playback.hud.guidePercentShortcut', { percent: pct });
-}
-
-function formatThemeText(theme: PlaybackTheme, videoFlavor: VideoFlavor): string {
-  return t('playback.hud.themeShortcut', {
-    theme: themeName(theme, videoFlavor),
-    shortcut: isPixabayTheme(theme) ? 'T/F' : 'T',
-  });
-}
+import { PlaybackVolumeControl } from './playback-volume-control';
+import { isPixabayTheme, themeKey, themeName, type PlaybackTheme } from './theme';
 
 const SkipButton = forwardRef<HTMLButtonElement, { label: string; onClick: () => void }>(
   ({ label, onClick }, ref) => (
@@ -51,11 +57,10 @@ const SkipButton = forwardRef<HTMLButtonElement, { label: string; onClick: () =>
   ),
 );
 
-function HintText({ children, fontSize = 'sm' }: { children: React.ReactNode; fontSize?: string }) {
-  return <p className={`text-${fontSize} text-white/50`}>{children}</p>;
-}
-
 const NOTE_BASE_CLASS = `pointer-events-none absolute z-20 text-[0.6rem] text-white/30`;
+const HUD_SELECT_CLASS =
+  'w-full border-white/25 bg-white/10 text-white/80 hover:bg-white/15 [&_svg]:text-white/50';
+const OFF_MIC = 'off';
 const TOUCH_QUERIES = ['(pointer: coarse)', '(any-pointer: coarse)'];
 
 function hasTouchInput(): boolean {
@@ -81,179 +86,342 @@ function useHasTouchInput(): boolean {
   return enabled;
 }
 
-function TouchButton({
-  label,
-  onClick,
-  disabled = false,
+function MicSetting({
+  devices,
+  selected,
+  summary,
+  expanded,
+  onSelect,
+  shortcut,
 }: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
+  devices: readonly MicDevice[];
+  selected: string | undefined;
+  summary: string;
+  expanded: boolean;
+  onSelect: (value: string) => void;
+  shortcut?: ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="pointer-events-auto rounded-sm border-2 border-white/70 bg-black/10 px-2.5 py-1 text-sm text-white/90 transition-colors hover:bg-black/20 active:bg-black/30 disabled:opacity-35"
+    <HudSetting
+      icon={MicIcon}
+      label={t('settings.microphone.label')}
+      shortcut={shortcut}
+      compact={!expanded}
     >
-      {label}
-    </button>
+      {expanded ? (
+        <Select value={selected} onValueChange={onSelect}>
+          <SelectTrigger
+            size="sm"
+            aria-label={t('settings.microphone.label')}
+            className={HUD_SELECT_CLASS}
+          >
+            <SelectValue placeholder={t('settings.microphone.default')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={OFF_MIC}>{t('common.states.off')}</SelectItem>
+            {devices.map((device) => (
+              <SelectItem key={device.deviceId} value={device.deviceId}>
+                {device.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <HudSettingValue>{summary}</HudSettingValue>
+      )}
+    </HudSetting>
+  );
+}
+
+function MonitorSetting({
+  enabled,
+  expanded,
+  onToggle,
+  shortcut,
+}: {
+  enabled: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+  shortcut?: ReactNode;
+}) {
+  const summary = t(enabled ? 'common.states.on' : 'common.states.off');
+
+  return (
+    <HudSetting
+      icon={EarIcon}
+      label={t('playback.hud.monitor')}
+      trailing={
+        expanded ? (
+          <Checkbox
+            checked={enabled}
+            onCheckedChange={onToggle}
+            aria-label={t('playback.hud.monitor')}
+            className="border-white/40 data-checked:border-white data-checked:bg-white/15 data-checked:text-white dark:data-checked:bg-white/15"
+          />
+        ) : (
+          <HudSettingValue>{summary}</HudSettingValue>
+        )
+      }
+      shortcut={shortcut}
+    />
+  );
+}
+
+function ThemeSetting({
+  themes,
+  theme,
+  videoFlavor,
+  expanded,
+  onSelect,
+  onSelectFlavor,
+  shortcut,
+  showShortcuts,
+}: {
+  themes: readonly PlaybackTheme[];
+  theme: PlaybackTheme;
+  videoFlavor: VideoFlavor;
+  expanded: boolean;
+  onSelect: (key: string) => void;
+  onSelectFlavor: (key: string) => void;
+  shortcut?: ReactNode;
+  showShortcuts: boolean;
+}) {
+  return (
+    <>
+      <HudSetting
+        icon={ImageIcon}
+        label={t('playback.playbackHud.theme')}
+        trailing={
+          expanded ? undefined : <HudSettingValue>{themeName(theme, videoFlavor)}</HudSettingValue>
+        }
+        shortcut={shortcut}
+      >
+        {expanded && (
+          <Select value={themeKey(theme)} onValueChange={onSelect}>
+            <SelectTrigger
+              size="sm"
+              aria-label={t('playback.playbackHud.theme')}
+              className={HUD_SELECT_CLASS}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {themes.map((option) => (
+                <SelectItem key={themeKey(option)} value={themeKey(option)}>
+                  {themeName(option, videoFlavor)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </HudSetting>
+
+      {expanded && isPixabayTheme(theme) && (
+        <FlavorSetting
+          flavor={videoFlavor}
+          onSelect={onSelectFlavor}
+          shortcut={showShortcuts ? <ShortcutKeys keys={['F']} /> : undefined}
+        />
+      )}
+    </>
+  );
+}
+
+function FlavorSetting({
+  flavor,
+  onSelect,
+  shortcut,
+}: {
+  flavor: VideoFlavor;
+  onSelect: (key: string) => void;
+  shortcut?: ReactNode;
+}) {
+  return (
+    <HudSetting icon={VideoIcon} label={t('playback.playbackHud.flavor')} shortcut={shortcut}>
+      <Select value={flavor} onValueChange={onSelect}>
+        <SelectTrigger
+          size="sm"
+          aria-label={t('playback.playbackHud.flavor')}
+          className={HUD_SELECT_CLASS}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {FLAVORS.map((option) => (
+            <SelectItem key={option} value={option}>
+              {videoFlavorLabel(option)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </HudSetting>
   );
 }
 
 function SettingsInfo({
-  guideVolume,
-  guideAvailable,
+  devices,
+  selectedMicId,
   micUserEnabled,
   micName,
   micMonitorUserEnabled,
   multiplayer,
+  themes,
   theme,
   videoFlavor,
   showShortcuts,
+  expanded,
 }: {
-  guideVolume: number;
-  guideAvailable: boolean;
+  devices: readonly MicDevice[];
+  selectedMicId: string | null;
   micUserEnabled: boolean;
   micName: string;
   micMonitorUserEnabled: boolean;
   multiplayer: boolean;
+  themes: readonly PlaybackTheme[];
   theme: PlaybackTheme;
   videoFlavor: VideoFlavor;
   showShortcuts: boolean;
+  expanded: boolean;
 }) {
+  const { handleToggleMic, handleToggleMicMonitor, selectMic } = usePlaybackMicActions();
+  const { selectFlavor, selectTheme } = usePlaybackThemeActions();
+
+  const changeMic = (value: string) => {
+    if (value !== OFF_MIC) {
+      if (!micUserEnabled) {
+        handleToggleMic();
+      }
+      selectMic(value);
+      return;
+    }
+    if (micUserEnabled) {
+      handleToggleMic();
+    }
+  };
+
   return (
-    <div className="flex flex-col items-end">
-      {guideAvailable && (
-        <HintText>
-          {showShortcuts
-            ? formatGuideText(guideVolume)
-            : t('playback.hud.guidePercent', { percent: Math.round(guideVolume * 100) })}
-        </HintText>
-      )}
+    <>
       {!multiplayer && (
-        <HintText>
-          {t('playback.hud.micStatus', {
-            status: micUserEnabled ? micName : t('common.states.off'),
-            shortcut: showShortcuts ? ' [M/N]' : '',
-          })}
-        </HintText>
+        <MicSetting
+          devices={devices}
+          selected={micUserEnabled ? (selectedMicId ?? undefined) : OFF_MIC}
+          summary={micUserEnabled ? micName : t('common.states.off')}
+          expanded={expanded}
+          onSelect={changeMic}
+          shortcut={showShortcuts ? <ShortcutKeys keys={['M', 'N']} /> : undefined}
+        />
       )}
-      <HintText>
-        {t('playback.hud.monitorStatus', {
-          status: t(micMonitorUserEnabled ? 'common.states.on' : 'common.states.off'),
-          shortcut: showShortcuts ? ' [R]' : '',
-        })}
-      </HintText>
-      <HintText>
-        {showShortcuts
-          ? formatThemeText(theme, videoFlavor)
-          : t('playback.hud.theme', { theme: themeName(theme, videoFlavor) })}
-      </HintText>
-      {showShortcuts && <HintText>{t('playback.playbackHud.escBack')}</HintText>}
-    </div>
+
+      <MonitorSetting
+        enabled={micMonitorUserEnabled}
+        expanded={expanded}
+        onToggle={handleToggleMicMonitor}
+        shortcut={showShortcuts ? <ShortcutKeys keys={['R']} /> : undefined}
+      />
+
+      <ThemeSetting
+        themes={themes}
+        theme={theme}
+        videoFlavor={videoFlavor}
+        expanded={expanded}
+        onSelect={selectTheme}
+        onSelectFlavor={selectFlavor}
+        shortcut={showShortcuts ? <ShortcutKeys keys={['T']} /> : undefined}
+        showShortcuts={showShortcuts}
+      />
+    </>
   );
 }
 
-function TouchControls({
-  config,
-  hasTouch,
-  position,
-}: {
-  config: AppConfig | null;
-  hasTouch: boolean;
-  position: PlaybackHudPosition;
-}) {
-  const [open, setOpen] = useState(false);
-  const { guideVolume, guideAvailable } = usePlaybackTransportState();
-  const { setGuideVolume, handlePause } = usePlaybackTransportActions();
-  const { micUserEnabled, micName, micMonitorUserEnabled, multiplayer } = usePlaybackMicState();
-  const { handleToggleMic, handleCycleMic, handleToggleMicMonitor } = usePlaybackMicActions();
-  const { theme, videoFlavor } = usePlaybackThemeState();
-  const { cycleTheme, cycleFlavor } = usePlaybackThemeActions();
-  const persistConfig = usePlaybackConfigPersist(config);
+const SETTINGS_VIEWS = ['collapsed', 'expanded', 'hidden'] as const;
+type SettingsView = (typeof SETTINGS_VIEWS)[number];
 
-  const setPersistedGuideVolume = useCallback(
-    (volume: number) => {
-      const next = Math.max(0, Math.min(1, volume));
-      setGuideVolume(next);
-      persistConfig({ guide_volume: next });
-    },
-    [persistConfig, setGuideVolume],
-  );
+function parseSettingsView(value: string | null | undefined): SettingsView {
+  return SETTINGS_VIEWS.find((view) => view === value) ?? 'collapsed';
+}
 
-  if (!hasTouch) {
-    return null;
-  }
+function nextSettingsView(view: SettingsView): SettingsView {
+  return SETTINGS_VIEWS[(SETTINGS_VIEWS.indexOf(view) + 1) % SETTINGS_VIEWS.length];
+}
 
-  const touchLayoutClass = position === 'bottom' ? 'mb-2 flex-col-reverse' : 'mt-2 flex-col';
+function settingsWidthClass(showShortcuts: boolean): string {
+  return showShortcuts ? 'w-72' : 'w-56';
+}
+
+function SettingsToggle({ view, onToggle }: { view: SettingsView; onToggle: () => void }) {
+  const expanded = view === 'expanded';
 
   return (
-    <div className={`flex w-[min(18rem,80vw)] items-end gap-2 ${touchLayoutClass}`}>
-      <div className="sm:hidden">
-        <SettingsInfo
-          guideVolume={guideVolume}
-          guideAvailable={guideAvailable}
-          micUserEnabled={micUserEnabled}
-          micName={micName}
-          micMonitorUserEnabled={micMonitorUserEnabled}
-          multiplayer={multiplayer}
-          theme={theme}
-          videoFlavor={videoFlavor}
-          showShortcuts={false}
+    <button
+      type="button"
+      aria-expanded={expanded}
+      title={t('playback.hud.settings')}
+      onClick={onToggle}
+      className={cn(
+        'flex items-center gap-1 self-end text-xs text-white/40 transition-colors hover:text-white/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f3ead7]',
+        view !== 'hidden' && 'mt-1',
+      )}
+    >
+      {t('playback.hud.settings')}
+      {view === 'hidden' ? (
+        <SlidersHorizontalIcon className="size-3.5" aria-hidden="true" />
+      ) : (
+        <ChevronDownIcon
+          className={cn('size-3.5 transition-transform', expanded && 'rotate-180')}
+          aria-hidden="true"
         />
-      </div>
+      )}
+    </button>
+  );
+}
 
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((prev) => !prev)}
-        className="pointer-events-auto rounded-sm border-2 border-white/70 bg-black/10 px-2.5 py-1 text-sm text-white/90 transition-colors hover:bg-black/20 active:bg-black/30"
-      >
-        {t(open ? 'playback.hud.hideControls' : 'playback.hud.showControls')}
-      </button>
+function HudSettings({
+  config,
+  showShortcuts,
+}: {
+  config: AppConfig | null;
+  showShortcuts: boolean;
+}) {
+  const view = parseSettingsView(config?.playback_hud_view);
+  const persistConfig = usePlaybackConfigPersist(config);
+  const { devices, selectedMicId, micUserEnabled, micName, micMonitorUserEnabled, multiplayer } =
+    usePlaybackMicState();
+  const { theme, themes, videoFlavor } = usePlaybackThemeState();
 
-      {open && (
-        <div className="grid w-full grid-cols-3 gap-2 text-center">
-          <TouchButton label={t('common.actions.pause')} onClick={handlePause} />
-          {guideAvailable && (
-            <>
-              <TouchButton
-                label={t(guideVolume === 0 ? 'playback.hud.guideOn' : 'playback.hud.guideOff')}
-                onClick={() => setPersistedGuideVolume(guideVolume > 0 ? 0 : 0.3)}
-              />
-              <TouchButton
-                label={t('playback.playbackHud.guide')}
-                onClick={() => setPersistedGuideVolume(guideVolume + 0.1)}
-              />
-              <TouchButton
-                label={t('playback.playbackHud.guide2')}
-                onClick={() => setPersistedGuideVolume(guideVolume - 0.1)}
-              />
-            </>
+  return (
+    <div className="mt-2 hidden flex-col sm:flex">
+      {view !== 'hidden' && (
+        <div
+          className={cn(
+            'flex flex-col',
+            settingsWidthClass(showShortcuts),
+            view === 'expanded' ? 'gap-2' : 'gap-1',
           )}
-          {!multiplayer && (
-            <>
-              <TouchButton
-                label={t(micUserEnabled ? 'playback.hud.micOff' : 'playback.hud.micOn')}
-                onClick={handleToggleMic}
-              />
-              <TouchButton label={t('playback.playbackHud.micSelect')} onClick={handleCycleMic} />
-            </>
-          )}
-          <TouchButton
-            label={t(micMonitorUserEnabled ? 'playback.hud.monitorOff' : 'playback.hud.monitorOn')}
-            onClick={handleToggleMicMonitor}
+        >
+          <PlaybackVolumeControl
+            config={config}
+            showShortcuts={showShortcuts}
+            expanded={view === 'expanded'}
           />
-          <TouchButton label={t('playback.playbackHud.theme')} onClick={cycleTheme} />
-          <TouchButton
-            label={t('playback.playbackHud.flavor')}
-            onClick={cycleFlavor}
-            disabled={!isPixabayTheme(theme)}
+          <SettingsInfo
+            devices={devices}
+            selectedMicId={selectedMicId}
+            micUserEnabled={micUserEnabled}
+            micName={micName}
+            micMonitorUserEnabled={micMonitorUserEnabled}
+            multiplayer={multiplayer}
+            themes={themes}
+            theme={theme}
+            videoFlavor={videoFlavor}
+            showShortcuts={showShortcuts}
+            expanded={view === 'expanded'}
           />
         </div>
       )}
+      <SettingsToggle
+        view={view}
+        onToggle={() => persistConfig({ playback_hud_view: nextSettingsView(view) })}
+      />
     </div>
   );
 }
@@ -389,14 +557,22 @@ function PlaybackHudImpl({
   windowControls = false,
 }: PlaybackHudProps) {
   useTranslation();
-  const { duration, guideVolume, guideAvailable } = usePlaybackTransportState();
-  const { subscribe, getCurrentTime } = usePlaybackTransportActions();
-  const { theme, videoFlavor } = usePlaybackThemeState();
+  const { duration, guideAvailable, paused } = usePlaybackTransportState();
+  const { subscribe, getCurrentTime, handlePause, handleContinue } = usePlaybackTransportActions();
+  const { theme, themes, videoFlavor } = usePlaybackThemeState();
   const { firstSegmentStart, lastSegmentEnd, introSkipLeadSec, segments, transcriptSource } =
     usePlaybackTranscriptState();
   const { handleSkipIntro, handleSkipOutro } = usePlaybackTranscriptActions();
-  const { pitchScore, micUserEnabled, micName, micMonitorUserEnabled, multiplayer, players } =
-    usePlaybackMicState();
+  const {
+    devices,
+    selectedMicId,
+    pitchScore,
+    micUserEnabled,
+    micName,
+    micMonitorUserEnabled,
+    multiplayer,
+    players,
+  } = usePlaybackMicState();
 
   const skipIntroRef = useRef<HTMLButtonElement>(null);
   const skipOutroRef = useRef<HTMLButtonElement>(null);
@@ -405,6 +581,7 @@ function PlaybackHudImpl({
 
   const showPixabayCredit = isPixabayTheme(theme);
   const hasTouch = useHasTouchInput();
+  const showShortcuts = !hasTouch;
 
   // Update playback text without triggering React renders every frame.
   useEffect(() => {
@@ -460,7 +637,12 @@ function PlaybackHudImpl({
           <p className="line-clamp-1 [overflow-wrap:anywhere] text-sm text-white/70 md:text-base">
             {artist}
           </p>
-          <PlaybackTransportControls duration={duration} segments={segments} />
+          <PlaybackTransportControls
+            duration={duration}
+            segments={segments}
+            paused={paused}
+            onTogglePlay={paused ? handleContinue : handlePause}
+          />
           <output
             ref={gapCaptionRef}
             aria-live="polite"
@@ -493,20 +675,23 @@ function PlaybackHudImpl({
             )}
             <div className="my-1.5 hidden h-px w-full bg-white/20 sm:block" aria-hidden="true" />
           </div>
-          <div className="hidden sm:block">
+          <HudSettings config={config} showShortcuts={showShortcuts} />
+          <div className="mt-2 flex w-[min(14rem,80vw)] flex-col gap-2 sm:hidden">
+            <PlaybackVolumeControl config={config} showShortcuts={false} expanded />
             <SettingsInfo
-              guideVolume={guideVolume}
-              guideAvailable={guideAvailable}
+              devices={devices}
+              selectedMicId={selectedMicId}
               micUserEnabled={micUserEnabled}
               micName={micName}
               micMonitorUserEnabled={micMonitorUserEnabled}
               multiplayer={multiplayer}
+              themes={themes}
               theme={theme}
               videoFlavor={videoFlavor}
-              showShortcuts={!hasTouch}
+              showShortcuts={false}
+              expanded
             />
           </div>
-          <TouchControls config={config} hasTouch={hasTouch} position={position} />
         </div>
       </div>
 

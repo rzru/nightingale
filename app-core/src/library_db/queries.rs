@@ -22,6 +22,8 @@ use super::sql_functions::{
 };
 type SongQuery = songs::BoxedQuery<'static, Sqlite>;
 
+const UNKNOWN_GENRE: &str = "unknown_genre";
+
 #[derive(Clone, Copy)]
 enum ExtraFilter {
     None,
@@ -171,6 +173,13 @@ fn filtered_songs(
     }
     if let Some(folder) = filters.folder.as_deref().filter(|value| !value.is_empty()) {
         query = query.filter(instr(songs::path, folder.to_string()).eq(1));
+    }
+    if let Some(genre) = filters.genre.as_deref().filter(|value| !value.is_empty()) {
+        if genre == UNKNOWN_GENRE {
+            query = query.filter(songs::genre.is_null());
+        } else {
+            query = query.filter(songs::genre.eq(genre.to_string()));
+        }
     }
     match filters.query.as_deref() {
         Some("analysed") => query = query.filter(songs::is_analyzed.eq(true)),
@@ -549,6 +558,7 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
                 songs::path,
                 songs::artist,
                 songs::album,
+                songs::genre,
                 songs::is_analyzed,
                 songs::is_video,
                 songs::transcript_source,
@@ -559,6 +569,7 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
                 String,
                 String,
                 String,
+                Option<String>,
                 bool,
                 bool,
                 Option<String>,
@@ -583,10 +594,23 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
         let mut artist_counts = HashMap::<String, MenuCounts>::new();
         let mut album_order = Vec::new();
         let mut album_counts = HashMap::<(String, String), MenuCounts>::new();
+        let mut genre_order = Vec::new();
+        let mut genre_counts = HashMap::<String, MenuCounts>::new();
         let mut folder_counts = BTreeMap::<Vec<(String, String)>, FolderEntry>::new();
 
-        for (path, artist, album, analyzed, is_video, transcript_source, status) in song_rows {
+        for (path, artist, album, genre, analyzed, is_video, transcript_source, status) in song_rows
+        {
             all.add(analyzed, status.as_deref());
+            let genre_key = genre
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| UNKNOWN_GENRE.to_string());
+            if !genre_counts.contains_key(&genre_key) {
+                genre_order.push(genre_key.clone());
+            }
+            genre_counts
+                .entry(genre_key)
+                .or_default()
+                .add(analyzed, status.as_deref());
             let mut folder_key = Vec::new();
             for (depth, (prefix, name)) in folder_prefixes(&path, &root).into_iter().enumerate() {
                 folder_key.push((name.to_lowercase(), name.to_string()));
@@ -696,6 +720,22 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
             })
             .collect();
 
+        genre_order.sort_by_key(|genre| genre.to_lowercase());
+        let genres = genre_order
+            .into_iter()
+            .map(|genre| {
+                let label = if genre == UNKNOWN_GENRE {
+                    "Unknown Genre".to_string()
+                } else {
+                    genre.clone()
+                };
+                genre_counts
+                    .remove(&genre)
+                    .unwrap_or_default()
+                    .item(genre, label)
+            })
+            .collect();
+
         let playlist_rows = playlists::table
             .inner_join(playlist_songs::table.on(playlist_songs::playlist_id.eq(playlists::id)))
             .inner_join(songs::table.on(songs::id.eq(playlist_songs::song_id)))
@@ -742,6 +782,7 @@ pub(crate) fn query_library_menu_items() -> Result<LibraryMenuItems, Nightingale
             no_metadata,
             artists,
             albums,
+            genres,
             playlists,
             folders,
         })

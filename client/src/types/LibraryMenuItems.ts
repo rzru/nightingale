@@ -6,6 +6,7 @@ export type LibraryMenuItems = {
   no_metadata: Array<LibraryMenuItem>;
   artists: Array<LibraryMenuItem>;
   albums: Array<LibraryMenuItem>;
+  genres: Array<LibraryMenuItem>;
   playlists: Array<LibraryMenuItem>;
   folders: Array<LibraryMenuItem>;
 };
