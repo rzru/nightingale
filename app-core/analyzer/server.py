@@ -19,7 +19,7 @@ Wire protocol (NDJSON over TCP, one JSON object per line):
     {"type":"done","hash":"..."}
     {"type":"error","kind":"oom"|"generic","msg":"..."}
 
-Stdin is not a command channel: the server exits when the parent closes it.
+Stdin is not a command channel: the server exits when its parent dies.
 """
 
 import json
@@ -90,7 +90,27 @@ def _send(wfile, payload):
         os._exit(1)
 
 
+SYNCHRONIZE = 0x00100000
+WAIT_INFINITE = 0xFFFFFFFF
+
+
 def _exit_with_parent():
+    if os.name == "nt":
+        # Waiting on the parent process keeps the inherited stdin pipe free: a
+        # pending read on it blocks other users of that handle, and DLLs probing
+        # the standard handles during load would deadlock on the loader lock.
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.windll.kernel32
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        kernel32.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+        parent = kernel32.OpenProcess(SYNCHRONIZE, False, os.getppid())
+        if not parent:
+            os._exit(0)
+        kernel32.WaitForSingleObject(wintypes.HANDLE(parent), WAIT_INFINITE)
+        os._exit(0)
     try:
         sys.stdin.buffer.read()
     finally:
